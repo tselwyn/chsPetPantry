@@ -477,64 +477,49 @@
                 <div class="happy-toast">Volunteer registered successfully!</div>
             <?php endif ?> -->
 
-<div style="margin-top: 50px; padding: 0px 80px;">
+    <div style="margin-top: 50px; padding: 0px 80px;">
     <h2><b>Admin Dashboard</b></h2>
-</div>
-<div class="full-width-bar-sub">
- <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
-        <div class="icon-overlay">
+    </div>
+    <div class="full-width-bar-sub">
+        <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+            <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
-        </div>
+            </div>
         
-        <div class="large-text-sub" style="color:white;">Audit Users</div>
+            <div class="large-text-sub" style="color:white;">Audit Users</div>
         <div class="graph-text" style="color:white;">Add, edit, and remove user accounts and permissions.</div>
-    </div>
- <div class="content-box-test" onclick="window.location.href='createUser.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
         </div>
-            <div class="content-box-test" onclick="window.location.href='deletePet.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="Delete Pet Icon">
-        </div>
-        <div class="large-text-sub" style="color:white;">Manage Item Categories</div>
-        <div class="graph-text" style="color:white;">Add, edit, and delete item categories.</div>
-    </div>
-    <div class="content-box-test" onclick="window.location.href='viewConsumptionRates.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/clipboard-list-alt.svg" alt="Consumption Rates Icon">
-        </div>
-
-        <div class="large-text-sub" style="color:white;">Consumption Rates</div>
-        <div class="graph-text" style="color:white;">Record and calculate item consumption rates.</div>
-    </div>
-    <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
-        </div>
-        
-        <div class="large-text-sub" style="color:white;">Audit Users</div>
-        <div class="graph-text" style="color:white;">Add, edit, and remove user accounts and permissions.</div>
-    </div>
- <div class="content-box-test" onclick="window.location.href='createUser.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        <div class="content-box-test" onclick="window.location.href='createUser.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
         </div>
         
         <div class="large-text-sub" style="color:white;">Add User</div>
         <div class="graph-text" style="color:white;">Add user and set permissions.</div>
-    </div>
-    <div class="content-box-test" onclick="window.location.href='deletePet.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        </div>
+        <div class="content-box-test" onclick="window.location.href='deletePet.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="Delete Pet Icon">
         </div>
 
         <div class="large-text-sub" style="color:white;">Delete Pet</div>
         <div class="graph-text" style="color:white;">Remove a pet record from the system.</div>
-    </div>
-    <div class="content-box-test" onclick="window.location.href='viewItemCategories.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        </div>
+        <div class="content-box-test" onclick="window.location.href='viewItemCategories.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/list-solid.svg" alt="Categories Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Manage Item Categories</div>
+        <div class="graph-text" style="color:white;">Add, edit, and delete item categories.</div>
+        </div>
+        <div class="content-box-test" onclick="window.location.href='viewConsumptionRates.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/clipboard-list-alt.svg" alt="Consumption Rates Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Consumption Rates</div>
+        <div class="graph-text" style="color:white;">Record and calculate item consumption rates.</div>
         </div>
             </div>
 <!--
