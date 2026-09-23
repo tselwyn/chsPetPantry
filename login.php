@@ -133,9 +133,17 @@
              class="w-full max-w-xs">
       </div>
 
-      <h2 class="text-3xl font-bold mb-6 text-gray-800 text-center">
-	<span class="wave">👋</span> Nice to see you again.
+          <h2 class="text-3xl font-bold mb-2 text-gray-800 text-center">
+	<span class="wave">👋</span> Welcome to the CHS Pet Pantry
       </h2>
+
+      <p class="text-lg text-[#22654D] font-medium mb-2 text-center">
+        Keeping pets fed and families together.
+      </p>
+
+      <p class="text-sm text-gray-600 mb-6 text-center">
+        Enter your username and password below. Contact a Pet Pantry volunteer if you need an account.
+      </p>
 
       <form class="w-full" method="post">
                 <?php
