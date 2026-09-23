@@ -189,7 +189,7 @@ if (date("H:i:s") > "18:19:59") {
         /* seperate nav background from nav link to allow for header text to  
          * scroll onto nav bar without the text being covered by the background */
         .navbar-background{
-            background: #4d98f3;
+            background: black;
             z-index: 5;
         }
 
@@ -209,8 +209,8 @@ if (date("H:i:s") > "18:19:59") {
         }
 
         .logo-container img {
-            width: 52px;
-            height: 60px;
+            width: 0px;
+            height: 0px;
             display: block;
         }
 
@@ -651,7 +651,7 @@ if (date("H:i:s") > "18:19:59") {
         <!-- Left Section: Logo & Nav Links -->
         <div class="left-section">
             <div class="logo-container">
-                <a href="index.php"><img src="images/ccda-logo-white.svg" alt="Logo"></a>
+                <a href="index.php"><img src="images/50.png" alt="Logo"></a>
             </div>
             <div class="nav-links">
                 <div class="nav-item">
@@ -845,7 +845,7 @@ if (date("H:i:s") > "18:19:59") {
         <!-- Left Section: Logo & Nav Links -->
         <div class="left-section">
             <div class="logo-container">
-                <a href="index.php"><img src="images/ccda-logo-white.svg" alt="Logo"></a>
+                <a href="index.php"><img src="images/50.png" alt="Logo"></a>
             </div>
                 <!--<a href="viewCheckInOut.php" style="color: white; text-decoration: none;"><div class="date-box">Check In/Out</div></a>-->
             <div class="nav-links">
