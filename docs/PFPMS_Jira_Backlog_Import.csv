@@ -1,0 +1,550 @@
+"Summary","Issue Type","Description","Priority","Story Points","Labels","Epic Name","Epic Link","Assignee"
+"UC-01 Login","Epic","Epic for use case UC-01 Login (Security and Access Management package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-01","UC-01 Login","",""
+"UC-02 Search for Participants","Epic","Epic for use case UC-02 Search for Participants (Participant Management package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-02","UC-02 Search for Participants","",""
+"UC-03 Register New Participant","Epic","Epic for use case UC-03 Register New Participant (Participant Management package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-03","UC-03 Register New Participant","",""
+"UC-04 Update Participant Information","Epic","Epic for use case UC-04 Update Participant Information (Participant Management package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-04","UC-04 Update Participant Information","",""
+"UC-05 Register/Update Pet Information","Epic","Epic for use case UC-05 Register/Update Pet Information (Pet Management package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-05","UC-05 Register/Update Pet Information","",""
+"UC-06 Record Food Distribution","Epic","Epic for use case UC-06 Record Food Distribution (Distribution Management package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-06","UC-06 Record Food Distribution","",""
+"UC-07 View Participant Distribution History","Epic","Epic for use case UC-07 View Participant Distribution History (Distribution Management package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-07","UC-07 View Participant Distribution History","",""
+"UC-08 Refer Pet to Spay/Neuter Services","Epic","Epic for use case UC-08 Refer Pet to Spay/Neuter Services (Spay/Neuter and Veterinary Services package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-08","UC-08 Refer Pet to Spay/Neuter Services","",""
+"UC-09 Delete Participant","Epic","Epic for use case UC-09 Delete Participant (Administration and Data Governance package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-09","UC-09 Delete Participant","",""
+"UC-10 Delete Pet","Epic","Epic for use case UC-10 Delete Pet (Administration and Data Governance package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-10","UC-10 Delete Pet","",""
+"UC-11 Manage User Accounts","Epic","Epic for use case UC-11 Manage User Accounts (Security and Access Management package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-11","UC-11 Manage User Accounts","",""
+"UC-12 Import Legacy Records","Epic","Epic for use case UC-12 Import Legacy Records (Administration and Data Governance package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-12","UC-12 Import Legacy Records","",""
+"UC-13 Generate Reports","Epic","Epic for use case UC-13 Generate Reports (Reporting and Analytics package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-13","UC-13 Generate Reports","",""
+"UC-14 Distribution Reports","Epic","Epic for use case UC-14 Distribution Reports (Reporting and Analytics package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-14","UC-14 Distribution Reports","",""
+"UC-15 Participant Reports","Epic","Epic for use case UC-15 Participant Reports (Reporting and Analytics package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-15","UC-15 Participant Reports","",""
+"UC-16 Pet/SNV Status Reports","Epic","Epic for use case UC-16 Pet/SNV Status Reports (Reporting and Analytics package). See PFPMS Use Case Specifications v1.0.","Medium","","UC-16","UC-16 Pet/SNV Status Reports","",""
+"US-01 PIN fast-switch between volunteers on a shared tablet","Story","*User story*
+As a volunteer sharing a tablet with the rest of my shift, I can switch to my own account with a short PIN so that the line keeps moving while every action is still recorded under my name.
+
+*Acceptance criteria*
+* A volunteer already on shift at this site can take over the device with a 4-6 digit PIN instead of a full password.
+* Switching accounts takes under five seconds and does not discard an entry the previous volunteer left open.
+* PIN switching is offered only on devices registered to a site, never on a personal device.
+
+*Adds beyond the use case*
+The use case assumes one person per device and a full credential every time. It says nothing about the shared-tablet reality of a distribution table or about a fast re-identification method.
+
+*Traceability*
+Epic UC-01 · Story US-01 · MoSCoW: Must","High","5","uc-01 volunteer must","","UC-01 Login",""
+"US-02 Live view of volunteers signed in at my site","Story","*User story*
+As a site coordinator, I want to see who is signed in at my site right now so that I know the table is covered and can tell who recorded a transaction when a participant queries it later.
+
+*Acceptance criteria*
+* A roster panel lists the volunteers currently holding a session at the coordinator's site, with the time each signed in.
+* The coordinator can sign a volunteer out remotely when a device is left unattended.
+* The panel is visible to coordinators and Administrators only.
+
+*Adds beyond the use case*
+The use case writes a login audit entry but never surfaces who is currently active. Real-time visibility for the person running the shift is a separate need.
+
+*Traceability*
+Epic UC-01 · Story US-02 · MoSCoW: Should","Medium","3","uc-01 admin should","","UC-01 Login",""
+"US-03 Confidentiality acknowledgement on first login","Story","*User story*
+As a new volunteer signing in for the first time, I want to read and acknowledge the confidentiality rules before I see any participant data so that I understand what I am responsible for.
+
+*Acceptance criteria*
+* First successful login presents the current confidentiality and data-handling statement before the home screen.
+* The volunteer must acknowledge it to continue; declining ends the session without exposing participant data.
+* The version acknowledged and the date are stored against the account.
+
+*Adds beyond the use case*
+The use case treats onboarding as something an Administrator records beforehand. It never puts the obligation in front of the volunteer at the moment they gain access.
+
+*Traceability*
+Epic UC-01 · Story US-03 · MoSCoW: Must","High","2","uc-01 volunteer must","","UC-01 Login",""
+"US-04 Today's checked-in households at the top of search","Story","*User story*
+As a volunteer with a queue forming, I want the people who have checked in for today's event to appear at the top of my search so that I am not typing full names while ten households wait.
+
+*Acceptance criteria*
+* Participants checked in at the current event appear first, marked with their check-in time.
+* The list refreshes as further households check in, without the volunteer reloading the screen.
+* Typing any criterion immediately reverts to a normal search across all participants.
+
+*Adds beyond the use case*
+The use case offers recent-participant browsing over the last 30 days but has no concept of a check-in queue for the event currently running.
+
+*Traceability*
+Epic UC-02 · Story US-04 · MoSCoW: Should","Medium","5","uc-02 volunteer should","","UC-02 Search for Participants",""
+"US-05 Search and serve participants by preferred name","Story","*User story*
+As a volunteer serving someone who does not go by their legal name, I can find them by the name they actually use so that I am not asking them to repeat their documents in front of a queue.
+
+*Acceptance criteria*
+* A participant record holds a preferred name in addition to the legal name.
+* Search matches on either name and displays the preferred name first in results.
+* Receipts and voucher paperwork use the preferred name where one is recorded.
+
+*Adds beyond the use case*
+The use case lists the searchable fields and never contemplates a preferred or chosen name, nor the dignity issue of asking someone to identify themselves by a name they do not use.
+
+*Traceability*
+Epic UC-02 · Story US-05 · MoSCoW: Should","Medium","3","uc-02 participant should","","UC-02 Search for Participants",""
+"US-06 Accent-insensitive participant search","Story","*User story*
+As a volunteer at a site serving many non-English-speaking households, I can find a participant whether or not I type the accents in their name so that a missing diacritic does not create a duplicate record.
+
+*Acceptance criteria*
+* Search treats accented and unaccented forms of a character as equivalent in both directions.
+* The system warns at registration when a new name differs from an existing one only by accents.
+* Sorting of results is not disturbed by the accent-insensitive matching.
+
+*Adds beyond the use case*
+The use case specifies partial and phonetic matching on surnames but is silent on diacritics, which is the commonest source of duplicate records at multilingual sites.
+
+*Traceability*
+Epic UC-02 · Story US-06 · MoSCoW: Should","Medium","3","uc-02 volunteer should","","UC-02 Search for Participants",""
+"US-07 Applicant self-service pre-registration","Story","*User story*
+As an applicant waiting in line, I want to start my own registration on my phone or a kiosk tablet so that the volunteer only has to check my answers rather than key everything in.
+
+*Acceptance criteria*
+* A QR code at the site opens a self-entry form covering the non-verified fields.
+* The volunteer sees the submission as a pending draft and completes verification, consent and proof of residence at the table.
+* A draft not claimed within 24 hours is discarded and no participant record is created.
+
+*Adds beyond the use case*
+The use case has the volunteer keying every field during an interview. Self-service pre-entry, and the split between what an applicant may enter and what a volunteer must verify, appear nowhere in it.
+
+*Traceability*
+Epic UC-03 · Story US-07 · MoSCoW: Could","Low","8","uc-03 participant could","","UC-03 Register New Participant",""
+"US-08 Save an interrupted registration as a draft","Story","*User story*
+As a volunteer interrupted part-way through an intake, I can save a registration as a draft and return to it so that an interruption does not cost the applicant their place in the queue.
+
+*Acceptance criteria*
+* A partly completed registration can be saved without passing validation.
+* Drafts are listed on the volunteer's home screen with the applicant's name and how long ago they were saved.
+* A draft is not a participant record: it cannot receive a distribution and is not searchable by other functions.
+
+*Adds beyond the use case*
+The use case runs registration as one uninterrupted transaction that either validates or fails. It never accounts for the interruptions that characterise a live distribution day.
+
+*Traceability*
+Epic UC-03 · Story US-08 · MoSCoW: Should","Medium","5","uc-03 volunteer should","","UC-03 Register New Participant",""
+"US-09 Coordinator-configurable intake questions","Story","*User story*
+As a programme coordinator, I want to change the intake questions we ask without waiting for a developer so that the form matches what our current grant requires.
+
+*Acceptance criteria*
+* A coordinator can add, retire or reorder optional intake questions and mark them required or optional.
+* Retiring a question preserves the answers already collected and stops it being asked.
+* Changes take effect at the next intake without a release.
+
+*Adds beyond the use case*
+The use case fixes the intake fields in its flow of events. The fact that funders change their reporting demands mid-programme, and that the form must follow, is not addressed.
+
+*Traceability*
+Epic UC-03 · Story US-09 · MoSCoW: Should","Medium","8","uc-03 admin should","","UC-03 Register New Participant",""
+"US-10 Participant self-service contact update","Story","*User story*
+As a participant who has moved house, I can update my address and phone number myself through a link so that I do not have to wait until the next distribution to correct them.
+
+*Acceptance criteria*
+* A participant can reach a self-service form through a link sent to their recorded contact method.
+* Self-submitted changes to address are held for volunteer confirmation at the next visit; contact-number changes apply at once.
+* The participant is told which changes took effect immediately and which are pending.
+
+*Adds beyond the use case*
+The use case gives amendment entirely to Volunteers and Administrators. Participant self-service, and the distinction between changes that need verification and those that do not, is new.
+
+*Traceability*
+Epic UC-04 · Story US-10 · MoSCoW: Could","Low","8","uc-04 participant could","","UC-04 Update Participant Information",""
+"US-11 Prompt to reconfirm stale contact details","Story","*User story*
+As a volunteer, I want to be prompted to confirm a household's contact details when they have not been checked for a year so that our outreach lists stay reachable.
+
+*Acceptance criteria*
+* A prompt appears at the table when the contact details were last confirmed more than a configurable period ago.
+* Confirming without change records the confirmation date; the prompt can be deferred once per visit.
+* The date of last confirmation is visible on the participant record.
+
+*Adds beyond the use case*
+The use case handles an amendment the user chooses to make. It never prompts for one, and has no notion of data going stale between visits.
+
+*Traceability*
+Epic UC-04 · Story US-11 · MoSCoW: Should","Medium","3","uc-04 volunteer should","","UC-04 Update Participant Information",""
+"US-12 Service-preference notes on the participant record","Story","*User story*
+As a volunteer, I can record how a household prefers to be served — help carrying bags to the car, for instance — so that the next volunteer serves them the same way without them having to ask again.
+
+*Acceptance criteria*
+* A short service-note field is available on the participant record, visible at the table.
+* Notes are limited to service preferences; the field carries guidance that health, financial and personal circumstances must not be recorded.
+* The author and date of each note are shown and notes can be retired when no longer relevant.
+
+*Adds beyond the use case*
+The use case treats the participant record as identity and eligibility data only. Operational service preferences, and the boundary on what may be written in a free-text note, are not covered.
+
+*Traceability*
+Epic UC-04 · Story US-12 · MoSCoW: Should","Medium","3","uc-04 volunteer should","","UC-04 Update Participant Information",""
+"US-13 Picture-based size and type picker for mixed breeds","Story","*User story*
+As a volunteer recording a mixed-breed dog, I can choose from a picture-based size and type picker so that I record something useful when neither of us knows the breed.
+
+*Acceptance criteria*
+* The pet form offers a visual picker of size bands and common body types as an alternative to typing a breed.
+* The selection populates the size band used for the allotment.
+* Breed remains recordable as free text for participants who know it.
+
+*Adds beyond the use case*
+The use case assumes breed and weight are simply known and entered. It does not address the very common case of an uncertain mixed breed, where the allotment still depends on getting the size band right.
+
+*Traceability*
+Epic UC-05 · Story US-13 · MoSCoW: Should","Medium","5","uc-05 volunteer should","","UC-05 Register/Update Pet Information",""
+"US-14 Vaccination expiry prompt at the table","Story","*User story*
+As a participant, I want to be told at the table when my dog's rabies vaccination is about to expire so that I can arrange it before it lapses.
+
+*Acceptance criteria*
+* The system flags pets whose recorded vaccination expires within a configurable window when the household is served.
+* The volunteer is given the partner clinics offering low-cost vaccination to hand on.
+* Pets with no recorded vaccination date are shown as unknown rather than as expired.
+
+*Adds beyond the use case*
+The use case captures the vaccination date as a stored field and stops there. Acting on it at the moment the household is in front of a volunteer is a distinct capability.
+
+*Traceability*
+Epic UC-05 · Story US-14 · MoSCoW: Should","Medium","3","uc-05 participant should","","UC-05 Register/Update Pet Information",""
+"US-15 Flag pets that have outgrown their size band","Story","*User story*
+As a coordinator, I want to see which pets have grown into a different size band since their details were recorded so that a puppy that is now full-grown receives the right allotment.
+
+*Acceptance criteria*
+* The system lists pets whose recorded age implies a size band different from the one stored.
+* A volunteer can confirm or correct the weight at the next visit from that list.
+* No allotment changes automatically without a human confirming the weight.
+
+*Adds beyond the use case*
+The use case records age and weight once and recalculates the allotment from what is stored. That stored weight silently going out of date as an animal grows is not considered anywhere in it.
+
+*Traceability*
+Epic UC-05 · Story US-15 · MoSCoW: Could","Low","5","uc-05 admin could","","UC-05 Register/Update Pet Information",""
+"US-16 Record a distribution by scanning the product barcode","Story","*User story*
+As a volunteer issuing food, I can scan the barcode on the bag rather than find the product in a list so that I record what I actually handed over instead of what looked closest on screen.
+
+*Acceptance criteria*
+* Scanning a product barcode selects the product and its unit weight.
+* An unrecognised barcode can be associated with an existing product once and is then recognised at every site.
+* Manual product selection remains available when a bag is unlabelled or the barcode is damaged.
+
+*Adds beyond the use case*
+The use case has the volunteer select the product from a list. Product identification by scan, and the accuracy problem that list-picking creates under time pressure, are not addressed.
+
+*Traceability*
+Epic UC-06 · Story US-16 · MoSCoW: Should","Medium","5","uc-06 volunteer should","","UC-06 Record Food Distribution",""
+"US-17 Record a declined product and substitute within allotment","Story","*User story*
+As a participant whose cat will not eat one of the products offered, I can decline it and take more of another within my allotment so that nothing I carry home goes to waste.
+
+*Acceptance criteria*
+* A volunteer can record a declined product and the reason, and substitute within the same allotment and species.
+* Declines are recorded distinctly from shortfalls, which are the pantry's fault rather than a preference.
+* Repeat declines of the same product are visible on the household record so the offer changes next time.
+
+*Adds beyond the use case*
+The use case allows substitution only when stock runs short. Participant preference as a legitimate reason to substitute, and the value of recording it, do not appear.
+
+*Traceability*
+Epic UC-06 · Story US-17 · MoSCoW: Should","Medium","3","uc-06 participant should","","UC-06 Record Food Distribution",""
+"US-18 Live event dashboard for the site coordinator","Story","*User story*
+As a coordinator running the event, I want a live count of households served and stock remaining so that I can reduce allotments before we run out rather than after.
+
+*Acceptance criteria*
+* A coordinator view shows households served, pets served and remaining stock by product, updating as distributions are recorded.
+* The view warns when projected demand from the households checked in exceeds remaining stock.
+* The view works from queued data when the site is offline.
+
+*Adds beyond the use case*
+The use case handles one household at a time and reports the event afterwards. Managing the event while it is still running, from figures accumulating in real time, is absent.
+
+*Traceability*
+Epic UC-06 · Story US-18 · MoSCoW: Must","High","8","uc-06 admin must","","UC-06 Record Food Distribution",""
+"US-19 Participant self-service view of own history","Story","*User story*
+As a participant, I can see my own distribution history on my phone so that I can check what I received without asking a volunteer to look it up for me.
+
+*Acceptance criteria*
+* A participant can view their own history through an authenticated self-service link.
+* The view shows dates, sites and quantities and excludes internal flags, notes and staff names.
+* Access is revoked when the participant leaves the programme.
+
+*Adds beyond the use case*
+The use case is written entirely for staff, with the participant reached only through a printed summary a volunteer produces. A participant-facing view of their own data is a different capability.
+
+*Traceability*
+Epic UC-07 · Story US-19 · MoSCoW: Could","Low","8","uc-07 participant could","","UC-07 View Participant Distribution History",""
+"US-20 Surface irregular visit patterns as a welfare prompt","Story","*User story*
+As a volunteer, I want to see when a household's visits have become irregular so that I can ask whether they are having trouble getting to the site.
+
+*Acceptance criteria*
+* The history view marks a household whose interval between visits has lengthened materially against its own pattern.
+* The signal is presented as a prompt to ask, never as an eligibility judgement or a flag.
+* The prompt can be dismissed for a visit without recording anything about the household.
+
+*Adds beyond the use case*
+The use case presents history as a list and a set of totals. Interpreting the pattern for the volunteer, and doing so as a welfare prompt rather than a compliance flag, is new.
+
+*Traceability*
+Epic UC-07 · Story US-20 · MoSCoW: Could","Low","5","uc-07 volunteer could","","UC-07 View Participant Distribution History",""
+"US-21 Clinic directions and hours from the voucher","Story","*User story*
+As a participant holding a voucher, I want the clinic's address, hours and directions on my phone so that I actually get there on the day.
+
+*Acceptance criteria*
+* The voucher carries a link or QR code opening the clinic's location, opening hours and telephone number.
+* The information is available without an account and works on a low-end phone.
+* A printed voucher carries the same details in text so a phone is not required.
+
+*Adds beyond the use case*
+The use case produces a voucher and clinic instructions but never says what they contain or how they are read. That they should be interactive, account-free and usable on a low-end phone — the practical journey where funded surgeries are actually lost — is nowhere in it.
+
+*Traceability*
+Epic UC-08 · Story US-21 · MoSCoW: Should","Medium","3","uc-08 participant should","","UC-08 Refer Pet to Spay/Neuter Services",""
+"US-22 Clinic-facing voucher confirmation and outcome reporting","Story","*User story*
+As a partner clinic, I can confirm a voucher and report the outcome through a simple link so that pantry staff do not have to chase me by telephone for it.
+
+*Acceptance criteria*
+* A clinic can look up a voucher number and record redemption, surgery date and outcome without a full system account.
+* The clinic sees only the pet and voucher concerned, never the participant's address or other household data.
+* Recorded outcomes flow straight into the referral record and the SNV reports.
+
+*Adds beyond the use case*
+The use case assumes clinic outcomes somehow arrive so that referrals can be reconciled, but never says how. Giving the clinic a way in — and bounding what it may see — is genuinely new.
+
+*Traceability*
+Epic UC-08 · Story US-22 · MoSCoW: Must","High","8","uc-08 partner-clinic must","","UC-08 Refer Pet to Spay/Neuter Services",""
+"US-23 Referral material in the participant's preferred language","Story","*User story*
+As a volunteer, I can hand over an explanation of the surgery in the participant's preferred language so that the decision is not made on a conversation neither of us fully followed.
+
+*Acceptance criteria*
+* Voucher paperwork and the accompanying explanation print in the participant's recorded preferred language.
+* The set of languages is maintainable by a coordinator without a release.
+* Where no translation exists the material prints in the default language and the volunteer is told.
+
+*Adds beyond the use case*
+The use case records a decline and its reason but never asks whether the participant understood the offer. Language is not mentioned in the specification at all.
+
+*Traceability*
+Epic UC-08 · Story US-23 · MoSCoW: Should","Medium","5","uc-08 volunteer should","","UC-08 Refer Pet to Spay/Neuter Services",""
+"US-24 Monthly deletion digest for oversight","Story","*User story*
+As an Administrator, I want a monthly digest of what was deleted and by whom so that I can spot someone deleting records where they should be deactivating them.
+
+*Acceptance criteria*
+* A monthly digest lists deletions and permanent purges with actor, reason and record type.
+* Deletions that could have been deactivations are highlighted.
+* The digest goes to Administrators and is retained with the audit record.
+
+*Adds beyond the use case*
+The use case audits each deletion as it happens. Nobody ever reads that audit; a periodic review that surfaces a pattern across many deletions is a separate need.
+
+*Traceability*
+Epic UC-09 · Story US-24 · MoSCoW: Should","Medium","3","uc-09 admin should","","UC-09 Delete Participant",""
+"US-25 Plain-language data retention notice on leaving","Story","*User story*
+As a participant leaving the programme, I want to be told plainly what happens to my information and for how long it is kept so that I can decide whether to ask for it to be erased.
+
+*Acceptance criteria*
+* A plain-language notice states what is retained, for how long and why, and how to request erasure.
+* The notice is available in the participant's preferred language and at the point of leaving.
+* Requesting erasure produces a tracked request rather than an informal conversation.
+
+*Adds beyond the use case*
+The use case handles erasure requests as an Administrator workflow that begins with a request already made. How a participant comes to understand their options in the first place is not covered.
+
+*Traceability*
+Epic UC-09 · Story US-25 · MoSCoW: Should","Medium","3","uc-09 participant should","","UC-09 Delete Participant",""
+"US-26 Suppress prompts about a deceased pet","Story","*User story*
+As a volunteer, I want recording that a pet has died to stop the system asking about that pet so that a grieving participant is not put through the question at every visit.
+
+*Acceptance criteria*
+* Recording a pet as deceased suppresses prompts about that pet at the table, including referral and vaccination prompts.
+* The household's allotment is recalculated without the volunteer having to explain the change on screen.
+* The pet remains in reporting history and can be seen by an Administrator.
+
+*Adds beyond the use case*
+The use case sets a pet inactive with a reason and recalculates the allotment. What the volunteer and the participant then experience at the next visit is not considered.
+
+*Traceability*
+Epic UC-10 · Story US-26 · MoSCoW: Must","High","3","uc-10 participant must","","UC-10 Delete Pet",""
+"US-27 Review list of pets with no recent activity","Story","*User story*
+As an Administrator, I want to review pets that have shown no activity for a year so that household allotments do not keep counting animals that are no longer there.
+
+*Acceptance criteria*
+* A review list shows pets whose household has been served repeatedly without the pet being confirmed present.
+* An Administrator can queue a pet for confirmation at the household's next visit rather than deciding remotely.
+* Nothing is set inactive automatically.
+
+*Adds beyond the use case*
+The use case is driven by someone already knowing a pet should go. Finding the records that have quietly gone stale, without a person noticing first, is the opposite direction of travel.
+
+*Traceability*
+Epic UC-10 · Story US-27 · MoSCoW: Could","Low","5","uc-10 admin could","","UC-10 Delete Pet",""
+"US-28 Time-boxed site access for a single shift","Story","*User story*
+As a coordinator, I want to give a volunteer access to another site for a single shift so that I do not have to remember to take it away afterwards.
+
+*Acceptance criteria*
+* A site grant can be issued with an end date and time, defaulting to the end of the shift.
+* The grant lapses automatically and the volunteer's sessions lose that site's data at once.
+* Temporary grants appear in the account's audit history.
+
+*Adds beyond the use case*
+The use case sets site assignment and account expiry as standing properties. A time-boxed grant for one shift, which is how cover actually works, is not among them.
+
+*Traceability*
+Epic UC-11 · Story US-28 · MoSCoW: Should","Medium","5","uc-11 admin should","","UC-11 Manage User Accounts",""
+"US-29 Training mode with sample data","Story","*User story*
+As a new volunteer, I want to practise on sample data before my shift so that my first real participant is not also my first time using the system.
+
+*Acceptance criteria*
+* A training mode presents realistic sample participants and pets, clearly marked as practice.
+* Nothing entered in training mode reaches live data, reporting or inventory.
+* A coordinator can see who has completed a practice session.
+
+*Adds beyond the use case*
+The use case provisions an account and records that onboarding was completed, but offers nowhere to actually practise. Training is treated as something that happens outside the system entirely.
+
+*Traceability*
+Epic UC-11 · Story US-29 · MoSCoW: Should","Medium","8","uc-11 volunteer should","","UC-11 Manage User Accounts",""
+"US-30 Annual re-acknowledgement of the confidentiality agreement","Story","*User story*
+As an Administrator, I want volunteers to re-acknowledge the confidentiality agreement each year so that our obligation to funders is evidenced rather than assumed.
+
+*Acceptance criteria*
+* An account due for re-acknowledgement is prompted at next login and given a grace period before access is restricted.
+* Acknowledgement dates and the version acknowledged are reportable per account.
+* Restriction never removes an account or its historical attributions.
+
+*Adds beyond the use case*
+The use case records onboarding once at account creation. Anything recurring — annual re-acknowledgement, periodic access review — is outside its scope.
+
+*Traceability*
+Epic UC-11 · Story US-30 · MoSCoW: Could","Low","5","uc-11 admin could","","UC-11 Manage User Accounts",""
+"US-31 Pre-fill draft records from photographed paper intake sheets","Story","*User story*
+As a coordinator with boxes of paper intake sheets, I want to photograph them and have the system pre-fill draft records so that I am not typing three years of forms by hand.
+
+*Acceptance criteria*
+* A batch of photographed or scanned intake sheets produces draft records with fields extracted where legible.
+* Every extracted field is presented for human confirmation before any record is created; nothing is committed unreviewed.
+* Unreadable sheets are listed for manual entry rather than silently dropped.
+
+*Adds beyond the use case*
+The use case begins with a clean delimited file that somebody has already produced. The actual starting point for most pantries — paper — never appears in it.
+
+*Traceability*
+Epic UC-12 · Story US-31 · MoSCoW: Could","Low","13","uc-12 admin could","","UC-12 Import Legacy Records",""
+"US-32 Downloadable import template per record type","Story","*User story*
+As the person preparing the file, I can download a template with the exact columns the system expects so that I get the format right the first time instead of after four rejected attempts.
+
+*Acceptance criteria*
+* A template file is downloadable for each record type, with column headings, an example row and notes on required fields and formats.
+* A file built from the template maps automatically without manual column mapping.
+* The template reflects any configured intake questions currently in use.
+
+*Adds beyond the use case*
+The use case has the Administrator map arbitrary columns after the file exists. Preventing the mismatch beforehand, rather than reporting it afterwards, is not part of it.
+
+*Traceability*
+Epic UC-12 · Story US-32 · MoSCoW: Must","High","2","uc-12 admin must","","UC-12 Import Legacy Records",""
+"US-33 Read-only mobile dashboard for board members","Story","*User story*
+As a board member, I want to open a current dashboard on my phone so that I am not waiting for somebody to email me a PDF before a meeting.
+
+*Acceptance criteria*
+* A read-only dashboard is reachable by named board accounts on a phone-sized screen.
+* It shows only aggregate figures and never identifiable participant data.
+* It states when the underlying data was last current.
+
+*Adds beyond the use case*
+The use case delivers reports by export and scheduled email to an Administrator's specification. A standing, self-serve view for people outside the staff team is a different delivery model.
+
+*Traceability*
+Epic UC-13 · Story US-33 · MoSCoW: Should","Medium","8","uc-13 external-stakeholder should","","UC-13 Generate Reports",""
+"US-34 Attach an explanatory narrative to a report","Story","*User story*
+As an Administrator, I can attach a short narrative to a report explaining an unusual month so that the figures are not misread once they leave my hands.
+
+*Acceptance criteria*
+* A note can be attached to a report run and travels with every export and scheduled delivery of it.
+* The note shows its author and date and is clearly distinguished from generated content.
+* Notes are editable before circulation and versioned afterwards.
+
+*Adds beyond the use case*
+The use case renders and exports figures with their definitions and currency, but assumes numbers speak for themselves. Nothing in it carries the human explanation alongside them.
+
+*Traceability*
+Epic UC-13 · Story US-34 · MoSCoW: Could","Low","3","uc-13 admin could","","UC-13 Generate Reports",""
+"US-35 Threshold alerts on key figures","Story","*User story*
+As an Administrator, I want to be told when a key figure moves well outside its usual range so that I learn about a problem without having to run a report to find it.
+
+*Acceptance criteria*
+* An Administrator can set a threshold or a percentage change on a small number of key figures.
+* An alert states the figure, the period, the movement and a link to the report behind it.
+* Alerts are rate-limited so that a single bad week does not generate a stream of them.
+
+*Adds beyond the use case*
+The use case is entirely pull: somebody chooses a report and runs it. Push notification when the data itself warrants attention has no place in the flow of events.
+
+*Traceability*
+Epic UC-13 · Story US-35 · MoSCoW: Could","Low","5","uc-13 admin could","","UC-13 Generate Reports",""
+"US-36 Forward demand forecast for procurement","Story","*User story*
+As the warehouse coordinator, I want a forecast of what we will need next month based on the households currently enrolled so that I can solicit donations before we run short rather than after.
+
+*Acceptance criteria*
+* A forecast projects demand by product type from enrolled households, their pets and the frequency rule.
+* The forecast shows the assumptions used and can be adjusted for known seasonal effects.
+* Projected demand is compared against current stock to show the gap.
+
+*Adds beyond the use case*
+The use case reports what was distributed, looking backwards. Projecting forward from the enrolled population to what must be procured is a different question the specification never asks.
+
+*Traceability*
+Epic UC-14 · Story US-36 · MoSCoW: Should","Medium","8","uc-14 admin should","","UC-14 Distribution Reports",""
+"US-37 Report on most-declined products","Story","*User story*
+As a coordinator, I want to see which products are declined most often so that we stop accepting donations of food our participants' animals will not eat.
+
+*Acceptance criteria*
+* A report ranks products by decline rate against the number of times they were offered.
+* Declines are distinguished from shortfalls and from products that were simply out of stock.
+* The report can be filtered by species and by site.
+
+*Adds beyond the use case*
+The use case reports quantities issued and shortfalls. Declines — the participant refusing a product — do not exist in it, and they are exactly what should change what the pantry accepts.
+
+*Traceability*
+Epic UC-14 · Story US-37 · MoSCoW: Could","Low","3","uc-14 admin could","","UC-14 Distribution Reports",""
+"US-38 Wait-time reporting by site and shift","Story","*User story*
+As a coordinator, I want to see how long households wait at each site so that I can put more volunteers on the shifts where the queue is worst.
+
+*Acceptance criteria*
+* Wait time is derived from check-in to distribution and reported by site, day and hour.
+* The report shows the number of volunteers on shift alongside the wait so the two can be compared.
+* Households that leave without being served are counted separately.
+
+*Adds beyond the use case*
+The use case reports on who is enrolled and who has lapsed. The service experience — how long people stand in line, and whether staffing matches demand — is not among its variants.
+
+*Traceability*
+Epic UC-15 · Story US-38 · MoSCoW: Should","Medium","8","uc-15 admin should","","UC-15 Participant Reports",""
+"US-39 Report households referred out of the service area","Story","*User story*
+As the director, I want to know how many households we turned away for living outside our service area so that I can make the case to funders for widening the boundary.
+
+*Acceptance criteria*
+* Applicants recorded as referred out are reportable by period and by postal code.
+* The report shows the pantry each applicant was referred to, where recorded.
+* Figures are aggregate and subject to the same small-cell suppression as other participant reports.
+
+*Adds beyond the use case*
+Registration records an applicant as referred out when they fall outside the service area, but no reporting use case ever counts them. Unmet demand is invisible in the specification as it stands.
+
+*Traceability*
+Epic UC-15 · Story US-39 · MoSCoW: Should","Medium","3","uc-15 external-stakeholder should","","UC-15 Participant Reports",""
+"US-40 Estimate of litters prevented","Story","*User story*
+As the director, I want our referrals expressed as an estimate of litters prevented so that our impact is stated in terms funders respond to rather than as a count of vouchers.
+
+*Acceptance criteria*
+* An estimate is derived from completed surgeries using a published, cited multiplier that an Administrator can update.
+* The report states the multiplier, its source and that the figure is an estimate.
+* The underlying count of completed surgeries is always shown alongside the estimate.
+
+*Adds beyond the use case*
+The use case reports completions, spend and time to surgery — all operational measures. Translating them into the outcome language funders use, with the honesty caveats that requires, is new.
+
+*Traceability*
+Epic UC-16 · Story US-40 · MoSCoW: Should","Medium","5","uc-16 external-stakeholder should","","UC-16 Pet/SNV Status Reports",""
+"US-41 Compare spay/neuter uptake between our own sites","Story","*User story*
+As a coordinator, I want to compare spay and neuter uptake between our sites so that I can find out what the site with the highest uptake is doing differently.
+
+*Acceptance criteria*
+* Referral offers, acceptances and completions are reported per site as rates, not raw counts.
+* Sites with too few referrals for a meaningful rate are marked rather than ranked.
+* The report can be broken down by species and by the volunteer making the offer.
+
+*Adds beyond the use case*
+The use case compares clinics, which are external providers. Comparing the pantry's own sites — where the conversation with the participant actually happens — is not one of its variants.
+
+*Traceability*
+Epic UC-16 · Story US-41 · MoSCoW: Could","Low","5","uc-16 admin could","","UC-16 Pet/SNV Status Reports",""
