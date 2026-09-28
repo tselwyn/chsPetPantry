@@ -78,6 +78,7 @@ repo/
   - Argon2id hashing. `PasswordPolicy` bundles an offline common and breached password list; HIBP is optional.
   - Single-use hashed `auth_token`s. Lockout. PIN; devices; offline grants.
   - **`session_regenerate_id(true)` on login, PIN switch, site switch, role change and policy acknowledgement.**
+  - `user_session.session_id` is a random server-generated id stored in `$_SESSION`, **not** PHP's session id. `audit_log` rows reference it, so it can never change; PHP's session id is regenerated freely underneath it.
 - **Other core:**
   - `Audit/{Audit,Snapshot}`: `audit_log` and `audit_field_change` written inside the caller's transaction.
   - `Settings` (typed registry with defaults).
@@ -156,8 +157,12 @@ Each semester ends with a demonstrable staging milestone.
   - XAMPP vhost `http://pfpms.localhost` pointing at `<repo>/public`. `*.localhost` counts as a secure context, so the service worker works; mkcert is optional, and XAMPP's bundled certificate expired in 2019.
   - Add a dev-only `package.json` (`node --test`, fake-indexeddb, Playwright).
 - **Schema v2.0.1 + v2.1** (§6):
-  - `bin/migrate.php` runs **one statement per `exec()`**, records progress per statement, checks `information_schema` before each ALTER, and creates `schema_version` with an explicit COLLATE.
-  - It **aborts if `@@collation_database` is not the 520 collation**. Migration 0001 runs `ALTER DATABASE … COLLATE utf8mb4_unicode_520_ci`, because a SiteGround 8.4 database defaults to 0900.
+  - `bin/migrate.php` (done: `src/Db/Migrator.php`) runs **one statement at a time** and records progress right after each one, together with a hash of the applied prefix.
+    - **Resume:** it replays earlier session `SET` statements. On the first resumed statement only, an "already exists" error counts as already applied.
+    - **Edits:** only the unapplied tail of a Failed migration may be edited.
+    - **Optional migrations** are Skipped only on privilege errors.
+    - It creates `schema_version` with an explicit COLLATE.
+  - **Database default collation:** it sets the default to 520 (`ALTER DATABASE`) only when the database is empty, and **refuses a non-empty database** with another default. A SiteGround 8.4 database defaults to 0900.
 - **Core:** everything in §4.
 - **Tooling:** `composer.json` requires php ≥8.2 and ext-pdo_mysql/openssl/mbstring/json/gd/zip, plus phpmailer ^7, phpspreadsheet ^5.6, **dompdf ^3.1** and **chillerlan/php-qrcode ^5.0**. Dev tools: phpunit ^11 and phpstan ^2. PHPUnit 12 needs PHP 8.3, and XAMPP ships 8.2.4. Prod should run PHP 8.3 or later, since 8.2 security support ends 31 Dec 2026.
 - **UC-01 online:**
@@ -238,7 +243,7 @@ Each semester ends with a demonstrable staging milestone.
     - Admin "include deleted"; no export; card QR scan.
   - `participant_register` (source `registrationForm.php`):
     - consent row with the policy version; intake answers; `declined_fields`;
-    - the `id_sequence` code is allocated **as the last statement before INSERT** (`UPDATE … SET next_value=LAST_INSERT_ID(next_value+1)`);
+    - the `id_sequence` code is allocated **as the last statement before INSERT** (`UPDATE id_sequence SET next_value = LAST_INSERT_ID(next_value) + 1 …`, then `SELECT LAST_INSERT_ID()`, so P1 is the first code);
     - registration stamps cannot be edited; §3.2.4 adds the site to an existing record;
     - §3.3.3 out of area writes `referred_out_applicant` only, or an Admin overrides.
   - `participant_view`, `participant_edit`:
@@ -412,7 +417,7 @@ All changes are additive and portable: new ENUM values are appended at the end, 
 | optional/9001 | Immutability triggers on distribution*, audit*, `snv_referral_status_log`, `inventory_transaction`. **A dev safety net only**: SiteGround will likely refuse them (ERROR 1419 without SUPER). The app-layer guard and the CI grep are the real enforcement. Dumps use `--skip-triggers`; `@pfpms_allow_mutation` is reset in `finally`; retention purges are allowlisted. | Notes §3 |
 | v2.2 (P9 only) | `participant_access_token`, `participant_change_request`, `intake_scan` | US-10/19/31 if kept |
 
-- **Counts:** after v2.1 there are 66 ERD tables, plus the tooling table `schema_version`. The exact FK total (about 158) is pinned in `SchemaContractTest` when the migrations are written.
+- **Counts:** after v2.1 there are 66 ERD tables, plus the tooling table `schema_version`, and **165 FKs**. Both are pinned in `bin/schema-check.php`. The set is verified on MariaDB 10.4, MySQL 8.0 and MySQL 9.4.
 - **For the ERD team only:** a clinic↔site link, status history, non-rabies vaccinations, a shift roster, and aligning `allotment_rule.food_form` with `product.food_form`.
 - **Also note:** the 520 collation is PAD SPACE, so the Validator trims every unique field (username, email, barcode, codes).
 
@@ -446,7 +451,7 @@ All changes are additive and portable: new ENUM values are appended at the end, 
 
 ## 8. Engineering rules (from the adversarial review)
 
-**DB portability.** A CI guard fails the build on:
+**DB portability.** A CI guard scans SQL only: `migrations/**/*.sql`, `seeds/**/*.sql`, and SQL string literals in `src/`, with comments stripped. It never scans PHP code, whose `->` is the object operator. It fails the build on:
 - `0900_ai_ci`, `->`/`->>`, `JSON_TABLE`, `JSON_ARRAYAGG`/`JSON_OBJECTAGG`, `RENAME COLUMN`, `ANY_VALUE`, `LATERAL`, functional indexes, `CAST(… AS JSON)`, `REGEXP_LIKE`, `SKIP LOCKED`;
 - `ON DUPLICATE KEY UPDATE … VALUES(`, and the `AS alias ON DUPLICATE` form;
 - `IF [NOT] EXISTS` on columns, `RETURNING`, sequences.

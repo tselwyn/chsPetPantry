@@ -1,3 +1,7 @@
+-- Migration 0001: PFPMS schema v2.0.1 baseline.
+-- Generated from docs/PFPMS_schema_v2.sql with its DROP TABLE lines removed; bin/schema-check.php
+-- asserts the two stay identical. Never edit an applied migration: add a new one.
+
 -- PFPMS database schema v2.0.1 (MariaDB 10.4+ and MySQL 8.0+)
 -- Generated from the PFPMS ERD model. Derived from chsPetPantry foodpantrydb.sql,
 -- PFPMS Use Case Specifications v1.0 and User Stories Backlog v1.0.
@@ -16,7 +20,6 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- Security & Access
 -- ======================================================================
 
-DROP TABLE IF EXISTS `site`;
 CREATE TABLE `site` (
   `site_id` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(100) NOT NULL,
@@ -30,7 +33,6 @@ CREATE TABLE `site` (
   UNIQUE KEY `uk_site_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `user_account`;
 CREATE TABLE `user_account` (
   `user_id` INT NOT NULL AUTO_INCREMENT,
   `username` VARCHAR(50) NOT NULL,
@@ -61,7 +63,6 @@ CREATE TABLE `user_account` (
   UNIQUE KEY `uk_user_account_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `user_site_access`;
 CREATE TABLE `user_site_access` (
   `access_id` INT NOT NULL AUTO_INCREMENT,
   `user_id` INT NOT NULL,
@@ -73,7 +74,6 @@ CREATE TABLE `user_site_access` (
   PRIMARY KEY (`access_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `device`;
 CREATE TABLE `device` (
   `device_id` INT NOT NULL AUTO_INCREMENT,
   `site_id` INT NULL,
@@ -84,7 +84,6 @@ CREATE TABLE `device` (
   PRIMARY KEY (`device_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `user_session`;
 CREATE TABLE `user_session` (
   `session_id` CHAR(64) NOT NULL,
   `user_id` INT NOT NULL,
@@ -99,7 +98,6 @@ CREATE TABLE `user_session` (
   PRIMARY KEY (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `auth_token`;
 CREATE TABLE `auth_token` (
   `token_id` INT NOT NULL AUTO_INCREMENT,
   `user_id` INT NOT NULL,
@@ -112,7 +110,6 @@ CREATE TABLE `auth_token` (
   UNIQUE KEY `uk_auth_token_token_hash` (`token_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `policy_document`;
 CREATE TABLE `policy_document` (
   `document_id` INT NOT NULL AUTO_INCREMENT,
   `doc_type` ENUM('Confidentiality Agreement','Programme Consent','Retention Notice','SNV Explanation') NOT NULL,
@@ -124,7 +121,6 @@ CREATE TABLE `policy_document` (
   UNIQUE KEY `uk_policy_document_1` (`doc_type`, `version`, `language_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `policy_acknowledgement`;
 CREATE TABLE `policy_acknowledgement` (
   `ack_id` INT NOT NULL AUTO_INCREMENT,
   `user_id` INT NOT NULL,
@@ -138,7 +134,6 @@ CREATE TABLE `policy_acknowledgement` (
 -- Participants
 -- ======================================================================
 
-DROP TABLE IF EXISTS `language`;
 CREATE TABLE `language` (
   `language_code` VARCHAR(10) NOT NULL,
   `name` VARCHAR(50) NOT NULL,
@@ -146,7 +141,6 @@ CREATE TABLE `language` (
   PRIMARY KEY (`language_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `participant`;
 CREATE TABLE `participant` (
   `participant_id` INT NOT NULL AUTO_INCREMENT,
   `participant_code` VARCHAR(20) NOT NULL,
@@ -202,7 +196,6 @@ CREATE TABLE `participant` (
   KEY `ix_participant_6` (`status`, `home_site_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `participant_site`;
 CREATE TABLE `participant_site` (
   `participant_id` INT NOT NULL,
   `site_id` INT NOT NULL,
@@ -212,7 +205,6 @@ CREATE TABLE `participant_site` (
   PRIMARY KEY (`participant_id`, `site_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `participant_consent`;
 CREATE TABLE `participant_consent` (
   `consent_id` INT NOT NULL AUTO_INCREMENT,
   `participant_id` INT NOT NULL,
@@ -223,7 +215,6 @@ CREATE TABLE `participant_consent` (
   PRIMARY KEY (`consent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `participant_proxy`;
 CREATE TABLE `participant_proxy` (
   `proxy_id` INT NOT NULL AUTO_INCREMENT,
   `participant_id` INT NOT NULL,
@@ -236,7 +227,6 @@ CREATE TABLE `participant_proxy` (
   PRIMARY KEY (`proxy_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `service_note`;
 CREATE TABLE `service_note` (
   `note_id` INT NOT NULL AUTO_INCREMENT,
   `participant_id` INT NOT NULL,
@@ -248,7 +238,6 @@ CREATE TABLE `service_note` (
   PRIMARY KEY (`note_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `participant_alert`;
 CREATE TABLE `participant_alert` (
   `alert_id` INT NOT NULL AUTO_INCREMENT,
   `participant_id` INT NOT NULL,
@@ -267,7 +256,6 @@ CREATE TABLE `participant_alert` (
   KEY `ix_participant_alert_1` (`participant_id`, `resolved_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `registration_draft`;
 CREATE TABLE `registration_draft` (
   `draft_id` INT NOT NULL AUTO_INCREMENT,
   `source` ENUM('Volunteer','Self-Service') NOT NULL,
@@ -283,7 +271,6 @@ CREATE TABLE `registration_draft` (
   PRIMARY KEY (`draft_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `intake_question`;
 CREATE TABLE `intake_question` (
   `question_id` INT NOT NULL AUTO_INCREMENT,
   `prompt` VARCHAR(255) NOT NULL,
@@ -296,7 +283,6 @@ CREATE TABLE `intake_question` (
   PRIMARY KEY (`question_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `intake_answer`;
 CREATE TABLE `intake_answer` (
   `participant_id` INT NOT NULL,
   `question_id` INT NOT NULL,
@@ -305,7 +291,6 @@ CREATE TABLE `intake_answer` (
   PRIMARY KEY (`participant_id`, `question_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `service_area_postal_code`;
 CREATE TABLE `service_area_postal_code` (
   `postal_code` VARCHAR(10) NOT NULL,
   `site_id` INT NULL,
@@ -313,7 +298,6 @@ CREATE TABLE `service_area_postal_code` (
   PRIMARY KEY (`postal_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `referred_out_applicant`;
 CREATE TABLE `referred_out_applicant` (
   `referral_out_id` INT NOT NULL AUTO_INCREMENT,
   `postal_code` VARCHAR(10) NOT NULL,
@@ -328,7 +312,6 @@ CREATE TABLE `referred_out_applicant` (
 -- Pets
 -- ======================================================================
 
-DROP TABLE IF EXISTS `species`;
 CREATE TABLE `species` (
   `species_id` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(30) NOT NULL,
@@ -337,7 +320,6 @@ CREATE TABLE `species` (
   UNIQUE KEY `uk_species_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `breed`;
 CREATE TABLE `breed` (
   `breed_id` INT NOT NULL AUTO_INCREMENT,
   `species_id` INT NOT NULL,
@@ -347,7 +329,6 @@ CREATE TABLE `breed` (
   UNIQUE KEY `uk_breed_1` (`species_id`, `name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `size_band`;
 CREATE TABLE `size_band` (
   `size_band_id` INT NOT NULL AUTO_INCREMENT,
   `species_id` INT NOT NULL,
@@ -358,7 +339,6 @@ CREATE TABLE `size_band` (
   PRIMARY KEY (`size_band_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `allotment_rule`;
 CREATE TABLE `allotment_rule` (
   `rule_id` INT NOT NULL AUTO_INCREMENT,
   `rule_version` SMALLINT NOT NULL,
@@ -372,7 +352,6 @@ CREATE TABLE `allotment_rule` (
   PRIMARY KEY (`rule_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `pet`;
 CREATE TABLE `pet` (
   `pet_id` INT NOT NULL AUTO_INCREMENT,
   `participant_id` INT NOT NULL,
@@ -417,7 +396,6 @@ CREATE TABLE `pet` (
   KEY `ix_pet_2` (`microchip_number`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `pet_household_history`;
 CREATE TABLE `pet_household_history` (
   `history_id` INT NOT NULL AUTO_INCREMENT,
   `pet_id` INT NOT NULL,
@@ -433,7 +411,6 @@ CREATE TABLE `pet_household_history` (
 -- Distribution & Inventory
 -- ======================================================================
 
-DROP TABLE IF EXISTS `distribution_event`;
 CREATE TABLE `distribution_event` (
   `event_id` INT NOT NULL AUTO_INCREMENT,
   `site_id` INT NOT NULL,
@@ -446,7 +423,6 @@ CREATE TABLE `distribution_event` (
   PRIMARY KEY (`event_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `event_check_in`;
 CREATE TABLE `event_check_in` (
   `check_in_id` INT NOT NULL AUTO_INCREMENT,
   `event_id` INT NOT NULL,
@@ -459,7 +435,6 @@ CREATE TABLE `event_check_in` (
   UNIQUE KEY `uk_event_check_in_1` (`event_id`, `participant_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `distribution`;
 CREATE TABLE `distribution` (
   `distribution_id` INT NOT NULL AUTO_INCREMENT,
   `client_uuid` CHAR(36) NOT NULL,
@@ -493,14 +468,12 @@ CREATE TABLE `distribution` (
   KEY `ix_distribution_1` (`participant_id`, `local_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `distribution_pet`;
 CREATE TABLE `distribution_pet` (
   `distribution_id` INT NOT NULL,
   `pet_id` INT NOT NULL,
   PRIMARY KEY (`distribution_id`, `pet_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `distribution_line`;
 CREATE TABLE `distribution_line` (
   `line_id` INT NOT NULL AUTO_INCREMENT,
   `distribution_id` INT NOT NULL,
@@ -513,7 +486,6 @@ CREATE TABLE `distribution_line` (
   PRIMARY KEY (`line_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `item_category`;
 CREATE TABLE `item_category` (
   `category_id` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(50) NOT NULL,
@@ -524,7 +496,6 @@ CREATE TABLE `item_category` (
   UNIQUE KEY `uk_item_category_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `product`;
 CREATE TABLE `product` (
   `product_id` INT NOT NULL AUTO_INCREMENT,
   `category_id` INT NOT NULL,
@@ -537,7 +508,6 @@ CREATE TABLE `product` (
   PRIMARY KEY (`product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `product_barcode`;
 CREATE TABLE `product_barcode` (
   `barcode` VARCHAR(32) NOT NULL,
   `product_id` INT NOT NULL,
@@ -546,7 +516,6 @@ CREATE TABLE `product_barcode` (
   PRIMARY KEY (`barcode`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `site_stock`;
 CREATE TABLE `site_stock` (
   `site_id` INT NOT NULL,
   `product_id` INT NOT NULL,
@@ -555,7 +524,6 @@ CREATE TABLE `site_stock` (
   PRIMARY KEY (`site_id`, `product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `stock_receipt`;
 CREATE TABLE `stock_receipt` (
   `receipt_id` INT NOT NULL AUTO_INCREMENT,
   `site_id` INT NOT NULL,
@@ -567,7 +535,6 @@ CREATE TABLE `stock_receipt` (
   UNIQUE KEY `uk_stock_receipt_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `stock_receipt_line`;
 CREATE TABLE `stock_receipt_line` (
   `receipt_line_id` INT NOT NULL AUTO_INCREMENT,
   `receipt_id` INT NOT NULL,
@@ -577,7 +544,6 @@ CREATE TABLE `stock_receipt_line` (
   PRIMARY KEY (`receipt_line_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `inventory_count`;
 CREATE TABLE `inventory_count` (
   `count_id` INT NOT NULL AUTO_INCREMENT,
   `site_id` INT NOT NULL,
@@ -587,7 +553,6 @@ CREATE TABLE `inventory_count` (
   PRIMARY KEY (`count_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `inventory_count_line`;
 CREATE TABLE `inventory_count_line` (
   `count_line_id` INT NOT NULL AUTO_INCREMENT,
   `count_id` INT NOT NULL,
@@ -596,7 +561,6 @@ CREATE TABLE `inventory_count_line` (
   PRIMARY KEY (`count_line_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `inventory_transaction`;
 CREATE TABLE `inventory_transaction` (
   `txn_id` INT NOT NULL AUTO_INCREMENT,
   `site_id` INT NOT NULL,
@@ -616,7 +580,6 @@ CREATE TABLE `inventory_transaction` (
 -- Spay / Neuter
 -- ======================================================================
 
-DROP TABLE IF EXISTS `clinic`;
 CREATE TABLE `clinic` (
   `clinic_id` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(100) NOT NULL,
@@ -637,7 +600,6 @@ CREATE TABLE `clinic` (
   PRIMARY KEY (`clinic_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `clinic_species_rule`;
 CREATE TABLE `clinic_species_rule` (
   `clinic_id` INT NOT NULL,
   `species_id` INT NOT NULL,
@@ -648,7 +610,6 @@ CREATE TABLE `clinic_species_rule` (
   PRIMARY KEY (`clinic_id`, `species_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `voucher_budget`;
 CREATE TABLE `voucher_budget` (
   `budget_id` INT NOT NULL AUTO_INCREMENT,
   `period_start` DATE NOT NULL,
@@ -659,7 +620,6 @@ CREATE TABLE `voucher_budget` (
   PRIMARY KEY (`budget_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `snv_referral`;
 CREATE TABLE `snv_referral` (
   `referral_id` INT NOT NULL AUTO_INCREMENT,
   `voucher_number` VARCHAR(20) NOT NULL,
@@ -695,7 +655,6 @@ CREATE TABLE `snv_referral` (
   KEY `ix_snv_referral_2` (`status`, `expires_on`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `snv_referral_status_log`;
 CREATE TABLE `snv_referral_status_log` (
   `log_id` INT NOT NULL AUTO_INCREMENT,
   `referral_id` INT NOT NULL,
@@ -708,7 +667,6 @@ CREATE TABLE `snv_referral_status_log` (
   PRIMARY KEY (`log_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `snv_followup`;
 CREATE TABLE `snv_followup` (
   `followup_id` INT NOT NULL AUTO_INCREMENT,
   `pet_id` INT NOT NULL,
@@ -726,7 +684,6 @@ CREATE TABLE `snv_followup` (
 -- Governance & Reporting
 -- ======================================================================
 
-DROP TABLE IF EXISTS `system_setting`;
 CREATE TABLE `system_setting` (
   `setting_key` VARCHAR(60) NOT NULL,
   `setting_value` VARCHAR(255) NOT NULL,
@@ -736,7 +693,6 @@ CREATE TABLE `system_setting` (
   PRIMARY KEY (`setting_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `audit_log`;
 CREATE TABLE `audit_log` (
   `audit_id` BIGINT NOT NULL AUTO_INCREMENT,
   `occurred_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -757,7 +713,6 @@ CREATE TABLE `audit_log` (
   KEY `ix_audit_log_3` (`action`, `occurred_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `audit_field_change`;
 CREATE TABLE `audit_field_change` (
   `change_id` BIGINT NOT NULL AUTO_INCREMENT,
   `audit_id` BIGINT NOT NULL,
@@ -767,7 +722,6 @@ CREATE TABLE `audit_field_change` (
   PRIMARY KEY (`change_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `erasure_request`;
 CREATE TABLE `erasure_request` (
   `request_id` INT NOT NULL AUTO_INCREMENT,
   `participant_id` INT NULL,
@@ -782,7 +736,6 @@ CREATE TABLE `erasure_request` (
   PRIMARY KEY (`request_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `import_mapping`;
 CREATE TABLE `import_mapping` (
   `mapping_id` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(100) NOT NULL,
@@ -793,7 +746,6 @@ CREATE TABLE `import_mapping` (
   PRIMARY KEY (`mapping_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `import_batch`;
 CREATE TABLE `import_batch` (
   `batch_id` INT NOT NULL AUTO_INCREMENT,
   `record_type` ENUM('Participant','Pet','Distribution') NOT NULL,
@@ -814,7 +766,6 @@ CREATE TABLE `import_batch` (
   PRIMARY KEY (`batch_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `import_rejected_row`;
 CREATE TABLE `import_rejected_row` (
   `batch_id` INT NOT NULL,
   `row_number` INT NOT NULL,
@@ -823,7 +774,6 @@ CREATE TABLE `import_rejected_row` (
   PRIMARY KEY (`batch_id`, `row_number`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `saved_report`;
 CREATE TABLE `saved_report` (
   `saved_report_id` INT NOT NULL AUTO_INCREMENT,
   `owner_id` INT NOT NULL,
@@ -836,14 +786,12 @@ CREATE TABLE `saved_report` (
   PRIMARY KEY (`saved_report_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `report_recipient`;
 CREATE TABLE `report_recipient` (
   `saved_report_id` INT NOT NULL,
   `user_id` INT NOT NULL,
   PRIMARY KEY (`saved_report_id`, `user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `report_run`;
 CREATE TABLE `report_run` (
   `run_id` INT NOT NULL AUTO_INCREMENT,
   `saved_report_id` INT NULL,
@@ -858,7 +806,6 @@ CREATE TABLE `report_run` (
   PRIMARY KEY (`run_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `report_narrative`;
 CREATE TABLE `report_narrative` (
   `narrative_id` INT NOT NULL AUTO_INCREMENT,
   `run_id` INT NOT NULL,
@@ -870,7 +817,6 @@ CREATE TABLE `report_narrative` (
   PRIMARY KEY (`narrative_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `metric_threshold`;
 CREATE TABLE `metric_threshold` (
   `threshold_id` INT NOT NULL AUTO_INCREMENT,
   `metric_key` VARCHAR(60) NOT NULL,
@@ -882,7 +828,6 @@ CREATE TABLE `metric_threshold` (
   PRIMARY KEY (`threshold_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-DROP TABLE IF EXISTS `grant_commitment`;
 CREATE TABLE `grant_commitment` (
   `grant_id` INT NOT NULL AUTO_INCREMENT,
   `funder_name` VARCHAR(100) NOT NULL,
