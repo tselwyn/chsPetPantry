@@ -1,0 +1,43 @@
+# --- Secrets and local config (never commit) ---
+/config/*.php
+!/config/config.example.php
+.env
+.env.*
+*.pem
+*.key
+
+# --- Runtime data ---
+/storage/*
+!/storage/.gitkeep
+/secure_uploads/
+
+# --- Dependencies (rebuilt by composer / npm) ---
+/vendor/
+/node_modules/
+
+# --- Logs, dumps, archives, encrypted blobs ---
+*.log
+php_errorlog
+*.sql
+!/docs/*.sql
+!/migrations/**/*.sql
+!/seeds/**/*.sql
+*.zip
+*.7z
+*.bak
+*.enc
+
+# --- Test / tool output ---
+/.phpunit.cache/
+/.phpunit.result.cache
+/coverage/
+/test-results/
+/playwright-report/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp

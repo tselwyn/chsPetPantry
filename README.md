@@ -1,3 +1,8 @@
+> **Status (Sept 2026): being rebuilt as the Pet Food Pantry Management System (PFPMS).**
+> The plan is in [`docs/PFPMS_Implementation_Plan.md`](docs/PFPMS_Implementation_Plan.md), with the supporting analysis in [`docs/design/`](docs/design/).
+> The legacy app below no longer runs: Phase 0 removed its DB config, `insertAdmin.php`, the SQL dumps and the dead features. What remains is quarantined in [`legacy/`](legacy/README.md) as reference only.
+> The `vmsroot` account and the install steps below are obsolete. This README is rewritten in Phase 1.
+
 ### Student Names
 Meredith Alty,
 Aiden Thompson,
