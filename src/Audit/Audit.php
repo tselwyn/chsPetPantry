@@ -36,6 +36,8 @@ final class Audit
     /**
      * @param array<string, array{0:mixed,1:mixed}> $changes field => [old, new]
      * @param array{user_id?:?int, session_id?:?string, site_id?:?int} $actor overrides for this entry
+     * @param bool $redactChanges hide old/new values of fields whose name looks secret (pin_hash, token…).
+     *        Pass false when the field names are not secrets, e.g. setting keys like pin_max_failed.
      */
     public static function record(
         string $action,
@@ -47,8 +49,9 @@ final class Audit
         ?array $snapshot = null,
         array $changes = [],
         array $actor = [],
+        bool $redactChanges = true,
     ): int {
-        return self::write(Db::pdo(), $action, $entityType, $entityId, $outcome, $reason, $details, $snapshot, $changes, $actor);
+        return self::write(Db::pdo(), $action, $entityType, $entityId, $outcome, $reason, $details, $snapshot, $changes, $actor, $redactChanges);
     }
 
     /** Same as record(), on the durable connection. Never pass an actor or entity created in the open transaction. */
@@ -82,7 +85,7 @@ final class Audit
     }
 
     private static function write(PDO $pdo, string $action, ?string $entityType, int|string|null $entityId, string $outcome,
-        ?string $reason, ?array $details, ?array $snapshot, array $changes, array $actor): int
+        ?string $reason, ?array $details, ?array $snapshot, array $changes, array $actor, bool $redactChanges = true): int
     {
         $pdo->prepare(
             'INSERT INTO audit_log (occurred_at, user_id, session_id, device_id, site_id, action, entity_type, entity_id, outcome, reason, snapshot, details)
@@ -105,7 +108,7 @@ final class Audit
         if ($changes) {
             $insert = $pdo->prepare('INSERT INTO audit_field_change (audit_id, field_name, old_value, new_value) VALUES (?, ?, ?, ?)');
             foreach ($changes as $field => [$old, $new]) {
-                $secret = preg_match(self::REDACT, (string) $field) === 1;
+                $secret = $redactChanges && preg_match(self::REDACT, (string) $field) === 1;
                 $insert->execute([$auditId, mb_substr((string) $field, 0, 60),
                     $secret ? ($old === null ? null : '[redacted]') : self::scalar($old),
                     $secret ? ($new === null ? null : '[redacted]') : self::scalar($new)]);

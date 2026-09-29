@@ -17,17 +17,47 @@ final class Policy
 {
     public const CONFIDENTIALITY = 'Confidentiality Agreement';
 
-    /** The version in force today, in the preferred language if it exists, else the default language. */
+    private const COLUMNS = 'document_id, doc_type, version, language_code, body, effective_from';
+
+    /**
+     * The text in force today, in the preferred language when a translation of that version exists.
+     *
+     * The default-language text decides which VERSION is in force (the latest one whose
+     * effective_from has passed); translations follow it. So a stray translation of an old
+     * version, however it is dated, can never replace a newer version. If no default-language
+     * text is in force yet, the latest text in the preferred language is used.
+     */
     public static function current(string $docType, ?string $language = null): ?array
     {
         $default = Settings::string('default_language', 'en');
-        $st = Db::pdo()->prepare(
-            'SELECT document_id, doc_type, version, language_code, body, effective_from FROM policy_document
-              WHERE doc_type = ? AND effective_from <= ? AND language_code IN (?, ?)
-              ORDER BY effective_from DESC, (language_code = ?) DESC, document_id DESC LIMIT 1'
+        $language ??= $default;
+        $today = Clock::now()->format('Y-m-d');
+        $pdo = Db::pdo();
+
+        $st = $pdo->prepare('SELECT version FROM policy_document WHERE doc_type = ? AND language_code = ? AND effective_from <= ?
+                              ORDER BY effective_from DESC, document_id DESC LIMIT 1');
+        $st->execute([$docType, $default, $today]);
+        $version = $st->fetchColumn();
+
+        if ($version === false) {
+            $st = $pdo->prepare('SELECT ' . self::COLUMNS . ' FROM policy_document WHERE doc_type = ? AND language_code = ? AND effective_from <= ?
+                                  ORDER BY effective_from DESC, document_id DESC LIMIT 1');
+            $st->execute([$docType, $language, $today]);
+            return $st->fetch() ?: null;
+        }
+        $st = $pdo->prepare(
+            'SELECT ' . self::COLUMNS . ' FROM policy_document
+              WHERE doc_type = ? AND version = ? AND (language_code = ? OR (language_code = ? AND effective_from <= ?))
+              ORDER BY (language_code = ?) DESC LIMIT 1'
         );
-        $st->execute([$docType, Clock::now()->format('Y-m-d'), $language ?? $default, $default, $language ?? $default]);
+        $st->execute([$docType, $version, $default, $language, $today, $language]);
         return $st->fetch() ?: null;
+    }
+
+    /** Fingerprint of the exact wording shown, so an acceptance can be matched to what was read. */
+    public static function fingerprint(array $doc): string
+    {
+        return hash('sha256', $doc['document_id'] . "\n" . $doc['body']);
     }
 
     /**

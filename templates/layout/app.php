@@ -48,13 +48,17 @@ $menu = Menu::for($ctx);
 </header>
 <?php if (count($menu) > 1 || count(reset($menu) ?: []) > 1): ?>
 <nav class="mainnav" aria-label="Main">
+  <a class="mainnav-link" href="<?= e(url('index.php')) ?>">Home</a>
   <?php foreach ($menu as $group => $items): ?>
-    <div class="mainnav-group">
-      <span class="mainnav-heading"><?= e($group) ?></span>
-      <?php foreach ($items as $item): ?>
-        <a href="<?= e(url($item['file'])) ?>"><?= e($item['label']) ?></a>
-      <?php endforeach; ?>
-    </div>
+    <?php if ($group === 'Home') continue; ?>
+    <details class="mainnav-group">
+      <summary><?= e($group) ?></summary>
+      <div class="mainnav-panel">
+        <?php foreach ($items as $item): ?>
+          <a href="<?= e(url($item['file'])) ?>"><?= e($item['label']) ?></a>
+        <?php endforeach; ?>
+      </div>
+    </details>
   <?php endforeach; ?>
 </nav>
 <?php endif; ?>

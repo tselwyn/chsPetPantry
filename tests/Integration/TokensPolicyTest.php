@@ -88,6 +88,26 @@ final class TokensPolicyTest extends TestCase
         $this->assertTrue(Policy::acknowledgementRequired($user), 'due again after policy_reack_days (US-30)');
     }
 
+    public function testAStrayOldTranslationNeverReplacesANewerVersion(): void
+    {
+        $insert = Db::pdo()->prepare("INSERT INTO policy_document (doc_type, version, language_code, body, effective_from) VALUES ('Retention Notice', ?, ?, ?, ?)");
+        $insert->execute(['1', 'en', 'English v1', '2026-01-01']);
+        $insert->execute(['2', 'en', 'English v2', '2026-06-01']);
+        $insert->execute(['1', 'es', 'Español v1', '2026-07-01']); // translation of the OLD version, dated later
+        $this->assertSame('English v2', Policy::current('Retention Notice', 'es')['body'], 'Spanish readers get the version in force, in English');
+        $insert->execute(['2', 'es', 'Español v2', '2026-06-01']);
+        $this->assertSame('Español v2', Policy::current('Retention Notice', 'es')['body']);
+        $insert->execute(['3', 'es', 'Español v3', '2026-09-01']); // no English v3 yet: not in force
+        $this->assertSame('Español v2', Policy::current('Retention Notice', 'es')['body']);
+    }
+
+    public function testFingerprintChangesWithTheWording(): void
+    {
+        $doc = ['document_id' => 7, 'body' => 'Keep participant information confidential.'];
+        $this->assertSame(Policy::fingerprint($doc), Policy::fingerprint($doc));
+        $this->assertNotSame(Policy::fingerprint($doc), Policy::fingerprint(['body' => $doc['body'] . ' Edited.'] + $doc));
+    }
+
     public function testCurrentPolicyFallsBackToTheDefaultLanguage(): void
     {
         $insert = Db::pdo()->prepare("INSERT INTO policy_document (doc_type, version, language_code, body, effective_from) VALUES ('SNV Explanation', '1', ?, ?, '2026-01-01')");

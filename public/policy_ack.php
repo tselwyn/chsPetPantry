@@ -24,7 +24,9 @@ if ($doc === null || !Policy::acknowledgementRequired($ctx->user)) {
 
 if (Request::isPost()) {
     Csrf::verify();
-    if (Request::int('document_id') !== (int) $doc['document_id']) {
+    // Accept only the exact wording that was on screen: a new version or an edit to this one
+    // while the page was open means the person must read it again.
+    if (Request::int('document_id') !== (int) $doc['document_id'] || !hash_equals(Policy::fingerprint($doc), Request::string('fingerprint') ?? '')) {
         Flash::info('The agreement was updated while you were reading it. Please read the current version.');
         Response::redirect('policy_ack.php');
     }

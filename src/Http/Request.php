@@ -52,6 +52,25 @@ final class Request
         return in_array(self::string($name), ['1', 'on', 'yes', 'true'], true);
     }
 
+    /**
+     * A POST array such as name="orig[key]" as key => trimmed string; non-string entries are dropped.
+     * @return array<string, string>
+     */
+    public static function array(string $name): array
+    {
+        $value = $_POST[$name] ?? null;
+        if (!is_array($value)) {
+            return [];
+        }
+        $out = [];
+        foreach ($value as $key => $item) {
+            if (is_string($item)) {
+                $out[(string) $key] = trim($item);
+            }
+        }
+        return $out;
+    }
+
     /** @return array<string, string|null> */
     public static function only(array $names): array
     {

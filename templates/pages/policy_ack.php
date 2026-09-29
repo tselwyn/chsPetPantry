@@ -10,6 +10,7 @@
 <form method="post" action="<?= e(url('policy_ack.php')) ?>" class="form-actions">
   <?= csrf_field() ?>
   <input type="hidden" name="document_id" value="<?= (int) $doc['document_id'] ?>">
+  <input type="hidden" name="fingerprint" value="<?= e(\Pfpms\Auth\Policy::fingerprint($doc)) ?>">
   <?php if ($next): ?><input type="hidden" name="next" value="<?= e($next) ?>"><?php endif; ?>
   <button type="submit" name="decision" value="accept" class="button button-primary">I have read and accept this agreement</button>
   <button type="submit" name="decision" value="decline" class="button">I do not accept (sign out)</button>
