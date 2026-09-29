@@ -18,7 +18,7 @@ final class SettingsServiceTest extends TestCase
         $inRegistry = array_keys(SettingsService::registry());
         $this->assertSame([], array_values(array_diff($inTable, $inRegistry)), 'settings in the table with no registry entry');
         $this->assertSame([], array_values(array_diff($inRegistry, $inTable)), 'registry entries with no row in the table');
-        $this->assertCount(66, $inRegistry);
+        $this->assertCount(67, $inRegistry);
     }
 
     public function testRegistryEntriesAreWellFormedAndSeededValuesPass(): void
@@ -44,7 +44,7 @@ final class SettingsServiceTest extends TestCase
         $groups = SettingsService::grouped();
         $this->assertSame(SettingsService::GROUPS, array_column($groups, 'name'));
         $all = array_merge(...array_column($groups, 'settings'));
-        $this->assertCount(66, $all);
+        $this->assertCount(67, $all);
         $this->assertSame('30', $all['session_idle_minutes']['value']);
         $this->assertSame('Session inactivity timeout', $all['session_idle_minutes']['hint'], 'the specification reference is dropped');
         $this->assertSame(['en' => 'English', 'es' => 'Spanish'], $all['default_language']['choices']);

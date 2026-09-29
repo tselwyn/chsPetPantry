@@ -180,3 +180,8 @@ input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="
 input[type="file"] { font: inherit; margin-bottom: 0.5rem; }
 /* Rename boxes inside table rows sit beside their button */
 .table .inline-form input[type="text"] { width: auto; min-width: 12rem; margin-bottom: 0; }
+
+/* Printable activation sheet (admin_user_credential.php) */
+.print-sheet { max-width: 34rem; padding: 1.5rem; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--surface); }
+.print-sheet .qr { display: block; margin: 1rem 0; background: #fff; }
+.sheet-link { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.85rem; overflow-wrap: anywhere; }

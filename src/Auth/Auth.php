@@ -48,7 +48,7 @@ final class Auth
 
         $st = Db::pdo()->prepare(
             'SELECT user_id, username, email, first_name, last_name, role, status, password_hash, failed_login_count, locked_until,
-                    must_change_password, password_changed_at, start_date, expiry_date
+                    must_change_password, password_changed_at, start_date, expiry_date, deactivation_effective_date
                FROM user_account WHERE (username = ? OR email = ?) AND username <> \'system\' LIMIT 2'
         );
         $st->execute([$identifier, $identifier]);
@@ -110,7 +110,10 @@ final class Auth
                     failed_login_count = 0, locked_until = NULL, status = IF(status = 'Pending', 'Active', status)
               WHERE user_id = ?"
         )->execute([PasswordPolicy::hash($newPassword), Clock::db(), $userId]);
+        // Every outstanding link that could set the password is now stale: self-service reset
+        // links and Administrator-issued invitations, reset links and printed sheets alike.
         Tokens::revokeAll($userId, Tokens::PASSWORD_RESET);
+        Tokens::revokeAll($userId, Tokens::TEMPORARY_CREDENTIAL);
         SessionStore::endAllForUser($userId, $endReason, $userId, $keepSessionId);
     }
 

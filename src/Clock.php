@@ -53,4 +53,31 @@ final class Clock
     {
         return ($at ?? self::now())->setTimezone(new DateTimeZone($timeZone))->format('Y-m-d');
     }
+
+    /**
+     * Today's date where the organisation is (organisation_time_zone), for dates that belong to
+     * no one site: account start, end and deactivation dates, policy start dates and re-acceptance
+     * due dates. In the evening in the Americas the UTC date is already tomorrow.
+     */
+    public static function orgToday(?DateTimeImmutable $at = null): string
+    {
+        return self::localDate(self::orgTimeZone(), $at);
+    }
+
+    /**
+     * An organisation date relative to today, e.g. orgDate('+365 days') for a yearly due date.
+     * The arithmetic is on the calendar date, so it never drifts across a daylight-saving change.
+     */
+    public static function orgDate(string $modifier): string
+    {
+        return (new DateTimeImmutable(self::orgToday(), new DateTimeZone('UTC')))->modify($modifier)->format('Y-m-d');
+    }
+
+    /** The organisation_time_zone setting, or America/New_York if it is not a known zone. */
+    private static function orgTimeZone(): string
+    {
+        static $known = [];
+        $zone = Settings::string('organisation_time_zone', 'America/New_York');
+        return ($known[$zone] ??= in_array($zone, DateTimeZone::listIdentifiers(), true)) ? $zone : 'America/New_York';
+    }
 }

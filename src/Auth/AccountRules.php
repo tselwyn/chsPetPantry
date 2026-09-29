@@ -21,7 +21,10 @@ final class AccountRules
         if ($lockedUntil !== null && $lockedUntil > Clock::now()) {
             return 'locked';
         }
-        $today = Clock::now()->format('Y-m-d');
+        $today = Clock::orgToday();
+        if (!empty($user['deactivation_effective_date']) && $user['deactivation_effective_date'] <= $today) {
+            return 'inactive'; // a scheduled deactivation (UC-11 §3.2.3) takes effect on its date
+        }
         if (!empty($user['expiry_date']) && $user['expiry_date'] < $today) {
             return 'expired';
         }

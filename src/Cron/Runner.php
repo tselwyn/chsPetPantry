@@ -22,7 +22,7 @@ final class Runner
     public static function jobs(): array
     {
         $jobs = [];
-        foreach ([new Jobs\SendMail(), new Jobs\ExpireSessions(), new Jobs\PurgeRateLimits()] as $job) {
+        foreach ([new Jobs\SendMail(), new Jobs\ExpireSessions(), new Jobs\PurgeRateLimits(), new Jobs\DeactivateDueAccounts()] as $job) {
             $jobs[$job->name()] = $job;
         }
         return $jobs;

@@ -26,6 +26,8 @@ return [
     // Sign-in and accounts (UC-01, UC-11, US-01, US-30)
     'organisation_name' => ['group' => 'Sign-in and accounts', 'label' => 'Organisation name', 'type' => 'string', 'min' => 1, 'max' => 100],
     'default_language' => ['group' => 'Sign-in and accounts', 'label' => 'Default language', 'type' => 'enum', 'source' => 'language'],
+    'organisation_time_zone' => ['group' => 'Sign-in and accounts', 'label' => 'Time zone for organisation dates (accounts, policy start dates, re-acceptance)', 'type' => 'enum',
+        'options' => DateTimeZone::listIdentifiers(DateTimeZone::PER_COUNTRY, 'US')],
     'session_idle_minutes' => ['group' => 'Sign-in and accounts', 'label' => 'Sign out after no activity for', 'type' => 'int', 'min' => 5, 'max' => 240, 'unit' => 'minutes'],
     'session_absolute_hours' => ['group' => 'Sign-in and accounts', 'label' => 'Longest time signed in', 'type' => 'int', 'min' => 1, 'max' => 24, 'unit' => 'hours'],
     'max_failed_logins' => ['group' => 'Sign-in and accounts', 'label' => 'Wrong passwords before an account is locked', 'type' => 'int', 'min' => 3, 'max' => 20],

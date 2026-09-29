@@ -32,7 +32,7 @@ if (Request::isPost()) {
     } else {
         $sent = true;
         $st = Db::pdo()->prepare("SELECT user_id, username, email, first_name, last_name, status, locked_until, start_date, expiry_date,
-                                          must_change_password, password_changed_at
+                                          must_change_password, password_changed_at, deactivation_effective_date
                                      FROM user_account WHERE email = ? AND username <> 'system'");
         $st->execute([$email]);
         $user = $st->fetch();

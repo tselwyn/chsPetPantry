@@ -68,6 +68,9 @@ Production runs Percona/MySQL 8.4, which sits between the two MySQL versions tes
 - `import_batch.status` gains 'Queued' and 'Running'.
 - `audit_log.import_batch_id` (FK plus index), used by batch rollback (UC-12 §3.2.4).
 
+**0010 Organisation time zone** (UC-11 review)
+- One `system_setting` row, `organisation_time_zone` (default `America/New_York`), bringing the total to 67 (verified on MariaDB 10.4 and MySQL 8.0). Organisation-wide dates belong to no single site, so "today" for them is taken in this zone rather than in UTC: account start, end and deactivation dates, policy start dates (`policy_document.effective_from`) and re-acceptance due dates (`policy_acknowledgement.due_again_on`). Site-level dates keep using `site.time_zone`. No schema change.
+
 **optional/9001 Immutability triggers**
 - BEFORE UPDATE and BEFORE DELETE triggers on `distribution`, `distribution_line`, `distribution_pet`, `audit_log`, `audit_field_change`, `snv_referral_status_log` and `inventory_transaction`.
 - These are a development safety net only. On binlogged MySQL without SUPER (SiteGround), `CREATE TRIGGER` fails with error 1419 and the runner records the migration as Skipped. That behaviour was verified on MySQL 8.0 and 9.4.

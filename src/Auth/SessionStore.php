@@ -20,7 +20,7 @@ use Pfpms\Settings;
 final class SessionStore
 {
     public const COLUMNS = 'u.user_id, u.username, u.email, u.first_name, u.last_name, u.display_name, u.phone, u.role,
-        u.status, u.must_change_password, u.password_changed_at, u.locked_until, u.start_date, u.expiry_date,
+        u.status, u.must_change_password, u.password_changed_at, u.locked_until, u.start_date, u.expiry_date, u.deactivation_effective_date,
         u.onboarding_completed_at, u.can_extract_identifiable, u.notification_prefs, u.row_version';
 
     /** Don't rewrite last_activity_at more often than this (seconds). */
