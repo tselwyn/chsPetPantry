@@ -118,7 +118,7 @@ check('every text column uses ' . Db::COLLATION . ' (JSON columns excepted)', !$
 
 // --- Seeds -------------------------------------------------------------------------------------
 $settings = (int) col($pdo, 'SELECT COUNT(*) FROM system_setting');
-check('system settings seeded (12 in v2 + 54 in 0002)', $settings === 66, "found $settings");
+check('system settings seeded (12 in v2 + 54 in 0002 + 1 in 0010)', $settings === 67, "found $settings");
 check('system account exists and is inactive', col($pdo, "SELECT status FROM user_account WHERE username = 'system'") === 'Inactive');
 
 // --- Smoke tests (rolled back) -----------------------------------------------------------------
