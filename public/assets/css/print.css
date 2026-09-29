@@ -1,0 +1,6 @@
+/* Printing: receipts, cards and summaries print without navigation or colour backgrounds. */
+.topbar, .mainnav, .footer, .skip-link, .form-actions, .no-print { display: none !important; }
+body { background: #fff; color: #000; }
+.container { max-width: none; padding: 0; }
+a { color: #000; text-decoration: none; }
+.flash { border: 1px solid #000; background: none; color: #000; }

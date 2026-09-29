@@ -78,6 +78,12 @@ final class Config
         self::$data = $data;
     }
 
+    /** Test helper: the whole configuration, to restore after override(). */
+    public static function snapshot(): array
+    {
+        return self::all();
+    }
+
     private static function all(): array
     {
         if (self::$data === null) {

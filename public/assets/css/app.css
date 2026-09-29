@@ -1,0 +1,145 @@
+/*
+ * PFPMS stylesheet. Built for tablets at the distribution table: large touch targets
+ * (44px minimum, UC-01 §4.4), strong contrast, no inline styles (the CSP forbids them).
+ * Colours are tokens so the client can rebrand in one place.
+ */
+:root {
+  --brand: #1f5f5b;
+  --brand-dark: #154541;
+  --brand-contrast: #ffffff;
+  --accent: #f2a93b;
+  --bg: #f6f7f6;
+  --surface: #ffffff;
+  --text: #1c2321;
+  --muted: #5b6663;
+  --border: #d6dbd9;
+  --focus: #1a73e8;
+  --success-bg: #e6f4ea;
+  --success-text: #1e5b2e;
+  --info-bg: #e8f0fe;
+  --info-text: #1f3f73;
+  --error-bg: #fdecea;
+  --error-text: #8a1c14;
+  --radius: 6px;
+  --touch: 44px;
+  --font: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 100%; }
+body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.5; }
+a { color: var(--brand); }
+a:hover { color: var(--brand-dark); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+h1 { font-size: 1.6rem; margin: 0 0 0.75rem; }
+h2 { font-size: 1.2rem; margin: 1.25rem 0 0.5rem; }
+.lead { font-size: 1.05rem; color: var(--muted); margin-top: 0; }
+.meta, .hint { color: var(--muted); font-size: 0.9rem; }
+.hint { margin: -0.25rem 0 0.75rem; }
+
+.skip-link { position: absolute; left: -999px; top: 0; background: var(--surface); padding: 0.5rem 1rem; z-index: 10; }
+.skip-link:focus { left: 0.5rem; }
+
+/* Top bar */
+.topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; padding: 0.5rem 1rem;
+  background: var(--brand); color: var(--brand-contrast); }
+.brand { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--brand-contrast); text-decoration: none;
+  font-weight: 700; font-size: 1.1rem; min-height: var(--touch); }
+.brand:hover { color: var(--brand-contrast); }
+.paw { color: var(--accent); flex: none; }
+.topbar-site { flex: 1; display: flex; align-items: center; gap: 0.75rem; }
+.site-name { font-weight: 600; }
+.topbar .link-small { color: var(--brand-contrast); font-size: 0.9rem; }
+.user-menu { position: relative; }
+.user-menu summary { cursor: pointer; list-style: none; min-height: var(--touch); display: flex; align-items: center; gap: 0.5rem; }
+.user-menu summary::-webkit-details-marker { display: none; }
+.role-badge { background: rgba(255, 255, 255, 0.18); border-radius: 999px; padding: 0.1rem 0.6rem; font-size: 0.8rem; }
+.user-menu-panel { position: absolute; right: 0; top: 100%; background: var(--surface); color: var(--text); min-width: 12rem;
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); z-index: 5;
+  display: flex; flex-direction: column; padding: 0.25rem 0; }
+.user-menu-panel a, .user-menu-panel .link-button { display: flex; align-items: center; min-height: var(--touch); padding: 0 1rem;
+  color: var(--text); text-decoration: none; }
+.user-menu-panel a:hover, .user-menu-panel .link-button:hover { background: var(--bg); }
+.link-button { background: none; border: 0; font: inherit; cursor: pointer; width: 100%; text-align: left; }
+
+/* Navigation */
+.mainnav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; padding: 0.25rem 1rem; background: var(--surface);
+  border-bottom: 1px solid var(--border); }
+.mainnav-group { display: flex; flex-wrap: wrap; align-items: center; gap: 0 0.75rem; }
+.mainnav-heading { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.mainnav a { display: inline-flex; align-items: center; min-height: var(--touch); text-decoration: none; font-weight: 600; }
+
+/* Layout */
+.container { max-width: 72rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+.footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem; color: var(--muted); font-size: 0.85rem;
+  max-width: 72rem; margin: 0 auto; }
+
+/* Public pages (sign in, reset) */
+body.public { display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 1rem; }
+.public-card { width: 100%; max-width: 26rem; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 1.5rem; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06); }
+.public-brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.2rem; color: var(--brand);
+  margin-bottom: 1rem; }
+.public-links { text-align: center; margin: 1rem 0 0; }
+.public-version { text-align: center; color: var(--muted); font-size: 0.8rem; margin: 1.5rem 0 0; }
+
+/* Forms */
+.form { display: flex; flex-direction: column; }
+.form-narrow { max-width: 30rem; }
+label { font-weight: 600; margin: 0.5rem 0 0.25rem; }
+input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="number"],
+input[type="date"], input[type="time"], select, textarea {
+  font: inherit; min-height: var(--touch); padding: 0.5rem 0.75rem; border: 1px solid #9aa5a1; border-radius: var(--radius);
+  background: var(--surface); color: var(--text); margin-bottom: 0.5rem; width: 100%; }
+textarea { min-height: 6rem; }
+fieldset { border: 1px solid var(--border); border-radius: var(--radius); margin: 0.75rem 0; padding: 0.5rem 1rem; }
+legend { font-weight: 600; padding: 0 0.25rem; }
+label.checkbox { display: flex; align-items: center; gap: 0.5rem; font-weight: 400; min-height: var(--touch); margin: 0; }
+label.checkbox input { width: 1.25rem; height: 1.25rem; }
+.form-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
+.readonly-list { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 1rem 0 0.5rem; }
+.readonly-list dt { font-weight: 600; color: var(--muted); }
+.readonly-list dd { margin: 0; }
+
+/* Buttons */
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: var(--touch);
+  padding: 0.5rem 1.25rem; border: 1px solid #9aa5a1; border-radius: var(--radius); background: var(--surface); color: var(--text);
+  font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
+.button:hover { background: var(--bg); color: var(--text); }
+.button-primary { background: var(--brand); border-color: var(--brand); color: var(--brand-contrast); }
+.button-primary:hover { background: var(--brand-dark); color: var(--brand-contrast); }
+.button-block { width: 100%; margin-top: 1rem; }
+.button-tile { min-height: 4.5rem; min-width: 12rem; flex-direction: column; font-size: 1.1rem; }
+.button-tile.is-current { border-color: var(--brand); border-width: 2px; }
+.tile-note { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+.site-choices { display: flex; flex-wrap: wrap; gap: 1rem; }
+
+/* Messages */
+.flash { border-radius: var(--radius); padding: 0.75rem 1rem; margin: 0 0 1rem; }
+.flash p, .flash ul { margin: 0.25rem 0; }
+.flash-success { background: var(--success-bg); color: var(--success-text); }
+.flash-info { background: var(--info-bg); color: var(--info-text); }
+.flash-error { background: var(--error-bg); color: var(--error-text); }
+
+/* Home tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1rem; margin-top: 1rem; }
+.tile-group { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem 1rem; }
+.tile-group h2 { margin-top: 0; }
+.tile { display: flex; align-items: center; min-height: var(--touch); text-decoration: none; font-weight: 600;
+  border-top: 1px solid var(--border); }
+.tile:first-of-type { border-top: 0; }
+
+/* Tables */
+.table { width: 100%; border-collapse: collapse; background: var(--surface); }
+.table th, .table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.table th { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* Policy text */
+.policy-text { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem;
+  max-height: 60vh; overflow-y: auto; }
+
+@media (max-width: 40rem) {
+  .topbar-site { order: 3; flex-basis: 100%; }
+  .mainnav { gap: 0 1rem; }
+  .button-tile { min-width: 100%; }
+}

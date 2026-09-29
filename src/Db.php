@@ -25,6 +25,7 @@ final class Db
     private const RETRYABLE = [1213 /* deadlock */, 1205 /* lock wait timeout */];
 
     private static ?PDO $pdo = null;
+    private static ?PDO $durable = null;
     private static int $depth = 0;
     /** Set when a nested block hit an error that invalidates the outer transaction. */
     private static ?Throwable $rollbackOnly = null;
@@ -64,12 +65,41 @@ final class Db
         return new PDO($dsn, (string) ($db['user'] ?? ''), (string) ($db['pass'] ?? ''), $pdoOptions + $options);
     }
 
+    /**
+     * A second, autocommit connection for rows that must survive a rollback of the main
+     * transaction (Denied/Failed audit entries). Rows written here must never reference a
+     * row created in the open main transaction: the insert would wait on that row's lock.
+     */
+    public static function durable(): PDO
+    {
+        return self::$durable ??= self::connect(Config::require('db'));
+    }
+
     /** Test/CLI helper: use a specific connection (or null to reset). */
-    public static function use(?PDO $pdo): void
+    public static function use(?PDO $pdo, ?PDO $durable = null): void
     {
         self::$pdo = $pdo;
+        self::$durable = $durable;
         self::$depth = 0;
         self::$rollbackOnly = null;
+    }
+
+    /**
+     * Optimistic locking (UC-04 §4.2): update a row only if it still has the version that
+     * was read, and bump the version. Returns false when someone else changed it first.
+     * Table and column names come from code, never from input; they are checked anyway.
+     */
+    public static function updateVersioned(string $table, string $keyColumn, int $id, int $version, array $changes): bool
+    {
+        foreach (array_merge([$table, $keyColumn], array_keys($changes)) as $identifier) {
+            if (!preg_match('/^[a-z_][a-z0-9_]*$/', $identifier)) {
+                throw new \InvalidArgumentException("Invalid SQL identifier '$identifier'");
+            }
+        }
+        $sets = implode(', ', array_map(fn($c) => "`$c` = ?", array_keys($changes)));
+        $st = self::pdo()->prepare("UPDATE `$table` SET $sets, `row_version` = `row_version` + 1 WHERE `$keyColumn` = ? AND `row_version` = ?");
+        $st->execute([...array_values($changes), $id, $version]);
+        return $st->rowCount() === 1;
     }
 
     /**
@@ -91,6 +121,26 @@ final class Db
     public static function inTransaction(): bool
     {
         return self::$depth > 0;
+    }
+
+    /**
+     * Tests only: open a transaction that every Db::transaction() call nests inside (as
+     * savepoints), so a test's writes can all be rolled back by testRollback().
+     */
+    public static function testBegin(): void
+    {
+        self::pdo()->beginTransaction();
+        self::$depth = 1;
+        self::$rollbackOnly = null;
+    }
+
+    public static function testRollback(): void
+    {
+        if (self::pdo()->inTransaction()) {
+            self::pdo()->rollBack();
+        }
+        self::$depth = 0;
+        self::$rollbackOnly = null;
     }
 
     public static function errorCode(Throwable $e): ?int

@@ -1,0 +1,56 @@
+<?php
+declare(strict_types=1);
+
+namespace Pfpms;
+
+use DateTimeImmutable;
+use DateTimeZone;
+
+/**
+ * The application's notion of "now". Always UTC; the database stores UTC too.
+ * Tests freeze and advance it instead of sleeping.
+ */
+final class Clock
+{
+    private static ?DateTimeImmutable $frozen = null;
+
+    public static function now(): DateTimeImmutable
+    {
+        return self::$frozen ?? new DateTimeImmutable('now', new DateTimeZone('UTC'));
+    }
+
+    public static function freeze(DateTimeImmutable|string|null $at = 'now'): void
+    {
+        self::$frozen = $at === null ? null
+            : ($at instanceof DateTimeImmutable ? $at->setTimezone(new DateTimeZone('UTC'))
+                : new DateTimeImmutable($at, new DateTimeZone('UTC')));
+    }
+
+    public static function advance(string $modifier): void
+    {
+        self::$frozen = self::now()->modify($modifier);
+    }
+
+    /** UTC timestamp in the format DATETIME columns take (no offset, whole seconds). */
+    public static function db(?DateTimeImmutable $at = null): string
+    {
+        return ($at ?? self::now())->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+    }
+
+    /** UTC timestamp for DATETIME(3) columns. */
+    public static function dbMillis(?DateTimeImmutable $at = null): string
+    {
+        return ($at ?? self::now())->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s.v');
+    }
+
+    public static function fromDb(?string $value): ?DateTimeImmutable
+    {
+        return $value === null || $value === '' ? null : new DateTimeImmutable($value, new DateTimeZone('UTC'));
+    }
+
+    /** Today's date (Y-m-d) in a site's local time zone, e.g. for distribution.local_date. */
+    public static function localDate(string $timeZone, ?DateTimeImmutable $at = null): string
+    {
+        return ($at ?? self::now())->setTimezone(new DateTimeZone($timeZone))->format('Y-m-d');
+    }
+}
