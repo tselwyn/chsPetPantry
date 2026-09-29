@@ -176,8 +176,9 @@ final class Db
             self::$rollbackOnly = null;
             try {
                 $result = $fn($pdo);
-                if (self::$rollbackOnly !== null) {
-                    throw self::$rollbackOnly; // a nested failure was caught by the caller
+                $nestedFailure = self::pendingRollbackOnly(); // set by nested() while $fn ran
+                if ($nestedFailure !== null) {
+                    throw $nestedFailure; // a nested failure was caught by the caller
                 }
                 $pdo->commit();
                 return $result;
@@ -195,6 +196,12 @@ final class Db
                 self::$rollbackOnly = null;
             }
         }
+    }
+
+    /** The error that made the open transaction rollback-only, if any. */
+    private static function pendingRollbackOnly(): ?Throwable
+    {
+        return self::$rollbackOnly;
     }
 
     private static function nested(PDO $pdo, callable $fn): mixed

@@ -39,13 +39,16 @@ if (!empty($db['migrate_user'])) {
     $db['pass'] = $db['migrate_pass'] ?? '';
 }
 $pdo = Db::connect($db);
-$failures = 0;
+
+final class Checks
+{
+    public static int $failures = 0;
+}
 
 function check(string $label, bool $ok, string $detail = ''): void
 {
-    global $failures;
     if (!$ok) {
-        $failures++;
+        Checks::$failures++;
     }
     printf("%s  %s%s\n", $ok ? 'PASS' : 'FAIL', $label, $detail !== '' ? "  ($detail)" : '');
 }
@@ -190,5 +193,5 @@ try {
     $pdo->rollBack();
 }
 
-echo $failures === 0 ? "\nAll checks passed.\n" : "\n$failures check(s) FAILED.\n";
-exit($failures === 0 ? 0 : 1);
+echo Checks::$failures === 0 ? "\nAll checks passed.\n" : "\n" . Checks::$failures . " check(s) FAILED.\n";
+exit(Checks::$failures === 0 ? 0 : 1);

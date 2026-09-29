@@ -1,0 +1,13 @@
+# Static analysis (plan §9: PHPStan level 5). Run: composer stan
+parameters:
+    level: 5
+    phpVersion: 80200
+    paths:
+        - src
+        - bin
+        - public
+    bootstrapFiles:
+        - src/autoload.php
+        - src/View/helpers.php
+    excludePaths:
+        - public/assets/*

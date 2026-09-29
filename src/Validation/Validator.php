@@ -75,7 +75,7 @@ final class Validator
         if ($value === null || !preg_match('/^\s*(\d{5})(?:[-\s]?(\d{4}))?\s*$/', $value, $m)) {
             return null;
         }
-        return isset($m[2]) && $m[2] !== '' ? "$m[1]-$m[2]" : $m[1];
+        return isset($m[2]) ? "$m[1]-$m[2]" : $m[1]; // an unmatched trailing group is absent, not ''
     }
 
     /** Legacy validateURL, fixed: only http and https (no javascript: or data: URLs). */

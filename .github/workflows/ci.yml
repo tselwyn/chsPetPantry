@@ -16,11 +16,16 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
+          extensions: pdo_mysql, mbstring, openssl, gd, zip, intl
           coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
       - name: Portability, immutability and hygiene guard (plan section 8)
         run: php bin/ci-guard.php
       - name: PHP lint
         run: find src bin public templates tests config -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+      - name: Static analysis (PHPStan level 5)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
       - name: Secret scan of the working tree
         # Scans files, not history: the inherited history still contains rotated secrets until it is purged.
         run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.21.2 dir /repo --config /repo/.gitleaks.toml --redact --no-banner
@@ -52,6 +57,8 @@ jobs:
           php-version: ${{ matrix.php }}
           extensions: pdo_mysql, mbstring, openssl, gd, zip, intl, curl
           coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
       - name: Create databases and a non-SUPER owner account (like shared hosting)
         run: |
           mysql -h127.0.0.1 -uroot -e "
@@ -85,4 +92,4 @@ jobs:
       - name: Test suite
         env:
           PFPMS_TEST_CONFIG: /tmp/pfpms/test.php
-        run: php tests/run.php
+        run: vendor/bin/phpunit

@@ -1,6 +1,12 @@
 {
-  "dependencies": {
-    "@tailwindcss/cli": "^4.1.4",
-    "tailwindcss": "^4.1.4"
+  "name": "pfpms-dev-tools",
+  "private": true,
+  "description": "Development-only JavaScript tooling for PFPMS. Nothing here is deployed. Station (offline PWA) tests and Playwright arrive in Phase 2B.",
+  "license": "GPL-3.0-or-later",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test:js": "node --test tests/js/"
   }
 }

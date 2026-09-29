@@ -57,7 +57,7 @@ $violations = [];
 foreach (array_merge(glob("$root/migrations/*.sql") ?: [], glob("$root/migrations/optional/*.sql") ?: [], glob("$root/seeds/*/*.sql") ?: []) as $file) {
     $sql = (string) file_get_contents($file);
     foreach (SqlSplitter::split($sql) as $statement) {
-        check($statement, rel($file), lineOf($sql, $statement), $violations, isMigration: str_contains($file, '/migrations/'));
+        scan_sql($statement, rel($file), lineOf($sql, $statement), $violations, isMigration: str_contains($file, '/migrations/'));
     }
 }
 
@@ -72,7 +72,7 @@ foreach (['src', 'public', 'bin', 'templates'] as $dir) {
         foreach (token_get_all((string) file_get_contents($file)) as $token) {
             if (is_array($token) && in_array($token[0], [T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE], true)
                 && preg_match('/\b(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|REPLACE)\b/', $token[1])) {
-                check($token[1], rel($file), $token[2], $violations, isMigration: false);
+                scan_sql($token[1], rel($file), $token[2], $violations, isMigration: false);
             }
         }
     }
@@ -93,7 +93,7 @@ if ($violations) {
 }
 echo "ci-guard: no violations\n";
 
-function check(string $sql, string $file, int $line, array &$violations, bool $isMigration): void
+function scan_sql(string $sql, string $file, int $line, array &$violations, bool $isMigration): void
 {
     foreach (PORTABILITY as $pattern => $why) {
         if (preg_match($pattern, $sql)) {
