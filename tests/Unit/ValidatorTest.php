@@ -73,4 +73,23 @@ final class ValidatorTest extends TestCase
         $this->assertNull(Validator::email(str_repeat('a', 95) . '@x.org'));
         $this->assertNull(Validator::email('not-an-email'));
     }
+
+    public function testDecimalIsCanonicalAndBounded(): void
+    {
+        $this->assertSame('4.50', Validator::decimal('4.5', 2, '200'), 'same form the DECIMAL column returns');
+        $this->assertSame('12.00', Validator::decimal(' 12 ', 2, '200'));
+        $this->assertSame('0.00', Validator::decimal('0', 2, '200'));
+        $this->assertSame('0.25', Validator::decimal('.25', 2, '200'));
+        $this->assertSame('7.00', Validator::decimal('7.', 2, '200'));
+        $this->assertSame('200.00', Validator::decimal('200', 2, '200'));
+        $this->assertSame('199.99', Validator::decimal('199.99', 2, '199.99'));
+        $this->assertSame('7', Validator::decimal('7', 0, '10'));
+        foreach (['200.01', '1.234', '-1', '1e3', '1,000', '0x10', '', ' ', '.', '1.2.3', 'abc'] as $bad) {
+            $this->assertNull(Validator::decimal($bad, 2, '200'), "refuses '$bad'");
+        }
+        $this->assertNull(Validator::decimal('7.0', 0, '10'), 'no decimals when the scale is 0');
+        $this->assertNull(Validator::decimal(null, 2, '200'));
+        $this->assertSame('-3.05', Validator::fromUnits(-305, 2));
+        $this->assertSame('0.07', Validator::fromUnits(7, 2));
+    }
 }

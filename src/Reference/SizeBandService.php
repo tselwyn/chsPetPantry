@@ -5,6 +5,8 @@ namespace Pfpms\Reference;
 
 use InvalidArgumentException;
 use PDOException;
+use Pfpms\Allotment\AllotmentRuleRepository;
+use Pfpms\Allotment\AllotmentRuleService;
 use Pfpms\Audit\Audit;
 use Pfpms\Db;
 use Pfpms\Settings;
@@ -33,7 +35,7 @@ final class SizeBandService
 
     private const AUDITED = ['name', 'min_weight_lbs', 'max_weight_lbs', 'picture_path'];
 
-    private const IN_USE = 'This size band cannot be deleted because pets or allotment rules use it. You can rename it or change its weights instead.';
+    private const IN_USE = 'This size band cannot be deleted because pets or published allotment rules use it. You can rename it or change its weights instead.';
 
     /**
      * @param ?string $picture the uploaded picture's bytes (see readUpload), or null for no picture
@@ -90,7 +92,12 @@ final class SizeBandService
         }
     }
 
-    /** Only a band that no pet or allotment rule uses can be deleted. @throws ValidationException */
+    /**
+     * Only a band that no pet or published allotment rule uses can be deleted. Its figures in the
+     * draft allotment version are removed with it (under the allotment lock) and kept in the audit
+     * snapshot. Call this outside any transaction.
+     * @throws ValidationException
+     */
     public static function delete(int $sizeBandId): void
     {
         $band = SizeBandRepository::find($sizeBandId) ?? throw ValidationException::one('_form', 'That size band no longer exists.');
@@ -98,10 +105,11 @@ final class SizeBandService
             throw ValidationException::one('_form', self::IN_USE);
         }
         try {
-            Db::transaction(function () use ($sizeBandId, $band): void {
+            AllotmentRuleService::withLock(fn() => Db::transaction(function () use ($sizeBandId, $band): void {
+                $draftCells = AllotmentRuleRepository::deleteDraftCellsForBand($sizeBandId);
                 SizeBandRepository::delete($sizeBandId);
-                Audit::record('size_band_delete', 'size_band', $sizeBandId, snapshot: $band);
-            });
+                Audit::record('size_band_delete', 'size_band', $sizeBandId, snapshot: $band + ['draft_allotment_cells' => $draftCells]);
+            }));
         } catch (PDOException $e) {
             if (Db::errorCode($e) === 1451) { // a pet or rule started using it in the meantime
                 throw ValidationException::one('_form', self::IN_USE);

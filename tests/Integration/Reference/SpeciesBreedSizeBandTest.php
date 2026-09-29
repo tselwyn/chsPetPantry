@@ -234,8 +234,10 @@ final class SpeciesBreedSizeBandTest extends TestCase
         $species = SpeciesService::create(['name' => 'Band test']);
         $used = $this->band($species, 'Small', '0', '25');
         $unused = $this->band($species, 'Medium', '25', '60');
-        Db::pdo()->prepare('INSERT INTO allotment_rule (rule_version, species_id, size_band_id, lbs_per_distribution, effective_from, created_by) VALUES (1, ?, ?, 4.5, ?, ?)')
-            ->execute([$species, $used, '2026-10-01', $this->makeUser(['role' => 'Administrator'])['user_id']]);
+        $admin = $this->makeUser(['role' => 'Administrator'])['user_id'];
+        Db::pdo()->prepare('INSERT INTO allotment_rule (rule_version, species_id, size_band_id, lbs_per_distribution, effective_from, created_by, published_at, published_by)
+                            VALUES (1, ?, ?, 4.5, ?, ?, ?, ?)')
+            ->execute([$species, $used, '2026-10-01', $admin, '2026-10-01 12:00:00', $admin]); // a published rule
 
         $this->assertTrue(SizeBandRepository::inUse($used));
         $this->assertRefused(fn() => SizeBandService::delete($used), '_form');
@@ -247,6 +249,28 @@ final class SpeciesBreedSizeBandTest extends TestCase
         $this->assertSame(1, $this->audits('size_band_delete', $unused));
         $inUse = array_column(SizeBandRepository::all(), 'in_use', 'size_band_id');
         $this->assertSame(1, (int) $inUse[$used]);
+    }
+
+    public function testABandOnlyInTheDraftAllotmentCanBeDeletedAndLeavesTheDraft(): void
+    {
+        $species = SpeciesService::create(['name' => 'Band test']);
+        $band = $this->band($species, 'Small', '0', '25');
+        $other = $this->band($species, 'Medium', '25', '60');
+        $admin = $this->makeUser(['role' => 'Administrator'])['user_id'];
+        $insert = Db::pdo()->prepare('INSERT INTO allotment_rule (rule_version, species_id, size_band_id, lbs_per_distribution, effective_from, created_by)
+                                        VALUES (7, ?, ?, ?, ?, ?)'); // draft cells: published_at stays NULL
+        $insert->execute([$species, $band, '4.50', '2026-10-02', $admin]);
+        $insert->execute([$species, $other, null, '2026-10-02', $admin]);
+
+        $this->assertFalse(SizeBandRepository::inUse($band), 'draft figures do not keep a band in use');
+        $this->assertSame(1, (int) array_column(SizeBandRepository::all(), 'in_draft', 'size_band_id')[$band]);
+        SizeBandService::delete($band);
+        $this->assertNull(SizeBandRepository::find($band));
+        $this->assertSame(0, (int) $this->scalar('SELECT COUNT(*) FROM allotment_rule WHERE size_band_id = ?', [$band]));
+        $this->assertSame(1, (int) $this->scalar('SELECT COUNT(*) FROM allotment_rule WHERE size_band_id = ?', [$other]), 'the rest of the draft stays');
+        $snapshot = (string) $this->scalar("SELECT snapshot FROM audit_log WHERE action = 'size_band_delete' AND entity_id = ?", [$band]);
+        $this->assertStringContainsString('draft_allotment_cells', $snapshot, 'the removed draft figures are kept in the audit snapshot');
+        $this->assertStringContainsString('4.50', $snapshot);
     }
 
     public function testABandAPetUsesCannotBeDeleted(): void

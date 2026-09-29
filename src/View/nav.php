@@ -41,6 +41,7 @@ return [
     ['group' => 'Setup', 'file' => 'admin_species.php', 'label' => 'Species', 'capability' => 'lookup.manage'],
     ['group' => 'Setup', 'file' => 'admin_breeds.php', 'label' => 'Breeds', 'capability' => 'lookup.manage'],
     ['group' => 'Setup', 'file' => 'admin_size_bands.php', 'label' => 'Size bands', 'capability' => 'lookup.manage'],
+    ['group' => 'Setup', 'file' => 'admin_allotment_rules.php', 'label' => 'Allotment rules', 'capability' => 'allotment.view'],
     ['group' => 'Setup', 'file' => 'admin_lookups.php', 'label' => 'Choice lists', 'capability' => 'lookup.manage'],
     ['group' => 'Setup', 'file' => 'admin_clinics.php', 'label' => 'Clinics', 'capability' => 'clinic.manage'],
 ];

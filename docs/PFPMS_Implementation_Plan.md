@@ -106,8 +106,8 @@ Pages contain no SQL. Services own the rules, transactions and audit, and the we
 
 **Default capability matrix** (Coordinator inherits Volunteer; Administrator inherits Coordinator):
 - **Volunteer:** search, register and update participants; pets; check-in; record distribution; history; SNV refer; request pet delete; offline.
-- **Coordinator adds:** event management and dashboard; stock receive and count; barcode linking; intake questions; languages; device registration; session roster and remote sign-out; temporary site grants; distribution reversal; sync review; SNV management; aggregate reports.
-- **Administrator adds:** all sites; settings, lookups, policies, clinics and budgets; users; restricted participant fields; merge, delete, restore and erasure; alerts; pet delete; overrides (level set in settings); import; identifiable reports; audit viewer.
+- **Coordinator adds:** event management and dashboard; stock receive and count; barcode linking; intake questions; languages; viewing the allotment rules; device registration; session roster and remote sign-out; temporary site grants; distribution reversal; sync review; SNV management; aggregate reports.
+- **Administrator adds:** all sites; settings, lookups, policies, clinics and budgets; allotment rules; users; restricted participant fields; merge, delete, restore and erasure; alerts; pet delete; overrides (level set in settings); import; identifiable reports; audit viewer.
 - **Board:** read-only aggregate dashboard; no writes and no offline grant.
 
 **Station (offline PWA)**
@@ -414,10 +414,12 @@ All changes are additive and portable: new ENUM values are appended at the end, 
 | 0007 | `snv_referral.voucher_number` **and `expires_on`** become NULL (unique key kept) | UC-08 §3.2.3/§4.1 |
 | 0008 | Tables **`id_sequence`** (gapless participant codes) and **`lookup_value`** (colour, body type, delete/deactivation/emergency/decline reasons, referral source, proof of residence); reserved `system` user row | UC-03 post-condition, UC-05 §4.5, UC-09/10 step 5, US-13 |
 | 0009 | `import_batch`/`import_mapping.record_type` += 'User'; `import_batch.status` += Queued, Running; `audit_log.import_batch_id` | UC-11 §3.2.4, US-32, UC-12 |
+| 0010 | `system_setting` += `organisation_time_zone`: organisation-wide dates (accounts, policy start and re-acceptance) use the organisation's local date, not UTC | UC-11 review |
+| 0011 | `allotment_rule` += `published_at`, `published_by`, `created_at`; `lbs_per_distribution` NULL-able for draft cells; UNIQUE (version, species, band, form); index on `effective_from`. In force = latest published `effective_from` ≤ site-local date; `effective_to` unused; version 0 reserved for legacy | UC-05 §4.1, UC-06 §4.5, P2A allotment rules |
 | optional/9001 | Immutability triggers on distribution*, audit*, `snv_referral_status_log`, `inventory_transaction`. **A dev safety net only**: SiteGround will likely refuse them (ERROR 1419 without SUPER). The app-layer guard and the CI grep are the real enforcement. Dumps use `--skip-triggers`; `@pfpms_allow_mutation` is reset in `finally`; retention purges are allowlisted. | Notes §3 |
 | v2.2 (P9 only) | `participant_access_token`, `participant_change_request`, `intake_scan` | US-10/19/31 if kept |
 
-- **Counts:** after v2.1 there are 66 ERD tables, plus the tooling table `schema_version`, and **165 FKs**. Both are pinned in `bin/schema-check.php`. The set is verified on MariaDB 10.4, MySQL 8.0 and MySQL 9.4.
+- **Counts:** after v2.1 there are 66 ERD tables, plus the tooling table `schema_version`, and **166 FKs**. Both are pinned in `bin/schema-check.php`. The set is verified on MariaDB 10.4, MySQL 8.0 and MySQL 9.4.
 - **For the ERD team only:** a clinic↔site link, status history, non-rabies vaccinations, a shift roster, and aligning `allotment_rule.food_form` with `product.food_form`.
 - **Also note:** the 520 collation is PAD SPACE, so the Validator trims every unique field (username, email, barcode, codes).
 
@@ -616,7 +618,7 @@ Read JSON through `JSON_EXTRACT`/`JSON_UNQUOTE` only.
 
 | File | Role |
 |---|---|
-| `docs/PFPMS_schema_v2.sql` | Becomes v2.0.1, then `migrations/0001`; `migrations/0002–0009` build on it |
+| `docs/PFPMS_schema_v2.sql` | Becomes v2.0.1, then `migrations/0001`; `migrations/0002–0011` build on it |
 | `src/bootstrap.php`, `src/Db.php`, `src/Http/Page.php`, `src/Http/Api.php`, `src/Auth/capabilities.php` | New core that every page depends on |
 | `src/Distribution/DistributionService.php`, `src/Sync/SyncService.php` | Single commit path for online and offline |
 | `public/station/sw.php`, `public/station/js/vault.js` | PWA shell and encrypted store |

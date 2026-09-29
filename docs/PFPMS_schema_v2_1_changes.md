@@ -2,12 +2,12 @@
 
 `docs/PFPMS_schema_v2.sql` is the baseline, now at **v2.0.1**. Later changes are additive migration files in `migrations/`, applied by `php bin/migrate.php`. This page lists every change so the design team can fold them into `PFPMS_ERD_v2.drawio`.
 
-**Where it has been verified:** the full set (0001–0009) loads, re-runs as a no-op, and passes `php bin/schema-check.php` on:
+**Where it has been verified:** the full set (0001–0009) loads, re-runs as a no-op, and passes `php bin/schema-check.php` on the engines below; 0010 and 0011 were verified the same way on MariaDB 10.4 and MySQL 8.0:
 - MariaDB 10.4.28 (XAMPP);
 - MySQL 8.0.43;
 - MySQL 9.4.0.
 
-Production runs Percona/MySQL 8.4, which sits between the two MySQL versions tested. Totals after v2.1: **66 tables** (plus the tooling table `schema_version`) and **165 foreign keys**.
+Production runs Percona/MySQL 8.4, which sits between the two MySQL versions tested. Totals after v2.1: **66 tables** (plus the tooling table `schema_version`) and **166 foreign keys**.
 
 ## v2.0.1 (edited in place in `docs/PFPMS_schema_v2.sql`; identical to `migrations/0001`)
 
@@ -70,6 +70,12 @@ Production runs Percona/MySQL 8.4, which sits between the two MySQL versions tes
 
 **0010 Organisation time zone** (UC-11 review)
 - One `system_setting` row, `organisation_time_zone` (default `America/New_York`), bringing the total to 67 (verified on MariaDB 10.4 and MySQL 8.0). Organisation-wide dates belong to no single site, so "today" for them is taken in this zone rather than in UTC: account start, end and deactivation dates, policy start dates (`policy_document.effective_from`) and re-acceptance due dates (`policy_acknowledgement.due_again_on`). Site-level dates keep using `site.time_zone`. No schema change.
+
+**0011 Allotment rule versions** (UC-05 §4.1, UC-06 §4.5, plan P2A allotment rules)
+- `allotment_rule` += `published_at`, `published_by` (FK to user_account) and `created_at`; `lbs_per_distribution` becomes NULL-able; UNIQUE (`rule_version`, `species_id`, `size_band_id`, `food_form`); index on `effective_from`. FKs 165 → 166.
+- A version is every row sharing one `rule_version`. `published_at IS NULL` marks the one draft; its empty cells are NULL pounds, and publishing refuses any empty cell, so published rows always have pounds.
+- The version in force on a site-local date is the published version with the latest `effective_from` on or before it, as for policy texts. **`effective_to` is kept but not used** (it stays NULL): a version ends the day before the next one starts. This departs from design M2 (11-design-features.md, "Publish ... closes the old version (effective_to)"), so that a published version that has started is never updated, and a scheduled one can be taken back without touching the version in force. Code must never read `effective_to IS NULL` as "current"; use `AllotmentRuleRepository::versionInForce()`.
+- `rule_version` 0 is reserved for imported legacy distributions (no rules); real versions start at 1. A version taken back before it starts is renumbered, so a published number never stands for two sets of rules.
 
 **optional/9001 Immutability triggers**
 - BEFORE UPDATE and BEFORE DELETE triggers on `distribution`, `distribution_line`, `distribution_pet`, `audit_log`, `audit_field_change`, `snv_referral_status_log` and `inventory_transaction`.

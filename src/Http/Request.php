@@ -53,12 +53,13 @@ final class Request
     }
 
     /**
-     * A POST array such as name="orig[key]" as key => trimmed string; non-string entries are dropped.
+     * A POST array (or GET when $fromQuery) such as name="orig[key]" as key => trimmed string;
+     * non-string entries are dropped.
      * @return array<string, string>
      */
-    public static function array(string $name): array
+    public static function array(string $name, bool $fromQuery = false): array
     {
-        $value = $_POST[$name] ?? null;
+        $value = ($fromQuery ? $_GET : $_POST)[$name] ?? null;
         if (!is_array($value)) {
             return [];
         }

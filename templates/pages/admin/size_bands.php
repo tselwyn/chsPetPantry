@@ -47,6 +47,7 @@ use Pfpms\Reference\SizeBandService;
                   <input type="hidden" name="size_band_id" value="<?= (int) $b['size_band_id'] ?>">
                   <button type="submit" name="action" value="delete" class="button">Delete</button>
                 </form>
+                <?php if (!empty($b['in_draft'])): ?><span class="meta">Deleting also removes it from the draft allotment version.</span><?php endif; ?>
               <?php endif; ?>
             </td>
           </tr>

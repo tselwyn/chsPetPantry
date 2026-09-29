@@ -23,7 +23,7 @@ use Pfpms\Db;
 use Pfpms\Db\Migrator;
 
 const EXPECTED_TABLES = 66;       // 59 (v2.0.1) + 7 (v2.1), excluding schema_version
-const EXPECTED_FOREIGN_KEYS = 165; // 143 (v2.0.1) + 22 (v2.1)
+const EXPECTED_FOREIGN_KEYS = 166; // 143 (v2.0.1) + 23 (v2.1)
 // JSON columns are LONGTEXT COLLATE utf8mb4_bin on MariaDB; that is the only allowed exception.
 const JSON_COLUMNS = [
     'user_account.notification_prefs', 'registration_draft.form_data', 'intake_question.options',

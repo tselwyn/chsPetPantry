@@ -90,4 +90,45 @@ final class Validator
     {
         return $value !== null && in_array($value, $allowed, true) ? $value : null;
     }
+
+    /**
+     * A non-negative decimal with at most $scale decimal places and no more than $max, returned
+     * in canonical form with exactly $scale places ('4.5' → '4.50'), which is how DECIMAL columns
+     * come back from the database, so Audit::diff sees no false changes. No signs, exponents or
+     * thousands separators. Integer arithmetic only, so the Station's JS port gives the same answer.
+     */
+    public static function decimal(?string $value, int $scale, string $max): ?string
+    {
+        if ($value === null || !preg_match('/^\s*(\d{0,9})(?:\.(\d*))?\s*$/', $value, $m)) {
+            return null;
+        }
+        $whole = $m[1];
+        $fraction = $m[2] ?? '';
+        if (($whole === '' && $fraction === '') || strlen($fraction) > $scale) {
+            return null;
+        }
+        $units = self::toUnits($whole === '' ? '0' : $whole, $fraction, $scale);
+        [$maxWhole, $maxFraction] = array_pad(explode('.', $max, 2), 2, '');
+        if ($units > self::toUnits($maxWhole, substr($maxFraction, 0, $scale), $scale)) {
+            return null;
+        }
+        return self::fromUnits($units, $scale);
+    }
+
+    /** '12' and '5' at scale 2 → 1205 (hundredths). */
+    private static function toUnits(string $whole, string $fraction, int $scale): int
+    {
+        return (int) $whole * 10 ** $scale + ($scale > 0 ? (int) str_pad($fraction, $scale, '0') : 0);
+    }
+
+    /** 1205 at scale 2 → '12.05'. */
+    public static function fromUnits(int $units, int $scale): string
+    {
+        if ($scale === 0) {
+            return (string) $units;
+        }
+        $sign = $units < 0 ? '-' : '';
+        $units = abs($units);
+        return $sign . intdiv($units, 10 ** $scale) . '.' . str_pad((string) ($units % 10 ** $scale), $scale, '0', STR_PAD_LEFT);
+    }
 }

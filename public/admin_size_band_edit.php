@@ -36,6 +36,7 @@ if (Request::isPost()) {
         if ($band === null) {
             SizeBandService::create($values, $picture);
             Flash::success('Size band added.');
+            Flash::info('Pets can be put in this size band once an allotment version that includes it has started. Add it under Setup > Allotment rules.');
         } else {
             $values['species_id'] = (string) $band['species_id'];
             SizeBandService::update((int) $band['size_band_id'], $values, $picture, $removePicture);

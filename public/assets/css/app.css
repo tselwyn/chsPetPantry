@@ -100,7 +100,8 @@ input[type="date"], input[type="time"], select, textarea {
   font: inherit; min-height: var(--touch); padding: 0.5rem 0.75rem; border: 1px solid #9aa5a1; border-radius: var(--radius);
   background: var(--surface); color: var(--text); margin-bottom: 0.5rem; width: 100%; }
 textarea { min-height: 6rem; }
-fieldset { border: 1px solid var(--border); border-radius: var(--radius); margin: 0.75rem 0; padding: 0.5rem 1rem; }
+/* min-width: 0 lets a wide table inside a fieldset scroll in its .table-wrap instead of widening the page */
+fieldset { border: 1px solid var(--border); border-radius: var(--radius); margin: 0.75rem 0; padding: 0.5rem 1rem; min-width: 0; }
 legend { font-weight: 600; padding: 0 0.25rem; }
 label.checkbox { display: flex; align-items: center; gap: 0.5rem; font-weight: 400; min-height: var(--touch); margin: 0; }
 label.checkbox input { width: 1.25rem; height: 1.25rem; }

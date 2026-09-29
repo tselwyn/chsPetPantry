@@ -10,16 +10,22 @@ final class SizeBandRepository
 {
     public const COLUMNS = 'size_band_id, species_id, name, min_weight_lbs, max_weight_lbs, picture_path';
 
-    /** A band is in use while a pet or an allotment rule points at it. */
+    /**
+     * A band is in use while a pet or a published allotment rule points at it. Figures for it in
+     * the draft allotment version do not count: deleting the band removes them from the draft.
+     */
     private const IN_USE = '(EXISTS (SELECT 1 FROM pet p WHERE p.size_band_id = sb.size_band_id)
-                            OR EXISTS (SELECT 1 FROM allotment_rule r WHERE r.size_band_id = sb.size_band_id))';
+                            OR EXISTS (SELECT 1 FROM allotment_rule r WHERE r.size_band_id = sb.size_band_id AND r.published_at IS NOT NULL))';
+
+    /** The band has figures in the draft allotment version. */
+    private const IN_DRAFT = 'EXISTS (SELECT 1 FROM allotment_rule d WHERE d.size_band_id = sb.size_band_id AND d.published_at IS NULL)';
 
     /** Every band with its species name and whether it is in use, lightest first within each species. @return list<array> */
     public static function all(): array
     {
         return Db::pdo()->query(
             'SELECT sb.size_band_id, sb.species_id, sb.name, sb.min_weight_lbs, sb.max_weight_lbs, sb.picture_path,
-                    ' . self::IN_USE . ' AS in_use
+                    ' . self::IN_USE . ' AS in_use, ' . self::IN_DRAFT . ' AS in_draft
                FROM size_band sb
               ORDER BY sb.species_id, sb.min_weight_lbs'
         )->fetchAll();
