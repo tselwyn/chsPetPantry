@@ -190,3 +190,27 @@ input[type="file"] { font: inherit; margin-bottom: 0.5rem; }
 
 /* Product barcodes on the product edit page */
 .barcode-row { border-top: 1px solid var(--border); padding-top: 0.5rem; margin-top: 0.5rem; }
+
+/* Stock: receipt and count entry tables, notes, big changes */
+.pre-line { white-space: pre-line; }
+.table-entry td { padding: 0.4rem 0.5rem; }
+.table-entry select, .table-entry input { margin-bottom: 0; }
+.table-entry select { min-width: 16rem; }
+.table-entry input[inputmode="numeric"] { width: 6rem; }
+.table-entry .field-error { margin: 0.25rem 0 0; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.change-large { font-weight: 700; color: var(--error-text); }
+.banner-warning { border-left: 4px solid var(--error-text); }
+/* Entry-table labels: hidden beside the column headings, shown when the rows stack on a phone */
+.entry-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 40rem) {
+  .table-wrap .table.table-entry { min-width: 0; }
+  .table-entry, .table-entry tbody { display: block; }
+  .table-entry thead { display: none; }
+  .table-entry tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.25rem 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+  .table-entry td, .table-entry th { display: block; border: 0; padding: 0; }
+  .table-entry tr > :first-child { grid-column: 1 / -1; }
+  .table-entry select { min-width: 0; }
+  .table-entry input[inputmode="numeric"] { width: 100%; }
+  .entry-label { position: static; width: auto; height: auto; margin: 0 0 0.15rem; overflow: visible; clip: auto; white-space: normal; font-size: 0.85rem; }
+}

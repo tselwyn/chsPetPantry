@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace Pfpms\Tests\Integration\Reference;
 
+use Pfpms\Inventory\ItemCategoryService;
+use Pfpms\Inventory\Ledger;
+use Pfpms\Inventory\ProductService;
 use Pfpms\Reference\SiteRepository;
 use Pfpms\Reference\SiteService;
 use Pfpms\Tests\TestCase;
@@ -20,6 +23,19 @@ final class SiteServiceTest extends TestCase
         $this->assertSame('SC', $site['state']);
         $this->assertSame('29401-1234', $site['postal_code']);
         $this->assertSame(1, (int) $this->scalar("SELECT COUNT(*) FROM audit_log WHERE action = 'site_create' AND entity_id = ?", [$id]));
+    }
+
+    public function testANewSiteGetsAZeroStockRowForEveryProduct(): void
+    {
+        $category = ItemCategoryService::create(['name' => 'Treats', 'units_per_case' => '1']);
+        $admin = $this->makeUser(['role' => 'Administrator'])['user_id'];
+        $dog = (string) $this->scalar("SELECT species_id FROM species WHERE name = 'Dog'");
+        $product = ProductService::create(['category_id' => (string) $category, 'name' => 'Chews', 'species_id' => $dog, 'food_form' => 'Treat'], $admin);
+        ProductService::setActive($product, false, false, $admin);
+        $id = SiteService::create(['name' => 'Eastside', 'time_zone' => 'America/New_York']);
+        $this->assertSame((int) $this->scalar('SELECT COUNT(*) FROM product'), (int) $this->scalar('SELECT COUNT(*) FROM site_stock WHERE site_id = ? AND quantity_on_hand = 0', [$id]),
+            'inactive products too');
+        $this->assertSame(0, Ledger::discrepancies($id)['missing']);
     }
 
     public function testValidationReportsEveryFieldAtOnce(): void

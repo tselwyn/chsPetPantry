@@ -208,11 +208,29 @@ Each semester ends with a demonstrable staging milestone.
   - Pages: `admin_users` (source `viewAuditUsers`), `admin_user_create` (source `createUser`; invitation only; **captures `onboarding_completed_at`**, UC-11 step 8), `admin_user_edit` (source `viewModifyUser` + `resetPassword`: role, sites, expiry, reset/unlock, deactivate with effective date), `admin_user_credential` (printable).
   - Rules: email must be unused; `volunteer_max_sites`; at least one active Admin; nobody edits their own role or sites; temporary credential lasts 72 h and works once; any role, site or status change ends the user's sessions.
 - **Catalogue and stock** (`src/Inventory/*`):
-  - `inventory_catalogue` and `inventory_product_edit` (sources `viewItemCategories`, `viewAddItemCategory`, `viewModifyItemCategory`: species, form, unit weight; **US-16** barcode linking, barcodes global).
-  - `inventory_receipts` and `inventory_receipt_edit` (sources `viewManagePallets`, `viewAddPallet`, `viewModifyPallet`: 'Receipt' ledger rows; void by 'Reversal').
-  - `inventory_count` (sources `viewUpdateInventory`, `editInventoryEvent`, `deleteInventoryEvent`): refused while an event is Open; writes 'Count Adjustment' rows and sets `inventory_count.posted_at`.
-  - `inventory_stock` (source `inventory.php`).
-  - `Ledger::post()`: **`site_stock` rows are pre-created at 0** when a product or site is created (this avoids gap-lock deadlocks); upserts are portable (`ON DUPLICATE KEY UPDATE q = q + ?`, positional).
+  - `inventory_catalogue`, `inventory_category_edit`, `inventory_product_edit` and `inventory_barcode_link` (sources `viewItemCategories`, `viewAddItemCategory`, `viewModifyItemCategory`): species, form, unit weight (lb, or oz converted). A duplicate is the same name, brand, species, form and weight. Species and form are fixed once a product has been used.
+    - **US-16:** barcodes are global and stored as GTIN-14. Every possible reading of a scan is checked before linking. In-store codes are allowed and flagged.
+    - A deactivated product takes no new receipts or barcode links; any stock left can still be given out and counted.
+  - `inventory_receipts` and `inventory_receipt_edit` (sources `viewManagePallets`, `viewAddPallet`, `viewModifyPallet`):
+    - Entered, reviewed, then posted in one step as 'Receipt' rows. What is posted is what was reviewed: a count posted, a case size changed or a site switch in between sends the person back to the review. A one-time key stops a double tap or a retry from posting twice.
+    - The name, date and notes can be corrected; lines never change. The date cannot be moved back before a count that was never asked about. A line is voided by a 'Reversal' with a reason, and missed lines can be added.
+    - If a count dated on or after the delivery may already include a line, the person says whether the goods were on the shelves then (left out, noted on the receipt) or arrived later (added).
+    - Names are unique across sites; a blank name, also when correcting, becomes `RCPT-<id>`.
+  - `inventory_count` (sources `viewUpdateInventory`, `editInventoryEvent`, `deleteInventoryEvent`):
+    - One whole-site figure per product, optionally one category at a time. Blank means not counted; 0 means none left.
+    - Reviewed, then posted in one step under the site's stock lock: 'Count Adjustment' rows (a zero change included) and `inventory_count.posted_at`. If the stock, a case size or the products on the sheet changed since the review, the review is shown again with the new figures; stock that changed after the sheet was opened is pointed out at the review. The same one-time key and site check as receipts.
+    - Refused while an event is Open at the site (durable Denied audit).
+    - **Deviation:** voiding a count and keeping an unposted count (legacy `editInventoryEvent`/`deleteInventoryEvent`) are not in R1. A wrong count is corrected by counting again.
+  - `inventory_stock` (source `inventory.php`): stock, last counted date and the nearest best-before date of the stock (estimated first in, first out from the newest deliveries); per-product history with the stock after each change; a ledger-mismatch banner for `catalog.manage`.
+  - `Ledger` is the only code that writes `site_stock` (ci-guard enforces it):
+    - **`site_stock` rows are pre-created at 0** when a product or site is created (this avoids gap-lock deadlocks); a missing row is created at 0 on first use.
+    - Only a move that lowers stock below zero is refused, with every shortage reported at once, unless the caller passes `allowNegative` because the food has already left.
+    - **Count offset:** a movement that a later count already includes is cancelled against that count (`offset_after_txn`, `offset_after_time` or `offset_count_line_id`), so the stock stays at what was counted.
+  - **For P3:** opening an event must take `Locks::site`, so an opening can never overlap a count.
+  - **For P4:**
+    - `DistributionService` posts `Ledger::post('Distribution', …)` with `allowNegative` for offline replay and late entry, and `offset_after_time` set to the clamped `recorded_at_client`.
+    - The offline pack and the Station pick list use "active, or on hand > 0" (11-design:470, 12-design:245).
+  - **Opening stock** is entered as ordinary receipts. A bulk opening-stock import is left to P5 (UC-12).
 - **Exit:** for every site × product, Σ ledger = `quantity_on_hand`; last-Admin and self-edit refusals tested; an allotment version published.
 
 ### P2B: Offline platform (∥ P2A, critical path; 25–30)
