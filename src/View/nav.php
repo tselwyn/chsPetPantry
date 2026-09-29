@@ -21,6 +21,7 @@ return [
     ['group' => 'Inventory', 'file' => 'inventory_receipts.php', 'label' => 'Goods received', 'capability' => 'inventory.receive'],
     ['group' => 'Inventory', 'file' => 'inventory_count.php', 'label' => 'Stock count', 'capability' => 'inventory.count'],
     ['group' => 'Inventory', 'file' => 'inventory_catalogue.php', 'label' => 'Product catalogue', 'capability' => 'inventory.view'],
+    ['group' => 'Inventory', 'file' => 'inventory_barcode_link.php', 'label' => 'Link a barcode', 'capability' => 'catalog.barcode_link'],
 
     ['group' => 'Spay/Neuter', 'file' => 'snv_followups.php', 'label' => 'Follow-ups', 'capability' => 'snv.manage'],
 

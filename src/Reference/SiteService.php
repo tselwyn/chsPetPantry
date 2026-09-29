@@ -6,6 +6,8 @@ namespace Pfpms\Reference;
 use DateTimeZone;
 use Pfpms\Audit\Audit;
 use Pfpms\Db;
+use Pfpms\Inventory\Locks;
+use Pfpms\Inventory\StockRepository;
 use Pfpms\Validation\ValidationException;
 use Pfpms\Validation\Validator;
 
@@ -20,15 +22,20 @@ final class SiteService
 {
     public const FIELDS = ['name', 'street_address', 'city', 'state', 'postal_code', 'time_zone'];
 
-    /** @throws ValidationException */
+    /**
+     * A new site gets a zero stock row for every product (plan P2A), under the catalogue lock so a
+     * product created at the same moment is not missed.
+     * @throws ValidationException
+     */
     public static function create(array $input): int
     {
         $values = self::validate($input, null);
-        return Db::transaction(function () use ($values): int {
+        return Locks::catalogue(fn(): int => Db::transaction(function () use ($values): int {
             $id = SiteRepository::insert($values);
+            StockRepository::precreateForSite($id);
             Audit::record('site_create', 'site', $id, details: ['name' => $values['name']]);
             return $id;
-        });
+        }));
     }
 
     /** @throws ValidationException */

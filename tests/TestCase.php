@@ -58,10 +58,13 @@ abstract class TestCase extends BaseTestCase
         return $row;
     }
 
+    /** A site with its zero stock rows, as SiteService::create makes them. */
     protected function makeSite(string $name): int
     {
         Db::pdo()->prepare('INSERT INTO site (name) VALUES (?)')->execute([$name]);
-        return (int) Db::pdo()->lastInsertId();
+        $id = (int) Db::pdo()->lastInsertId();
+        \Pfpms\Inventory\StockRepository::precreateForSite($id);
+        return $id;
     }
 
     protected function setSetting(string $key, string $value): void

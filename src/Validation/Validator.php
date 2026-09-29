@@ -115,6 +115,19 @@ final class Validator
         return self::fromUnits($units, $scale);
     }
 
+    /**
+     * A whole number from $min to $max written with digits only (surrounding spaces allowed), e.g.
+     * a quantity of units. No signs, decimals, exponents or thousands separators.
+     */
+    public static function wholeNumber(?string $value, int $min, int $max): ?int
+    {
+        if ($value === null || !preg_match('/^\s*(\d{1,9})\s*$/', $value, $m)) {
+            return null;
+        }
+        $n = (int) $m[1];
+        return $n >= $min && $n <= $max ? $n : null;
+    }
+
     /** '12' and '5' at scale 2 → 1205 (hundredths). */
     private static function toUnits(string $whole, string $fraction, int $scale): int
     {

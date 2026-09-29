@@ -92,4 +92,15 @@ final class ValidatorTest extends TestCase
         $this->assertSame('-3.05', Validator::fromUnits(-305, 2));
         $this->assertSame('0.07', Validator::fromUnits(7, 2));
     }
+
+    public function testWholeNumber(): void
+    {
+        $this->assertSame(12, Validator::wholeNumber(' 12 ', 1, 99999));
+        $this->assertSame(0, Validator::wholeNumber('0', 0, 10));
+        $this->assertSame(99999, Validator::wholeNumber('99999', 1, 99999));
+        foreach (['0', '100000', '1.5', '-1', '1e3', '1,000', '', 'x', '0x10'] as $bad) {
+            $this->assertNull(Validator::wholeNumber($bad, 1, 99999), "refuses '$bad'");
+        }
+        $this->assertNull(Validator::wholeNumber(null, 0, 1));
+    }
 }
