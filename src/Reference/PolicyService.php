@@ -90,7 +90,7 @@ final class PolicyService
      */
     public static function overview(): array
     {
-        $today = Clock::now()->format('Y-m-d');
+        $today = Clock::orgToday();
         $names = [];
         foreach (LanguageRepository::all() as $language) {
             $names[$language['language_code']] = $language['name'];
@@ -128,7 +128,7 @@ final class PolicyService
     public static function blank(?string $docType): array
     {
         return ['doc_type' => Validator::oneOf($docType, self::TYPES) ?? self::TYPES[0], 'version' => '',
-            'language_code' => Settings::string('default_language', 'en'), 'effective_from' => Clock::now()->format('Y-m-d'), 'body' => ''];
+            'language_code' => Settings::string('default_language', 'en'), 'effective_from' => Clock::orgToday(), 'body' => ''];
     }
 
     /**

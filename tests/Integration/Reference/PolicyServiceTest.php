@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Pfpms\Tests\Integration\Reference;
 
 use Pfpms\Auth\Policy;
+use Pfpms\Clock;
 use Pfpms\Db;
 use Pfpms\Reference\LanguageService;
 use Pfpms\Reference\PolicyRepository;
@@ -186,6 +187,25 @@ final class PolicyServiceTest extends TestCase
         $type = $this->overviewOf(Policy::CONFIDENTIALITY);
         $this->assertSame([$yesterday => 'in_force', $tomorrow => 'scheduled'], $this->statuses($type));
         $this->assertSame($yesterday, (int) array_column($type['shown'], null, 'language_code')['en']['document']['document_id']);
+    }
+
+    public function testInForceFollowsTheOrganisationsDateNotTheUtcDate(): void
+    {
+        $this->setSetting('organisation_time_zone', 'America/New_York');
+        $old = $this->doc('1', 'en', '2026-09-01');
+        $next = $this->doc('2', 'en', '2026-10-02');
+
+        Clock::freeze('2026-10-02 02:00:00'); // 10 pm on 1 October in New York, already 2 October in UTC
+        $this->assertSame($old, (int) Policy::current(Policy::CONFIDENTIALITY)['document_id'], 'a version effective tomorrow is not in force the evening before');
+        $this->assertSame([$old => 'in_force', $next => 'scheduled'], $this->statuses($this->overviewOf(Policy::CONFIDENTIALITY)));
+        $this->assertSame('2026-10-01', PolicyService::blank(null)['effective_from'], 'a new text starts on the local today');
+
+        Clock::freeze('2026-10-02 03:59:59'); // 11:59:59 pm in New York
+        $this->assertSame($old, (int) Policy::current(Policy::CONFIDENTIALITY)['document_id']);
+        Clock::freeze('2026-10-02 04:00:00'); // midnight in New York
+        $this->assertSame($next, (int) Policy::current(Policy::CONFIDENTIALITY)['document_id']);
+        $this->assertSame([$old => 'replaced', $next => 'in_force'], $this->statuses($this->overviewOf(Policy::CONFIDENTIALITY)));
+        $this->assertSame('2026-10-02', PolicyService::blank(null)['effective_from']);
     }
 
     public function testATypeWithNoTextShowsNothingInForce(): void

@@ -12,6 +12,9 @@ use Pfpms\Settings;
  * US-03: the confidentiality agreement is shown before the home screen on first login,
  * and the version and date accepted are stored. US-30 (yearly re-acknowledgement) uses
  * policy_acknowledgement.due_again_on.
+ *
+ * Start dates and due dates are organisation dates (Clock::orgToday), not UTC dates: in the
+ * evening in the Americas the UTC date is already tomorrow.
  */
 final class Policy
 {
@@ -31,7 +34,7 @@ final class Policy
     {
         $default = Settings::string('default_language', 'en');
         $language ??= $default;
-        $today = Clock::now()->format('Y-m-d');
+        $today = Clock::orgToday();
         $pdo = Db::pdo();
 
         $st = $pdo->prepare('SELECT version FROM policy_document WHERE doc_type = ? AND language_code = ? AND effective_from <= ?
@@ -78,13 +81,13 @@ final class Policy
         );
         $st->execute([$user['user_id'], $doc['doc_type'], $doc['version']]);
         $due = $st->fetchColumn();
-        return $due === null || $due === false || $due <= Clock::now()->format('Y-m-d');
+        return $due === null || $due === false || $due <= Clock::orgToday();
     }
 
     public static function acknowledge(int $userId, int $documentId): void
     {
         $days = Settings::int('policy_reack_days', 365);
         Db::pdo()->prepare('INSERT INTO policy_acknowledgement (user_id, document_id, acknowledged_at, due_again_on) VALUES (?, ?, ?, ?)')
-            ->execute([$userId, $documentId, Clock::db(), $days > 0 ? Clock::now()->modify("+$days days")->format('Y-m-d') : null]);
+            ->execute([$userId, $documentId, Clock::db(), $days > 0 ? Clock::orgDate("+$days days") : null]);
     }
 }

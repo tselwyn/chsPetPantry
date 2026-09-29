@@ -88,6 +88,24 @@ final class TokensPolicyTest extends TestCase
         $this->assertTrue(Policy::acknowledgementRequired($user), 'due again after policy_reack_days (US-30)');
     }
 
+    public function testReacknowledgementDatesAreOrganisationDates(): void
+    {
+        $this->setSetting('organisation_time_zone', 'America/New_York');
+        $this->setSetting('policy_reack_days', '365');
+        $user = $this->makeUser();
+        Db::pdo()->exec("INSERT INTO policy_document (doc_type, version, language_code, body, effective_from) VALUES ('Confidentiality Agreement', '1', 'en', 'Text', '2026-01-01')");
+        $doc = (int) Db::pdo()->lastInsertId();
+
+        Clock::freeze('2026-10-02 02:00:00'); // 10 pm on 1 October in New York
+        Policy::acknowledge($user['user_id'], $doc);
+        $this->assertSame('2027-10-01', $this->scalar('SELECT due_again_on FROM policy_acknowledgement WHERE user_id = ?', [$user['user_id']]),
+            '365 days from the local date it was accepted, not from the UTC date');
+        Clock::freeze('2027-10-01 03:59:59'); // 11:59:59 pm on 30 September in New York
+        $this->assertFalse(Policy::acknowledgementRequired($user));
+        Clock::freeze('2027-10-01 04:00:00'); // midnight: the due date has begun locally
+        $this->assertTrue(Policy::acknowledgementRequired($user), 'due again on the local due date (US-30)');
+    }
+
     public function testAStrayOldTranslationNeverReplacesANewerVersion(): void
     {
         $insert = Db::pdo()->prepare("INSERT INTO policy_document (doc_type, version, language_code, body, effective_from) VALUES ('Retention Notice', ?, ?, ?, ?)");

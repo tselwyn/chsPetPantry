@@ -54,7 +54,7 @@ $userId = Db::transaction(function () use ($pdo, $username, $email, $first, $las
     $pdo->prepare(
         "INSERT INTO user_account (username, email, first_name, last_name, role, status, password_hash, must_change_password, start_date, created_by, created_at)
          VALUES (?, ?, ?, ?, 'Administrator', 'Pending', ?, 1, ?, ?, ?)"
-    )->execute([$username, $email, $first, $last, PasswordPolicy::hash($temporary), Clock::now()->format('Y-m-d'), $system, Clock::db()]);
+    )->execute([$username, $email, $first, $last, PasswordPolicy::hash($temporary), Clock::orgToday(), $system, Clock::db()]);
     $id = (int) $pdo->lastInsertId();
     Audit::setActor($system);
     Audit::record('user_create', 'user_account', $id, 'Success', 'Administrator created from the command line',
