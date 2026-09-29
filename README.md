@@ -49,12 +49,27 @@ A web application for running a pet food pantry. It keeps records of participant
 
 In `dev`, emailed links such as password resets are written to `storage/mail/*.eml` rather than sent.
 
+## Scheduled jobs
+
+`php bin/cron.php all` runs every job; `php bin/cron.php list` shows them. The jobs are:
+- retry queued email;
+- time out abandoned sessions;
+- purge old rate-limit counters.
+
+Schedule it every 30 minutes, the most often SiteGround's fair-use policy allows. Time-critical mail such as password resets is sent immediately, so cron only retries and tidies up.
+
 ## Tests
 
 1. Copy `config/config.test.example.php` to `config/config.test.php` and point it at a database whose name ends in `_test`. The suite empties that database and rebuilds it on every run.
 2. Run the tests:
    - with Composer set up: `vendor/bin/phpunit`;
    - without PHPUnit: `php tests/run.php [filter]` runs the same tests.
+3. Test on every engine: `docker compose -f tools/docker-compose.db.yml up -d` starts MariaDB 10.4, MySQL 8.4 and Percona 8.4 locally, on ports 3310, 3384 and 3385.
+
+CI (`.github/workflows/ci.yml`) runs on every push and pull request:
+- `bin/ci-guard.php`, the SQL portability, immutability and hygiene guard from plan §8;
+- PHP lint and a scan of the working tree for secrets;
+- then, for PHP 8.2 and 8.3 against each of MariaDB 10.4, MySQL 8.4 and Percona 8.4: migrate twice, check the schema, load the seeds twice, and run the suite.
 
 ## Security notes
 

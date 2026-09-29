@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Guard, lint and secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Portability, immutability and hygiene guard (plan section 8)
+        run: php bin/ci-guard.php
+      - name: PHP lint
+        run: find src bin public templates tests config -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+      - name: Secret scan of the working tree
+        # Scans files, not history: the inherited history still contains rotated secrets until it is purged.
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.21.2 dir /repo --config /repo/.gitleaks.toml --redact --no-banner
+
+  test:
+    name: PHP ${{ matrix.php }} on ${{ matrix.db }}
+    needs: guard
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3']
+        db: ['mariadb:10.4', 'mysql:8.4', 'percona/percona-server:8.4']
+    services:
+      db:
+        image: ${{ matrix.db }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring, openssl, gd, zip, intl, curl
+          coverage: none
+      - name: Create databases and a non-SUPER owner account (like shared hosting)
+        run: |
+          mysql -h127.0.0.1 -uroot -e "
+            CREATE DATABASE pfpms_ci; CREATE DATABASE pfpms_test;
+            CREATE USER 'pfpms_owner'@'%' IDENTIFIED BY '';
+            GRANT ALL PRIVILEGES ON pfpms_ci.* TO 'pfpms_owner'@'%';
+            GRANT ALL PRIVILEGES ON pfpms_test.* TO 'pfpms_owner'@'%';"
+      - name: Write CI configs
+        run: |
+          mkdir -p /tmp/pfpms
+          KEY=$(php bin/generate-key.php)
+          for name in ci test; do
+            cat > /tmp/pfpms/$name.php <<EOF
+          <?php return [
+            'env' => 'test',
+            'db' => ['host' => '127.0.0.1', 'port' => 3306, 'name' => 'pfpms_$name', 'user' => 'pfpms_owner', 'pass' => ''],
+            'app' => ['base_url' => 'http://pfpms.localhost', 'trusted_proxies' => []],
+            'crypto' => ['active' => 'k1', 'keys' => ['k1' => '$KEY']],
+            'mail' => ['transport' => 'array', 'from_email' => 'no-reply@example.test', 'from_name' => 'CI'],
+          ];
+          EOF
+          done
+      - name: Migrate (with optional triggers; Skipped where the host refuses them)
+        run: php bin/migrate.php --config=/tmp/pfpms/ci.php --with-optional
+      - name: Second migrate run is a no-op
+        run: php bin/migrate.php --config=/tmp/pfpms/ci.php --with-optional | tee /tmp/pfpms/second.txt && grep -q "Nothing to do" /tmp/pfpms/second.txt
+      - name: Schema contract and smoke checks
+        run: php bin/schema-check.php --config=/tmp/pfpms/ci.php
+      - name: Seeds load twice
+        run: php bin/seed.php --dev --config=/tmp/pfpms/ci.php && php bin/seed.php --dev --config=/tmp/pfpms/ci.php
+      - name: Test suite
+        env:
+          PFPMS_TEST_CONFIG: /tmp/pfpms/test.php
+        run: php tests/run.php
