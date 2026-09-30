@@ -37,7 +37,7 @@ final class Auth
      * @return array{ok: true, user: array, sessionId: string}|array{ok: false, code: string}
      *         code: 'invalid' | 'locked' | 'inactive' | 'expired' | 'not_started' | 'rate_limited'
      */
-    public static function attempt(string $identifier, string $password, string $ip, ?int $siteId = null): array
+    public static function attempt(string $identifier, #[\SensitiveParameter] string $password, string $ip, ?int $siteId = null): array
     {
         $identifier = trim($identifier);
         $details = ['ip' => $ip];
@@ -103,7 +103,7 @@ final class Auth
      * flag, activates a Pending account (UC-01 §3.2.2), revokes outstanding reset links and ends
      * the user's other sessions. Call inside a transaction when combined with other work.
      */
-    public static function setPassword(int $userId, string $newPassword, string $endReason, ?string $keepSessionId = null): void
+    public static function setPassword(int $userId, #[\SensitiveParameter] string $newPassword, string $endReason, ?string $keepSessionId = null): void
     {
         Db::pdo()->prepare(
             "UPDATE user_account SET password_hash = ?, password_changed_at = ?, must_change_password = 0,
@@ -114,10 +114,11 @@ final class Auth
         // links and Administrator-issued invitations, reset links and printed sheets alike.
         Tokens::revokeAll($userId, Tokens::PASSWORD_RESET);
         Tokens::revokeAll($userId, Tokens::TEMPORARY_CREDENTIAL);
+        Tokens::revokeAll($userId, Tokens::DEVICE_REGISTRATION); // tablet codes they created (reprint after a password change)
         SessionStore::endAllForUser($userId, $endReason, $userId, $keepSessionId);
     }
 
-    public static function verifyPassword(int $userId, string $password): bool
+    public static function verifyPassword(int $userId, #[\SensitiveParameter] string $password): bool
     {
         $st = Db::pdo()->prepare('SELECT password_hash FROM user_account WHERE user_id = ?');
         $st->execute([$userId]);

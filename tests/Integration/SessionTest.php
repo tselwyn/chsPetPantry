@@ -59,6 +59,60 @@ final class SessionTest extends TestCase
         $this->assertSame(['ended' => 'ended'], SessionStore::validate($b));
     }
 
+    public function testEndAllForDeviceEndsOnlyThatDevicesSessions(): void
+    {
+        $site = $this->makeSite('Test North');
+        $user = $this->makeUser();
+        $tablet = $this->makeDevice($site);
+        $other = $this->makeDevice($site);
+        $on = SessionStore::create($user['user_id'], $site, 'PIN', $tablet);
+        $elsewhere = SessionStore::create($user['user_id'], $site, 'PIN', $other);
+        $browser = SessionStore::create($user['user_id'], $site);
+        $this->assertSame(1, SessionStore::endAllForDevice($tablet, 'Device Revoked', $user['user_id']));
+        $this->assertSame('Device Revoked', $this->scalar('SELECT end_reason FROM user_session WHERE session_id = ?', [$on]));
+        $this->assertArrayHasKey('user', SessionStore::validate($elsewhere));
+        $this->assertArrayHasKey('user', SessionStore::validate($browser));
+        $this->assertSame(0, SessionStore::endAllForDevice($tablet, 'Device Revoked'), 'nothing left to end');
+    }
+
+    public function testASessionOnARevokedDeviceEnds(): void
+    {
+        $site = $this->makeSite('Test North');
+        $user = $this->makeUser();
+        $tablet = $this->makeDevice($site, ['token_hash' => str_repeat('a', 64), 'is_site_registered' => 1]);
+        $sid = SessionStore::create($user['user_id'], $site, 'Password', $tablet); // opened while the tablet was being retired
+        $browser = SessionStore::create($user['user_id'], $site);
+        Db::pdo()->prepare('UPDATE device SET revoked_at = ? WHERE device_id = ?')->execute([Clock::db(), $tablet]);
+        $this->assertSame(['ended' => 'device'], SessionStore::validate($sid));
+        $this->assertSame('Device Revoked', $this->scalar('SELECT end_reason FROM user_session WHERE session_id = ?', [$sid]));
+        $checked = SessionStore::validate($browser);
+        $this->assertArrayHasKey('user', $checked);
+        $this->assertArrayNotHasKey('device_revoked_at', $checked['user'], 'the device check stays out of the user row');
+    }
+
+    public function testPeopleSignedOutByARetirementAreToldWhy(): void
+    {
+        $site = $this->makeSite('Test North');
+        $user = $this->makeUser();
+        $tablet = $this->makeDevice($site, ['token_hash' => str_repeat('b', 64), 'is_site_registered' => 1]);
+        $sid = SessionStore::create($user['user_id'], $site, 'PIN', $tablet);
+        SessionStore::endAllForDevice($tablet, 'Device Revoked');
+        $this->assertSame(['ended' => 'device'], SessionStore::validate($sid), 'so the sign-in page can say the tablet was taken out of service');
+        $other = SessionStore::create($user['user_id'], $site);
+        SessionStore::end($other, 'Logout');
+        $this->assertSame(['ended' => 'ended'], SessionStore::validate($other));
+    }
+
+    public function testASessionOnATabletThatErasedItselfEnds(): void
+    {
+        $site = $this->makeSite('Test North');
+        $user = $this->makeUser();
+        $tablet = $this->makeDevice($site, ['token_hash' => str_repeat('c', 64), 'is_site_registered' => 1]);
+        $sid = SessionStore::create($user['user_id'], $site, 'Password', $tablet);
+        Db::pdo()->prepare('UPDATE device SET wiped_at = ? WHERE device_id = ?')->execute([Clock::db(), $tablet]); // P2B: it wiped after too many failed unlocks
+        $this->assertSame(['ended' => 'device'], SessionStore::validate($sid));
+    }
+
     public function testUnknownSession(): void
     {
         $this->assertSame(['ended' => 'missing'], SessionStore::validate(str_repeat('0', 64)));

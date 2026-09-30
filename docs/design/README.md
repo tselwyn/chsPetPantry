@@ -15,3 +15,4 @@ These documents are the analysis and design work behind [`../PFPMS_Implementatio
 | 12-design-offline-pwa.md | Offline Station PWA design (detailed) |
 | 20-merged-plan-pre-review.md | Merged plan **before** the review corrections |
 | 30–33 review-*.md | Adversarial reviews: schema and DB, repo facts, requirements coverage, and hosting/offline/security |
+| 40-design-devices.md | Tablet administration (P2A `admin_devices`, as built) and the contract Phase 2B must follow: registration codes, Retire and Erase now, locks, the trusted-device test |

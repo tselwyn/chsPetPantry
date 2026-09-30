@@ -15,7 +15,8 @@ use Pfpms\Settings;
  * id is regenerated freely underneath it (login, PIN switch, site switch, role change).
  *
  * Every request validates the row: 30 minutes idle and 12 hours absolute (both settings),
- * the account still usable, and the session not ended remotely or by a permission change.
+ * the account still usable, the session not ended remotely or by a permission change, and the
+ * tablet it was opened on (if any) not taken out of service.
  */
 final class SessionStore
 {
@@ -39,13 +40,16 @@ final class SessionStore
     /**
      * Check a session and record activity.
      * @return array{user: array, session: array}|array{ended: string} ended is one of
-     *         'missing', 'ended', 'timeout', 'account'
+     *         'missing', 'ended', 'timeout', 'account', 'device'
      */
     public static function validate(string $sessionId): array
     {
         $st = Db::pdo()->prepare(
-            'SELECT s.session_id, s.site_id, s.device_id, s.auth_method, s.started_at, s.last_activity_at, s.ended_at, ' . self::COLUMNS . '
+            'SELECT s.session_id, s.site_id, s.device_id, s.auth_method, s.started_at, s.last_activity_at, s.ended_at, s.end_reason,
+                    d.revoked_at AS device_revoked_at, d.wiped_at AS device_wiped_at, '
+                . self::COLUMNS . '
                FROM user_session s JOIN user_account u ON u.user_id = s.user_id
+               LEFT JOIN device d ON d.device_id = s.device_id
               WHERE s.session_id = ?'
         );
         $st->execute([$sessionId]);
@@ -54,7 +58,11 @@ final class SessionStore
             return ['ended' => 'missing'];
         }
         if ($row['ended_at'] !== null) {
-            return ['ended' => 'ended'];
+            return ['ended' => $row['end_reason'] === 'Device Revoked' ? 'device' : 'ended'];
+        }
+        if ($row['device_id'] !== null && ($row['device_revoked_at'] !== null || $row['device_wiped_at'] !== null)) {
+            self::end($sessionId, 'Device Revoked'); // opened on a tablet while it was being taken out of service, or it erased itself
+            return ['ended' => 'device'];
         }
         $now = Clock::now();
         $idle = max(1, Settings::int('session_idle_minutes', 30));
@@ -73,7 +81,7 @@ final class SessionStore
                 ->execute([Clock::db($now), $sessionId]);
         }
         $session = array_intersect_key($row, array_flip(['session_id', 'site_id', 'device_id', 'auth_method', 'started_at', 'last_activity_at']));
-        $user = array_diff_key($row, $session + ['ended_at' => null]);
+        $user = array_diff_key($row, $session + ['ended_at' => null, 'end_reason' => null, 'device_revoked_at' => null, 'device_wiped_at' => null]);
         return ['user' => $user, 'session' => $session];
     }
 
@@ -91,6 +99,14 @@ final class SessionStore
               WHERE user_id = ? AND ended_at IS NULL AND session_id <> ?'
         );
         $st->execute([Clock::db(), $reason, $endedBy, $userId, $exceptSessionId ?? '']);
+        return $st->rowCount();
+    }
+
+    /** End every open session on a tablet (it was taken out of service). Returns how many. */
+    public static function endAllForDevice(int $deviceId, string $reason, ?int $endedBy = null): int
+    {
+        $st = Db::pdo()->prepare('UPDATE user_session SET ended_at = ?, end_reason = ?, ended_by = ? WHERE device_id = ? AND ended_at IS NULL');
+        $st->execute([Clock::db(), $reason, $endedBy, $deviceId]);
         return $st->rowCount();
     }
 

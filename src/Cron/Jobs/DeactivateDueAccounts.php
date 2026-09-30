@@ -47,9 +47,10 @@ final class DeactivateDueAccounts implements Job
                 if ($upd->rowCount() === 0) {
                     return 0;
                 }
-                SessionStore::endAllForUser((int) $row['user_id'], 'Deactivated');
                 Tokens::revokeAll((int) $row['user_id'], Tokens::TEMPORARY_CREDENTIAL);
                 Tokens::revokeAll((int) $row['user_id'], Tokens::PASSWORD_RESET);
+                Tokens::revokeAll((int) $row['user_id'], Tokens::DEVICE_REGISTRATION);
+                SessionStore::endAllForUser((int) $row['user_id'], 'Deactivated');
                 Audit::record('user_deactivate', 'user_account', (int) $row['user_id'], reason: 'Scheduled deactivation date reached',
                     changes: ['status' => [$row['status'], 'Inactive']], actor: ['user_id' => null, 'session_id' => null]);
                 return 1;

@@ -74,6 +74,8 @@ final class Page
                 Flash::info('You were signed out after a period of inactivity. Please sign in again.');
             } elseif ($reason === 'account') {
                 Flash::error('Your account can no longer be used. Please contact an Administrator.');
+            } elseif ($reason === 'device') {
+                Flash::info('This tablet was taken out of service, so you were signed out. Ask a Coordinator for another tablet.');
             } else {
                 Flash::info('Your session has ended. Please sign in again.');
             }

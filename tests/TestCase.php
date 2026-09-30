@@ -67,6 +67,18 @@ abstract class TestCase extends BaseTestCase
         return $id;
     }
 
+    /** A tablet at a site, waiting for registration unless overrides say otherwise (token_hash, revoked_at, pending_count …). */
+    protected function makeDevice(int $siteId, array $overrides = []): int
+    {
+        static $n = 0;
+        $n++;
+        $row = $overrides + ['site_id' => $siteId, 'label' => "Tablet $n", 'is_site_registered' => 0, 'registered_at' => self::NOW];
+        $columns = array_keys($row);
+        Db::pdo()->prepare('INSERT INTO device (' . implode(', ', $columns) . ') VALUES (' . rtrim(str_repeat('?, ', count($columns)), ', ') . ')')
+            ->execute(array_values($row));
+        return (int) Db::pdo()->lastInsertId();
+    }
+
     protected function setSetting(string $key, string $value): void
     {
         Db::pdo()->prepare('INSERT INTO system_setting (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?')

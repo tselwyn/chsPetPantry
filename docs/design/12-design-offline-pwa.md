@@ -133,6 +133,8 @@ Rule: everything except `meta` and `keyring` is AES-GCM ciphertext.
 - **Never:** the client never deletes an unsynced item unless the server has acknowledged it.
 
 ### 2.5 Device registration
+
+> Superseded for registration, revocation and the heartbeat by `40-design-devices.md` (as built in P2A, and its §0a and §14 contract for P2B).
 - A Coordinator or Admin opens the Station online on the tablet and chooses "Register this device" with a site and label.
 - `api/device/register.php` creates the `device` row (`is_site_registered=1`, `offline_enabled=1`, `device_uuid`, `secret_hash`, `vault_key_enc`) and returns device_uuid and device_secret once.
 - Every device-bound call sends `X-PFPMS-Device: <uuid>.<secret>`: PIN login, pack, push, heartbeat. On its own the secret grants nothing; a user credential is always needed as well.
@@ -173,6 +175,8 @@ Rule: everything except `meta` and `keyring` is AES-GCM ciphertext.
 ## 3. Server sync API
 
 ### 3.1 Endpoints (JSON; `Cache-Control: no-store`)
+
+> The device endpoints (register, heartbeat) follow `40-design-devices.md` §14 instead of the row below.
 
 | Endpoint | Auth | Purpose |
 |---|---|---|

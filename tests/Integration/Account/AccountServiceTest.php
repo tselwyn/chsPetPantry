@@ -239,6 +239,55 @@ final class AccountServiceTest extends TestCase
             'the old grant is ended, not deleted');
     }
 
+    public function testAnAccessChangeCancelsThePersonsRegistrationCodes(): void
+    {
+        $a = $this->makeSite('Site A');
+        $b = $this->makeSite('Site B');
+        $id = $this->invite(['role' => 'Coordinator'], [$a]);
+        Db::pdo()->prepare("UPDATE user_account SET status = 'Active' WHERE user_id = ?")->execute([$id]);
+        $code = Tokens::issue($id, Tokens::DEVICE_REGISTRATION, 60, $this->makeDevice($a));
+        $this->update($id, ['phone' => '8435550104']);
+        $this->assertNotNull(Tokens::find($code, Tokens::DEVICE_REGISTRATION), 'a phone change leaves it working');
+        $this->update($id, ['reason' => 'Moved to Site B'], [$b]);
+        $this->assertNull(Tokens::find($code, Tokens::DEVICE_REGISTRATION), 'a tablet code they created stops working');
+    }
+
+    public function testDeactivationCancelsThePersonsRegistrationCodes(): void
+    {
+        $site = $this->makeSite('Site A');
+        $now = $this->makeUser(['role' => 'Coordinator']);
+        $code = Tokens::issue($now['user_id'], Tokens::DEVICE_REGISTRATION, 600, $this->makeDevice($site));
+        AccountService::deactivate($now['user_id'], 'Left', null, $this->actor);
+        $this->assertNull(Tokens::find($code, Tokens::DEVICE_REGISTRATION));
+
+        $later = $this->makeUser(['role' => 'Coordinator']);
+        $code = Tokens::issue($later['user_id'], Tokens::DEVICE_REGISTRATION, 7 * 24 * 60, $this->makeDevice($site));
+        AccountService::deactivate($later['user_id'], 'Leaving', '2026-10-03', $this->actor);
+        $this->assertNotNull(Tokens::find($code, Tokens::DEVICE_REGISTRATION), 'until the date');
+        Clock::advance('+2 days');
+        (new DeactivateDueAccounts())->run();
+        $this->assertNull(Tokens::find($code, Tokens::DEVICE_REGISTRATION), 'and through the scheduled job');
+    }
+
+    public function testAResetOrAPasswordChangeCancelsThePersonsRegistrationCodes(): void
+    {
+        $site = $this->makeSite('Site A');
+        $reset = $this->makeUser(['role' => 'Coordinator']);
+        $code = Tokens::issue($reset['user_id'], Tokens::DEVICE_REGISTRATION, 600, $this->makeDevice($site));
+        AccountService::sendReset($reset['user_id'], $this->actor); // the account may be in the wrong hands
+        $this->assertNull(Tokens::find($code, Tokens::DEVICE_REGISTRATION), 'after an Administrator reset');
+
+        $sheet = $this->makeUser(['role' => 'Coordinator']);
+        $code = Tokens::issue($sheet['user_id'], Tokens::DEVICE_REGISTRATION, 600, $this->makeDevice($site));
+        AccountService::issueActivationSheet($sheet['user_id'], $this->actor);
+        $this->assertNull(Tokens::find($code, Tokens::DEVICE_REGISTRATION), 'after a printed reset sheet');
+
+        $own = $this->makeUser(['role' => 'Coordinator']);
+        $code = Tokens::issue($own['user_id'], Tokens::DEVICE_REGISTRATION, 600, $this->makeDevice($site));
+        Auth::setPassword($own['user_id'], self::GOOD_PASSWORD, 'Password Reset');
+        $this->assertNull(Tokens::find($code, Tokens::DEVICE_REGISTRATION), 'after changing their own password');
+    }
+
     public function testCorrectingTheEmailCancelsLinksSentToTheOldAddress(): void
     {
         $invited = $this->invite(['role' => 'Board', 'email' => 'typo@exmaple.test']);

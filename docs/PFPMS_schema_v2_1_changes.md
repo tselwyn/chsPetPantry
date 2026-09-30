@@ -2,12 +2,12 @@
 
 `docs/PFPMS_schema_v2.sql` is the baseline, now at **v2.0.1**. Later changes are additive migration files in `migrations/`, applied by `php bin/migrate.php`. This page lists every change so the design team can fold them into `PFPMS_ERD_v2.drawio`.
 
-**Where it has been verified:** the full set (0001–0009) loads, re-runs as a no-op, and passes `php bin/schema-check.php` on the engines below; 0010 and 0011 were verified the same way on MariaDB 10.4 and MySQL 8.0:
+**Where it has been verified:** the full set (0001–0009) loads, re-runs as a no-op, and passes `php bin/schema-check.php` on the engines below; 0010, 0011 and 0012 were verified the same way on MariaDB 10.4 and MySQL 8.0 (0012 also on MySQL 9.4):
 - MariaDB 10.4.28 (XAMPP);
 - MySQL 8.0.43;
 - MySQL 9.4.0.
 
-Production runs Percona/MySQL 8.4, which sits between the two MySQL versions tested. Totals after v2.1: **66 tables** (plus the tooling table `schema_version`) and **166 foreign keys**.
+Production runs Percona/MySQL 8.4, which sits between the two MySQL versions tested. Totals after v2.1: **66 tables** (plus the tooling table `schema_version`) and **167 foreign keys**.
 
 ## v2.0.1 (edited in place in `docs/PFPMS_schema_v2.sql`; identical to `migrations/0001`)
 
@@ -76,6 +76,13 @@ Production runs Percona/MySQL 8.4, which sits between the two MySQL versions tes
 - A version is every row sharing one `rule_version`. `published_at IS NULL` marks the one draft; its empty cells are NULL pounds, and publishing refuses any empty cell, so published rows always have pounds.
 - The version in force on a site-local date is the published version with the latest `effective_from` on or before it, as for policy texts. **`effective_to` is kept but not used** (it stays NULL): a version ends the day before the next one starts. This departs from design M2 (11-design-features.md, "Publish ... closes the old version (effective_to)"), so that a published version that has started is never updated, and a scheduled one can be taken back without touching the version in force. Code must never read `effective_to IS NULL` as "current"; use `AllotmentRuleRepository::versionInForce()`.
 - `rule_version` 0 is reserved for imported legacy distributions (no rules); real versions start at 1. A version taken back before it starts is renumbered, so a published number never stands for two sets of rules.
+
+**0012 Device registration** (plan P2A `admin_devices`; US-01, UC-01 §3.3.3, UC-06 §4.3)
+- `auth_token.purpose` gains 'Device Registration': the single-use code printed on `admin_devices`, bound to the waiting device row (`device_id`) and to the person who created it (`user_id`); only its SHA-256 is stored. The installed Station redeems it in Phase 2B.
+- `user_session.end_reason` gains 'Device Revoked'.
+- `device` gains `reported_max_seq` (the tablet's reported highest sequence, written by the P2B heartbeat), `revoked_lost` and `revoked_max_seq` (set when a tablet is taken out of service, `revoked_lost` also when a retired tablet is reported lost later; for a lost or erased tablet the cut-off counts only what the server received, and P2B holds every item it uploads for review, so `revoked_max_seq` is a record), `erase_requested_at` and `erase_requested_by` (FK to user_account: when and by whom Erase now was chosen, which may be after the tablet was retired) and `wiped_at` (the tablet confirmed its erase, written by P2B). FKs 166 → 167.
+- One setting, `device_code_minutes` (default 60), bringing the total to 68. Tables stay at 66.
+- A tablet waiting for registration is a device row with `token_hash` NULL. Taking a tablet out of service keeps `token_hash` and `vault_key_ciphertext`, so P2B can still recognise it and tell it to erase itself; code must test `DeviceRepository::IN_SERVICE_SQL`, never `token_hash` or `is_site_registered` alone.
 
 **optional/9001 Immutability triggers**
 - BEFORE UPDATE and BEFORE DELETE triggers on `distribution`, `distribution_line`, `distribution_pet`, `audit_log`, `audit_field_change`, `snv_referral_status_log` and `inventory_transaction`.

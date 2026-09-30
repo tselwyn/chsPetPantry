@@ -42,6 +42,48 @@ final class TokensPolicyTest extends TestCase
         $this->assertNull(Tokens::find($raw, Tokens::PASSWORD_RESET));
     }
 
+    public function testConsumeRefusesATokenThatExpiredAfterFind(): void
+    {
+        $user = $this->makeUser();
+        $raw = Tokens::issue($user['user_id'], Tokens::PASSWORD_RESET, 60);
+        $row = Tokens::find($raw, Tokens::PASSWORD_RESET);
+        Clock::advance('+61 minutes');
+        $this->assertFalse(Tokens::consume((int) $row['token_id']));
+        $this->assertNull($this->scalar('SELECT used_at FROM auth_token WHERE token_id = ?', [$row['token_id']]));
+    }
+
+    public function testIssueValueStoresOnlyTheHashAndReturnsTheExpiry(): void
+    {
+        $user = $this->makeUser();
+        $expires = Tokens::issueValue($user['user_id'], Tokens::DEVICE_REGISTRATION, 'K7QM2XRD9VHPC4TNS', 30);
+        $this->assertSame('2026-10-01 12:30:00', $expires);
+        $this->assertSame(0, (int) $this->scalar('SELECT COUNT(*) FROM auth_token WHERE token_hash = ?', ['K7QM2XRD9VHPC4TNS']));
+        $this->assertSame(Tokens::hash('K7QM2XRD9VHPC4TNS'), $this->scalar("SELECT token_hash FROM auth_token WHERE purpose = 'Device Registration'"));
+        $this->assertNotNull(Tokens::find('K7QM2XRD9VHPC4TNS', Tokens::DEVICE_REGISTRATION));
+    }
+
+    public function testRevokeForDevice(): void
+    {
+        $site = $this->makeSite('Test North');
+        $user = $this->makeUser();
+        $tablet = $this->makeDevice($site);
+        $other = $this->makeDevice($site);
+        $code = Tokens::issue($user['user_id'], Tokens::DEVICE_REGISTRATION, 60, $tablet);
+        $grant = Tokens::issue($user['user_id'], Tokens::OFFLINE_GRANT, 60, $tablet);
+        $used = Tokens::issue($user['user_id'], Tokens::DEVICE_REGISTRATION, 60, $tablet);
+        Tokens::consume((int) Tokens::find($used, Tokens::DEVICE_REGISTRATION)['token_id']);
+        $elsewhere = Tokens::issue($user['user_id'], Tokens::OFFLINE_GRANT, 60, $other);
+        Tokens::issue($user['user_id'], Tokens::OFFLINE_GRANT, 1, $tablet); // expires before the revocation
+        Clock::advance('+2 minutes');
+        $this->assertSame(1, Tokens::revokeForDevice($tablet, Tokens::DEVICE_REGISTRATION));
+        $this->assertNull(Tokens::find($code, Tokens::DEVICE_REGISTRATION));
+        $this->assertNotNull(Tokens::find($grant, Tokens::OFFLINE_GRANT), 'the purpose filter');
+        $this->assertSame(1, Tokens::revokeForDevice($tablet), 'the grant; not the redeemed code or the expired grant');
+        $this->assertNull($this->scalar("SELECT revoked_at FROM auth_token WHERE purpose = 'Device Registration' AND used_at IS NOT NULL"));
+        $this->assertSame(1, (int) $this->scalar('SELECT COUNT(*) FROM auth_token WHERE device_id = ? AND revoked_at IS NULL AND expires_at <= ?', [$tablet, Clock::db()]));
+        $this->assertNotNull(Tokens::find($elsewhere, Tokens::OFFLINE_GRANT), 'another tablet');
+    }
+
     public function testPasswordPolicy(): void
     {
         $user = ['username' => 'jmartinez', 'email' => 'jmartinez@example.org', 'first_name' => 'Julia', 'last_name' => 'Martinez'];

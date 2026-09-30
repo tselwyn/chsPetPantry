@@ -23,7 +23,7 @@ use Pfpms\Db;
 use Pfpms\Db\Migrator;
 
 const EXPECTED_TABLES = 66;       // 59 (v2.0.1) + 7 (v2.1), excluding schema_version
-const EXPECTED_FOREIGN_KEYS = 166; // 143 (v2.0.1) + 23 (v2.1)
+const EXPECTED_FOREIGN_KEYS = 167; // 143 (v2.0.1) + 24 (v2.1)
 // JSON columns are LONGTEXT COLLATE utf8mb4_bin on MariaDB; that is the only allowed exception.
 const JSON_COLUMNS = [
     'user_account.notification_prefs', 'registration_draft.form_data', 'intake_question.options',
@@ -118,7 +118,13 @@ check('every text column uses ' . Db::COLLATION . ' (JSON columns excepted)', !$
 
 // --- Seeds -------------------------------------------------------------------------------------
 $settings = (int) col($pdo, 'SELECT COUNT(*) FROM system_setting');
-check('system settings seeded (12 in v2 + 54 in 0002 + 1 in 0010)', $settings === 67, "found $settings");
+check('system settings seeded (12 in v2 + 54 in 0002 + 1 in 0010 + 1 in 0012)', $settings === 68, "found $settings");
+$columnType = static fn(string $table, string $column): string => (string) col($pdo,
+    'SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [$table, $column]);
+check("auth_token.purpose includes 'Device Registration' (0012)", str_contains($columnType('auth_token', 'purpose'), "'Device Registration'"));
+check("user_session.end_reason includes 'Device Revoked' (0012)", str_contains($columnType('user_session', 'end_reason'), "'Device Revoked'"));
+check('device has the 0012 columns', (int) col($pdo, "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'device'
+    AND COLUMN_NAME IN ('reported_max_seq', 'revoked_lost', 'revoked_max_seq', 'wiped_at', 'erase_requested_at', 'erase_requested_by')") === 6);
 check('system account exists and is inactive', col($pdo, "SELECT status FROM user_account WHERE username = 'system'") === 'Inactive');
 
 // --- Smoke tests (rolled back) -----------------------------------------------------------------

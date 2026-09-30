@@ -146,6 +146,7 @@ final class AccountService
                 }
                 Audit::record('user_update', 'user_account', $userId, reason: $reason, changes: $changes);
                 if ($accessChanged) {
+                    Tokens::revokeAll($userId, Tokens::DEVICE_REGISTRATION); // tablet codes they created stop working (P2A admin_devices)
                     SessionStore::endAllForUser($userId, 'Permission Change', $actorId);
                 }
                 if (!$emailChanged) {
@@ -256,6 +257,7 @@ final class AccountService
             if ($now) {
                 Tokens::revokeAll($userId, Tokens::TEMPORARY_CREDENTIAL);
                 Tokens::revokeAll($userId, Tokens::PASSWORD_RESET);
+                Tokens::revokeAll($userId, Tokens::DEVICE_REGISTRATION);
                 SessionStore::endAllForUser($userId, 'Deactivated', $actorId);
             }
             Audit::record('user_deactivate', 'user_account', $userId, reason: $reason, changes: [
@@ -328,7 +330,7 @@ final class AccountService
      * The person opens their link and chooses a password. Returns the user id.
      * @throws ValidationException when the link is not valid or the password is refused
      */
-    public static function activate(string $rawToken, string $password, string $confirm): int
+    public static function activate(#[\SensitiveParameter] string $rawToken, #[\SensitiveParameter] string $password, #[\SensitiveParameter] string $confirm): int
     {
         $token = Tokens::find($rawToken, Tokens::TEMPORARY_CREDENTIAL);
         $account = $token ? AccountRepository::find((int) $token['user_id']) : null;
@@ -378,8 +380,10 @@ final class AccountService
                                    status = IF(status = 'Locked', 'Active', status) WHERE user_id = ?")
             ->execute([self::unusablePasswordHash(), $userId]);
         Tokens::revokeAll($userId, Tokens::PASSWORD_RESET);
+        Tokens::revokeAll($userId, Tokens::DEVICE_REGISTRATION); // the account may be in the wrong hands: its tablet codes stop working
+        $token = self::newActivationToken($userId); // before the sessions: tokens, then sessions, the order every path uses
         SessionStore::endAllForUser($userId, 'Password Reset', $actorId);
-        return self::newActivationToken($userId);
+        return $token;
     }
 
     private static function unusablePasswordHash(): string

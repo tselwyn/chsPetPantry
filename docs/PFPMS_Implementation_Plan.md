@@ -107,7 +107,7 @@ Pages contain no SQL. Services own the rules, transactions and audit, and the we
 **Default capability matrix** (Coordinator inherits Volunteer; Administrator inherits Coordinator):
 - **Volunteer:** search, register and update participants; pets; check-in; record distribution; history; SNV refer; request pet delete; offline.
 - **Coordinator adds:** event management and dashboard; stock receive and count; barcode linking; intake questions; languages; viewing the allotment rules; device registration; session roster and remote sign-out; temporary site grants; distribution reversal; sync review; SNV management; aggregate reports.
-- **Administrator adds:** all sites; settings, lookups, policies, clinics and budgets; allotment rules; users; restricted participant fields; merge, delete, restore and erasure; alerts; pet delete; overrides (level set in settings); import; identifiable reports; audit viewer.
+- **Administrator adds:** all sites; settings, lookups, policies, clinics and budgets; allotment rules; users; restricted participant fields; merge, delete, restore and erasure; alerts; pet delete; overrides (level set in settings); import; identifiable reports; audit viewer; erasing a tablet together with the records it has not uploaded (Wipe Now, `device.erase`).
 - **Board:** read-only aggregate dashboard; no writes and no offline grant.
 
 **Station (offline PWA)**
@@ -199,7 +199,13 @@ Each semester ends with a demonstrable staging milestone.
 
 ### P2A: Configuration, accounts, stock (∥ P2B; 30–40)
 - **Admin and config screens** (`src/Reference/*`):
-  - `admin_sites` (IANA time zone), `admin_devices` (register, revoke or wipe; shows last seen, pending count, build, persisted flag), `admin_languages` (US-23 list);
+  - `admin_sites` (IANA time zone), `admin_languages` (US-23 list);
+  - `admin_devices`, `admin_device_edit`, `admin_device_credential` (`src/Device/*`, Coordinators at their own sites, Administrators everywhere):
+    - **Register** = add a tablet (site, name) and print a single-use registration code: 16 Crockford Base32 symbols (80 bits) plus a check symbol, and a QR holding `PFPMS-DEVICE:1:<code>`, which is not a web address. It works for `device_code_minutes` (default 60), only its SHA-256 is stored, and it is bound to the person who created it. The installed Station redeems it in P2B; nobody signs in on the tablet to register it.
+    - **Revoke or wipe** = **Retire** (revoke, then upload and erase; "lost or stolen" alerts Administrators) or **Erase now** (revoke and erase without uploading; Administrator only, `device.erase`). Every revocation is final, ends the tablet's sessions ('Device Revoked') and revokes its codes and grants at once, and keeps the credential hash so the wipe directive can still reach the tablet. Adding it again makes a new device row.
+    - Shows last seen, pending count, build and persisted flag as "not reported" until the P2B heartbeat writes them; warnings (stale unsynced records, storage not kept, older build, inactive site) are display only.
+    - **Deviations:** registration by printed code, superseding the Coordinator sign-in on the tablet (12-design:136-137, 11-design:232); no revoke without a wipe and no un-revoke (12-design:130); Wipe Now is Administrator only (plan:119); audit names `device_add`, `device_code_issue`, `device_cancel`, `device_rename`, `device_retire`, `device_erase`, `device_report_lost`; the stock-count warning counts retiring tablets until they confirm their wipe and leaves out erasing ones; `Tokens::consume` now checks expiry for every purpose; an access change, deactivation, credential reset or password change cancels the person's live registration codes; tablet names are unique per site among current tablets; `SessionStore::validate` refuses a session bound to a revoked or erased tablet; page names `admin_devices`, `admin_device_edit`, `admin_device_credential` (not 12-design's `deviceManagement.php`); the credential travels as `Authorization: PFPMS-Device` (superseding 10-design:374, 11-design:211, 12-design:138); `offline_enabled` is never set at registration (12-design:137); the heartbeat needs the device credential only (12-design:183); oldest pending item, storage estimate and calibrated PBKDF2 rounds move to P2B's migration 0013 (12-design:139, 183, 219). After review: a retired tablet can be reported lost later; Retire and Erase now never wait on the tablet's named lock; for a tablet reported lost or erased the upload cut-off counts only what the server received; Erase now's check of the reported unsynced count refuses once and can then be confirmed; creating a code re-checks the creator's committed access (role, forced password change, and no change since the page opened); adding a tablet never reveals whether a site outside the person's scope exists.
+    - **Contract for P2B** (`docs/design/40-design-devices.md` §0a and §14): the only trusted test is `DeviceRepository::IN_SERVICE_SQL` plus an active site; P2B's registration takes `DeviceLocks::device`; uploads and the wipe confirmation lock the device row per item and re-check `revoked_at` under it, never holding `device:<id>`; no `auth_token` row is inserted after `user_session` rows are updated in the same transaction; durable audit rows on device endpoints are written after the device transaction rolls back.
   - `admin_policies` (versioned per type × language; a version that has been used is immutable), `admin_settings` (typed, audited);
   - `admin_service_area` (bulk ZIP entry, ZIP+4 accepted), `admin_species`, `admin_breeds`, `admin_size_bands` (US-13 pictures, no overlapping ranges);
   - **`admin_allotment_rules`** (logic source `legacy/viewShoppingList.php`; draft → publish; one version in force per date; a rule for every species × band);
@@ -236,7 +242,12 @@ Each semester ends with a demonstrable staging milestone.
 ### P2B: Offline platform (∥ P2A, critical path; 25–30)
 - **US-01** PIN fast-switch (online `api/auth/pin.php` and an offline verifier; site-registered devices only).
 - **UC-01 §3.3.3** offline restricted session.
-- Device registration, credential and heartbeat.
+- Device registration, credential and heartbeat:
+  - `api/device/register.php` redeems the P2A code (`RegistrationCode::normalise`, `Tokens::find`, then under `DeviceLocks::device`: the device still waiting, the creator still allowed at its site, `Tokens::consume`); it sets `offline_enabled` 0, which only the heartbeat turns on. It calls `Csrf::verify()` explicitly.
+  - The credential (`pfd1_` + 32 random bytes, stored as `Tokens::hash`) travels only as `Authorization: PFPMS-Device <credential>`: add the device guard (`Api::start(['device' => …])`), the `.htaccess` `Authorization` pass-through (verify on SiteGround) and `Request::json`.
+  - The heartbeat needs the device credential only, so wipe directives reach a locked tablet; the wipe is confirmed on the heartbeat (`wiped_at`), accepted only from a revoked tablet. A revoked tablet calling in alerts Administrators with no site (`toRoleOnce('Administrator', null, …)`). Rescue push is `api/sync/push.php` with `rescue: true`.
+  - Pushes from a retired tablet follow plan §4 (items recorded after `revoked_at` are Held). A suspect tablet (reported lost or stolen, or erased) has **every** upload Held for review once it is suspect, whatever its sequence or recorded time; `revoked_max_seq` stays as a record of how far the server had received.
+  - Its migration is 0013 (oldest pending item, storage estimate, calibrated PBKDF2 rounds). The Station's `manifest.json` name is `RegistrationSheet::APP_NAME`, and its JS passes `tests/fixtures/registration_code.json`.
 - Offline grants: expiry = **min(`offline_grant_hours`, the user's `user_site_access.ends_at`, the account expiry)**, enforced when the vault unlocks (US-28 AC2).
 - Outbox and sync engine (item handlers stubbed).
 - **Files:** `station/{index.php,sw.php,manifest.json}`, `station/js/{app,router,api,db,vault,session,outbox,sync,rules,calc}.js`, views `{login,home,device,sync-status}`, `api/{ping,session}.php`, `api/auth/{login,pin,logout}.php`, `api/device/{register,heartbeat}.php`, `api/sync/{push,status}.php`.
@@ -434,10 +445,11 @@ All changes are additive and portable: new ENUM values are appended at the end, 
 | 0009 | `import_batch`/`import_mapping.record_type` += 'User'; `import_batch.status` += Queued, Running; `audit_log.import_batch_id` | UC-11 §3.2.4, US-32, UC-12 |
 | 0010 | `system_setting` += `organisation_time_zone`: organisation-wide dates (accounts, policy start and re-acceptance) use the organisation's local date, not UTC | UC-11 review |
 | 0011 | `allotment_rule` += `published_at`, `published_by`, `created_at`; `lbs_per_distribution` NULL-able for draft cells; UNIQUE (version, species, band, form); index on `effective_from`. In force = latest published `effective_from` ≤ site-local date; `effective_to` unused; version 0 reserved for legacy | UC-05 §4.1, UC-06 §4.5, P2A allotment rules |
+| 0012 | `auth_token.purpose` += 'Device Registration'; `user_session.end_reason` += 'Device Revoked'; `device` += `reported_max_seq`, `revoked_lost`, `revoked_max_seq`, `erase_requested_at`, `erase_requested_by` (FK), `wiped_at`; setting `device_code_minutes` (68 settings; tables 66; FKs 167) | US-01, UC-01 §3.3.3, UC-06 §4.3, P2A admin_devices |
 | optional/9001 | Immutability triggers on distribution*, audit*, `snv_referral_status_log`, `inventory_transaction`. **A dev safety net only**: SiteGround will likely refuse them (ERROR 1419 without SUPER). The app-layer guard and the CI grep are the real enforcement. Dumps use `--skip-triggers`; `@pfpms_allow_mutation` is reset in `finally`; retention purges are allowlisted. | Notes §3 |
 | v2.2 (P9 only) | `participant_access_token`, `participant_change_request`, `intake_scan` | US-10/19/31 if kept |
 
-- **Counts:** after v2.1 there are 66 ERD tables, plus the tooling table `schema_version`, and **166 FKs**. Both are pinned in `bin/schema-check.php`. The set is verified on MariaDB 10.4, MySQL 8.0 and MySQL 9.4.
+- **Counts:** after v2.1 there are 66 ERD tables, plus the tooling table `schema_version`, and **167 FKs**. Both are pinned in `bin/schema-check.php`. The set is verified on MariaDB 10.4, MySQL 8.0 and MySQL 9.4.
 - **For the ERD team only:** a clinic↔site link, status history, non-rabies vaccinations, a shift roster, and aligning `allotment_rule.food_form` with `product.food_form`.
 - **Also note:** the 520 collation is PAD SPACE, so the Validator trims every unique field (username, email, barcode, codes).
 
@@ -636,7 +648,7 @@ Read JSON through `JSON_EXTRACT`/`JSON_UNQUOTE` only.
 
 | File | Role |
 |---|---|
-| `docs/PFPMS_schema_v2.sql` | Becomes v2.0.1, then `migrations/0001`; `migrations/0002–0011` build on it |
+| `docs/PFPMS_schema_v2.sql` | Becomes v2.0.1, then `migrations/0001`; `migrations/0002–0012` build on it |
 | `src/bootstrap.php`, `src/Db.php`, `src/Http/Page.php`, `src/Http/Api.php`, `src/Auth/capabilities.php` | New core that every page depends on |
 | `src/Distribution/DistributionService.php`, `src/Sync/SyncService.php` | Single commit path for online and offline |
 | `public/station/sw.php`, `public/station/js/vault.js` | PWA shell and encrypted store |

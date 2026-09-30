@@ -214,3 +214,10 @@ input[type="file"] { font: inherit; margin-bottom: 0.5rem; }
   .table-entry input[inputmode="numeric"] { width: 100%; }
   .entry-label { position: static; width: auto; height: auto; margin: 0 0 0.15rem; overflow: visible; clip: auto; white-space: normal; font-size: 0.85rem; }
 }
+
+/* Devices: the dangerous action, a problem badge, and the tablet registration sheet */
+.button-danger { color: var(--error-text); border-color: var(--error-text); }
+.badge-problem { color: var(--error-text); border-color: var(--error-text); }
+.sheet-site { font-size: 1.5rem; font-weight: 700; }
+.sheet-code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 1.6rem; letter-spacing: .08em; overflow-wrap: anywhere; }
+.sheet-url { overflow-wrap: anywhere; }

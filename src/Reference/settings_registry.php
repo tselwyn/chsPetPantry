@@ -58,6 +58,7 @@ return [
     'sync_clock_skew_minutes' => ['group' => 'Offline station', 'label' => 'Allowed difference between tablet and server clocks', 'type' => 'int', 'min' => 1, 'max' => 120, 'unit' => 'minutes'],
     'late_sync_grace_days' => ['group' => 'Offline station', 'label' => 'Accept late or paper-slip entries for', 'type' => 'int', 'min' => 0, 'max' => 60, 'unit' => 'days'],
     'station_poll_seconds' => ['group' => 'Offline station', 'label' => 'Tablets refresh the queue and dashboard every', 'type' => 'int', 'min' => 5, 'max' => 120, 'unit' => 'seconds'],
+    'device_code_minutes' => ['group' => 'Offline station', 'label' => 'Tablet registration codes work for', 'type' => 'int', 'min' => 10, 'max' => 1440, 'unit' => 'minutes'],
 
     // Participants and distribution (UC-02 to UC-10, UC-15)
     'frequency_rule_days' => ['group' => 'Participants and distribution', 'label' => 'Days between distributions', 'type' => 'int', 'min' => 1, 'max' => 365, 'unit' => 'days'],

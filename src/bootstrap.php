@@ -19,6 +19,7 @@ define('APP_VERSION', trim((string) @file_get_contents(APP_ROOT . '/VERSION')) ?
 date_default_timezone_set('UTC');
 error_reporting(E_ALL);
 ini_set('log_errors', '1');
+ini_set('zend.exception_ignore_args', '1'); // stack traces in the error log never carry passwords, codes or tokens
 ini_set('display_errors', '0');
 ErrorHandler::register();
 

@@ -58,6 +58,17 @@ final class AccountRepository
         return $st->fetchAll();
     }
 
+    /**
+     * The account as committed now, with a shared lock kept to the end of the transaction, so a
+     * change of access or a deactivation waits for this transaction (and vice versa).
+     */
+    public static function lockShared(int $userId): ?array
+    {
+        $st = Db::pdo()->prepare('SELECT ' . self::COLUMNS . " FROM user_account WHERE user_id = ? AND username <> 'system' LOCK IN SHARE MODE");
+        $st->execute([$userId]);
+        return $st->fetch() ?: null;
+    }
+
     public static function find(int $userId): ?array
     {
         $st = Db::pdo()->prepare('SELECT ' . self::COLUMNS . " FROM user_account WHERE user_id = ? AND username <> 'system'");

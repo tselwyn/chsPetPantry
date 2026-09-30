@@ -34,7 +34,7 @@ return [
         'inherits' => 'Coordinator',
         'capabilities' => [
             'site.all', 'site.manage', 'settings.manage', 'lookup.manage', 'policy.manage', 'service_area.manage',
-            'catalog.manage', 'clinic.manage', 'budget.manage', 'user.manage', 'allotment.manage',
+            'catalog.manage', 'clinic.manage', 'budget.manage', 'user.manage', 'allotment.manage', 'device.erase',
             'participant.update_restricted', 'participant.deactivate', 'participant.merge', 'participant.delete',
             'participant.restore', 'participant.erasure', 'participant.area_override', 'participant.search_include_deleted',
             'alert.create', 'alert.resolve', 'pet.delete', 'pet.limit_override', 'pet.microchip_resolve',

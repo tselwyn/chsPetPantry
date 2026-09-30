@@ -35,6 +35,16 @@ final class RbacTest extends TestCase
         $this->assertFalse(Rbac::can('Board', 'participant.view'));
     }
 
+    public function testOnlyAdministratorsEraseDevices(): void
+    {
+        $this->assertTrue(Rbac::can('Administrator', 'device.erase'), 'plan: only an Admin Wipe-Now discards the outbox');
+        foreach (['Coordinator', 'Volunteer', 'Board'] as $role) {
+            $this->assertFalse(Rbac::can($role, 'device.erase'), $role);
+        }
+        $this->assertTrue(Rbac::can('Coordinator', 'device.register'));
+        $this->assertFalse(Rbac::can('Volunteer', 'device.register'));
+    }
+
     public function testUnknownRoleHasNothing(): void
     {
         $this->assertSame([], Rbac::capabilities('Superadmin'));

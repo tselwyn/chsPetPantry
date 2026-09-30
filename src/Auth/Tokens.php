@@ -9,25 +9,41 @@ use Pfpms\Security\Crypto;
 
 /**
  * Single-use, time-limited tokens in auth_token: password reset links (UC-01 §3.2.1),
- * temporary credentials (UC-11 §4.2), trusted devices, offline grants.
- * Only a SHA-256 hash of the token is stored, so a database leak does not leak live links.
+ * temporary credentials (UC-11 §4.2), tablet registration codes (P2A admin_devices), trusted
+ * devices, offline grants. Only a SHA-256 hash of the token is stored, so a database leak does
+ * not leak live links. Parameters holding a raw token are #[SensitiveParameter], so stack traces in
+ * the error log never show them.
  */
 final class Tokens
 {
     public const PASSWORD_RESET = 'Password Reset';
     public const TEMPORARY_CREDENTIAL = 'Temporary Credential';
+    public const DEVICE_REGISTRATION = 'Device Registration';
+    public const OFFLINE_GRANT = 'Offline Grant';
+    public const TRUSTED_DEVICE = 'Trusted Device';
 
     /** Create a token and return the raw value (shown or sent once, never stored). */
     public static function issue(int $userId, string $purpose, int $ttlMinutes, ?int $deviceId = null): string
     {
         $raw = Crypto::b64url(random_bytes(32));
-        Db::pdo()->prepare('INSERT INTO auth_token (user_id, purpose, token_hash, device_id, expires_at) VALUES (?, ?, ?, ?, ?)')
-            ->execute([$userId, $purpose, self::hash($raw), $deviceId, Clock::db(Clock::now()->modify("+$ttlMinutes minutes"))]);
+        self::issueValue($userId, $purpose, $raw, $ttlMinutes, $deviceId);
         return $raw;
     }
 
+    /**
+     * Store a token whose value the caller made (a registration code in its own format) and return
+     * when it expires (UTC). Only its hash is stored.
+     */
+    public static function issueValue(int $userId, string $purpose, #[\SensitiveParameter] string $raw, int $ttlMinutes, ?int $deviceId = null): string
+    {
+        $expires = Clock::db(Clock::now()->modify("+$ttlMinutes minutes"));
+        Db::pdo()->prepare('INSERT INTO auth_token (user_id, purpose, token_hash, device_id, expires_at) VALUES (?, ?, ?, ?, ?)')
+            ->execute([$userId, $purpose, self::hash($raw), $deviceId, $expires]);
+        return $expires;
+    }
+
     /** The token row if it is valid right now (right purpose, unused, unrevoked, unexpired); otherwise null. */
-    public static function find(string $raw, string $purpose): ?array
+    public static function find(#[\SensitiveParameter] string $raw, string $purpose): ?array
     {
         if ($raw === '' || strlen($raw) > 100) {
             return null;
@@ -40,11 +56,15 @@ final class Tokens
         return $st->fetch() ?: null;
     }
 
-    /** Mark a token used. Returns false if it was already used (a concurrent request won). */
+    /**
+     * Mark a token used. Returns false if it was already used (a concurrent request won), revoked
+     * meanwhile, or expired since it was found.
+     */
     public static function consume(int $tokenId): bool
     {
-        $st = Db::pdo()->prepare('UPDATE auth_token SET used_at = ? WHERE token_id = ? AND used_at IS NULL AND revoked_at IS NULL');
-        $st->execute([Clock::db(), $tokenId]);
+        $now = Clock::db();
+        $st = Db::pdo()->prepare('UPDATE auth_token SET used_at = ? WHERE token_id = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ?');
+        $st->execute([$now, $tokenId, $now]);
         return $st->rowCount() === 1;
     }
 
@@ -55,7 +75,25 @@ final class Tokens
             ->execute([Clock::db(), $userId, $purpose]);
     }
 
-    private static function hash(string $raw): string
+    /**
+     * Revoke the live tokens bound to a tablet (its registration code, and later its offline grants
+     * and trusted-device tokens), optionally of one purpose. A registration code already redeemed
+     * and expired rows are left as they are. Returns how many were revoked.
+     */
+    public static function revokeForDevice(int $deviceId, ?string $purpose = null): int
+    {
+        $now = Clock::db();
+        $st = Db::pdo()->prepare(
+            "UPDATE auth_token SET revoked_at = ?
+              WHERE device_id = ? AND revoked_at IS NULL AND expires_at > ? AND (used_at IS NULL OR purpose <> 'Device Registration')"
+            . ($purpose !== null ? ' AND purpose = ?' : '')
+        );
+        $st->execute($purpose !== null ? [$now, $deviceId, $now, $purpose] : [$now, $deviceId, $now]);
+        return $st->rowCount();
+    }
+
+    /** SHA-256 hex: the stored form of every token, and of device credentials (P2B). */
+    public static function hash(#[\SensitiveParameter] string $raw): string
     {
         return hash('sha256', $raw);
     }

@@ -18,7 +18,7 @@ final class PasswordPolicy
      * @param array $user optional user row: its username, email and names may not be the password
      * @return list<string> problems in plain language; empty means the password is acceptable
      */
-    public static function check(string $password, array $user = []): array
+    public static function check(#[\SensitiveParameter] string $password, array $user = []): array
     {
         $problems = [];
         $min = max(8, Settings::int('password_min_length', 12));
@@ -50,7 +50,7 @@ final class PasswordPolicy
         return array_values(array_unique($problems));
     }
 
-    public static function hash(string $password): string
+    public static function hash(#[\SensitiveParameter] string $password): string
     {
         return defined('PASSWORD_ARGON2ID')
             ? password_hash($password, PASSWORD_ARGON2ID)

@@ -83,10 +83,17 @@ final class CountRepository
         return $st->fetch() ?: null;
     }
 
-    /** Items that tablets at the site hold and have not synced (from their last heartbeat). */
+    /**
+     * Items that tablets at the site hold and have not synced (from their last heartbeat): tablets in
+     * service, and retiring tablets that will still upload; not erased tablets or ones told to erase
+     * without uploading.
+     */
     public static function pendingDeviceItems(int $siteId): int
     {
-        $st = Db::pdo()->prepare('SELECT COALESCE(SUM(pending_count), 0) FROM device WHERE site_id = ? AND revoked_at IS NULL');
+        $st = Db::pdo()->prepare(
+            "SELECT COALESCE(SUM(pending_count), 0) FROM device
+              WHERE site_id = ? AND token_hash IS NOT NULL AND wiped_at IS NULL AND (revoked_at IS NULL OR wipe_mode = 'Push Then Wipe')"
+        );
         $st->execute([$siteId]);
         return (int) $st->fetchColumn();
     }
