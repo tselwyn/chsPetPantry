@@ -1,6 +1,6 @@
 <?php
 /** @var \Pfpms\Http\Context $ctx  @var list<array> $devices  @var list<array{site_id: int, name: string}> $sites  @var ?int $siteFilter  @var bool $showAll
- *  @var bool $redemptionAvailable  @var bool $offlineAllowed  @var string $orgZone  @var bool $hasHidden */
+ *  @var bool $redemptionAvailable  @var bool $offlineAllowed  @var int $clockTolerance  @var string $orgZone  @var bool $hasHidden */
 use Pfpms\Clock;
 use Pfpms\Device\DeviceStatus;
 
@@ -55,7 +55,7 @@ $build = DeviceStatus::currentBuild();
       <th scope="col">Unsynced (reported)</th><th scope="col">App build</th><th scope="col">Storage kept</th></tr></thead>
     <tbody>
     <?php foreach ($devices as $d):
-        $status = DeviceStatus::describe($d, $now, $d['time_zone'] ?? $orgZone, $offlineAllowed, $build);
+        $status = DeviceStatus::describe($d, $now, $d['time_zone'] ?? $orgZone, $offlineAllowed, $build, $clockTolerance);
         $closed = in_array($status['code'], [DeviceStatus::ERASED, DeviceStatus::CANCELLED], true);
         $heard = $d['last_seen_at'] !== null; ?>
       <tr<?= $closed ? ' class="status-inactive"' : '' ?>>

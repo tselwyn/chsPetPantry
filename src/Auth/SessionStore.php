@@ -38,11 +38,12 @@ final class SessionStore
     }
 
     /**
-     * Check a session and record activity.
+     * Check a session and, when $touch, record activity. Polling passes $touch = false, so it can never keep a
+     * session alive (UC-01 §4.2); ending a timed-out or revoked session still writes, because ending never extends.
      * @return array{user: array, session: array}|array{ended: string} ended is one of
      *         'missing', 'ended', 'timeout', 'account', 'device'
      */
-    public static function validate(string $sessionId): array
+    public static function validate(string $sessionId, bool $touch = true): array
     {
         $st = Db::pdo()->prepare(
             'SELECT s.session_id, s.site_id, s.device_id, s.auth_method, s.started_at, s.last_activity_at, s.ended_at, s.end_reason,
@@ -76,7 +77,7 @@ final class SessionStore
             self::end($sessionId, 'Deactivated');
             return ['ended' => 'account'];
         }
-        if ($now->getTimestamp() - $last->getTimestamp() >= self::TOUCH_INTERVAL) {
+        if ($touch && $now->getTimestamp() - $last->getTimestamp() >= self::TOUCH_INTERVAL) {
             Db::pdo()->prepare('UPDATE user_session SET last_activity_at = ? WHERE session_id = ? AND ended_at IS NULL')
                 ->execute([Clock::db($now), $sessionId]);
         }

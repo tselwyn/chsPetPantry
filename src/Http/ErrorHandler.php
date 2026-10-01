@@ -3,12 +3,15 @@ declare(strict_types=1);
 
 namespace Pfpms\Http;
 
+use Pfpms\Validation\ValidationException;
 use Pfpms\View\View;
 use Throwable;
 
 /**
  * Last-resort handler. Users see a plain message (with an incident id for real errors);
- * details go to storage/logs, never to the page outside dev.
+ * details go to storage/logs, never to the page outside dev. JSON requests get the error
+ * envelope {error, message, …} (50-design §5.2): an HttpException as it says, a ValidationException as 422
+ * "invalid", anything else (a JsonException from the server's own encoding included) as a logged 500.
  */
 final class ErrorHandler
 {
@@ -31,10 +34,16 @@ final class ErrorHandler
 
     public static function handle(Throwable $e): void
     {
-        $status = $e instanceof HttpException ? $e->status : 500;
-        $message = $e instanceof HttpException ? $e->getMessage() : HttpException::defaultMessage(500);
+        $json = self::wantsJson();
+        $status = $json ? self::statusFor($e) : ($e instanceof HttpException ? $e->status : 500);
+        $known = $e instanceof HttpException || ($json && $e instanceof ValidationException);
+        $message = match (true) {
+            $e instanceof HttpException => $e->getMessage(),
+            $json && $e instanceof ValidationException => (string) (array_values($e->errors)[0] ?? HttpException::defaultMessage(422)),
+            default => HttpException::defaultMessage(500),
+        };
         $incident = null;
-        if (!$e instanceof HttpException) {
+        if (!$known) {
             $incident = strtoupper(bin2hex(random_bytes(4)));
             self::log($incident, $e);
             if (self::$debug) {
@@ -45,11 +54,16 @@ final class ErrorHandler
             http_response_code($status);
             header('Cache-Control: no-store');
         }
-        if (self::wantsJson()) {
+        if ($json) {
             if (!headers_sent()) {
                 header('Content-Type: application/json; charset=utf-8');
+                if ($e instanceof HttpException) {
+                    foreach ($e->headers as $name => $value) {
+                        header("$name: $value");
+                    }
+                }
             }
-            echo json_encode(['error' => $status, 'message' => $message, 'incident' => $incident], JSON_UNESCAPED_UNICODE);
+            echo json_encode(self::jsonPayload($e, $message, $incident), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
             return;
         }
         try {
@@ -57,6 +71,33 @@ final class ErrorHandler
         } catch (Throwable) {
             echo '<!doctype html><meta charset="utf-8"><title>Error</title><p>' . htmlspecialchars($message, ENT_QUOTES) . '</p>';
         }
+    }
+
+    /** The HTTP status a JSON request answers with for this error. */
+    public static function statusFor(Throwable $e): int
+    {
+        return match (true) {
+            $e instanceof HttpException => $e->status,
+            $e instanceof ValidationException => 422,
+            default => 500,
+        };
+    }
+
+    /**
+     * The error envelope: {"error": "<code>", "message": "<plain text>", …extra}, plus "incident" on a 500.
+     * @return array<string, mixed>
+     */
+    public static function jsonPayload(Throwable $e, string $message, ?string $incident): array
+    {
+        $payload = match (true) {
+            $e instanceof HttpException => ['error' => $e->code(), 'message' => $message] + $e->extra,
+            $e instanceof ValidationException => ['error' => 'invalid', 'message' => $message, 'errors' => $e->errors],
+            default => ['error' => 'server_error', 'message' => $message],
+        };
+        if ($incident !== null) {
+            $payload['incident'] = $incident;
+        }
+        return $payload;
     }
 
     public static function log(string $incident, Throwable $e): void

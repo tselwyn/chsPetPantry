@@ -780,6 +780,49 @@ final class DeviceServiceTest extends TestCase
         $this->assertSame($before + 1, $this->denied('access_denied', 'site', 999999), 'the same answer and trace as a real site outside the scope');
     }
 
+    public function testRedemptionAvailableAtNeedsTheEndpointAndTheShell(): void
+    {
+        $public = sys_get_temp_dir() . '/pfpms-redemption-' . bin2hex(random_bytes(4));
+        $endpoint = "$public/api/device/register.php";
+        $shell = "$public/station/index.php";
+        mkdir("$public/api/device", 0700, true);
+        mkdir("$public/station", 0700, true);
+        try {
+            $this->assertFalse(DeviceService::redemptionAvailableAt($public), 'neither');
+
+            file_put_contents($endpoint, '<?php');
+            $this->assertFalse(DeviceService::redemptionAvailableAt($public), 'the endpoint alone (S1): no installed app to register yet');
+
+            file_put_contents($shell, '<?php');
+            $this->assertTrue(DeviceService::redemptionAvailableAt($public), 'both (S2)');
+
+            unlink($endpoint);
+            $this->assertFalse(DeviceService::redemptionAvailableAt($public), 'the shell alone: nothing redeems the code');
+
+            mkdir($endpoint);
+            $this->assertFalse(DeviceService::redemptionAvailableAt($public), 'a directory with the endpoint\'s name is not the endpoint');
+        } finally {
+            foreach ([$shell, $endpoint] as $path) {
+                if (is_dir($path)) {
+                    rmdir($path);
+                } elseif (is_file($path)) {
+                    unlink($path);
+                }
+            }
+            foreach (["$public/api/device", "$public/api", "$public/station", $public] as $dir) {
+                @rmdir($dir);
+            }
+        }
+        $this->assertDirectoryDoesNotExist($public, 'the temporary web root was removed');
+    }
+
+    public function testRedemptionIsNotAvailableInThisRepoYet(): void
+    {
+        $this->assertFileExists(APP_ROOT . '/public/api/device/register.php', 'S1 adds the redemption endpoint');
+        $this->assertFileDoesNotExist(APP_ROOT . '/public/station/index.php', 'the Station shell arrives in S2 (then this test expects true)');
+        $this->assertFalse(DeviceService::redemptionAvailable(), 'until S2, admin_devices keeps saying tablets cannot be registered yet');
+    }
+
     public function testAnAccountEventThatCancelsAnExpiredCodeDoesNotMakeFormsStale(): void
     {
         $id = $this->add('Front desk 1');

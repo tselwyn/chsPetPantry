@@ -2,6 +2,7 @@
 
 # PFPMS offline-first PWA: design and build plan (Release 1)
 
+> **Superseded for Phase 2B by `docs/design/50-design-station.md`.** Where they differ, 50-design wins, notably: no `sessions[]`/`audit[]` envelope arrays (offline sessions are signed outbox items), no `audit_queue` or `notifications` store, a PIN verifier by HMAC rather than PBKDF2, origin decided by the server, no `phone_hash`, no `sync_batch` table, no Rejected status, `.js` modules, the service worker scoped to `/station/`, and grants superseded rather than one live grant per person and tablet.
 ## 0. Key decisions
 
 1. **Build one client-rendered "Station".** Everything a volunteer does at the distribution table lives in `/station/`: search, check-in, quick registration, pet quick-add, Record Distribution, receipt and the live dashboard. It is a static shell plus vanilla JS modules, and it talks to a JSON API. Every other page stays server-rendered PHP and works online only.

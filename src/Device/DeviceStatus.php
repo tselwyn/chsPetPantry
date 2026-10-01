@@ -71,9 +71,11 @@ final class DeviceStatus
      * @param string $timeZone the tablet's site's zone (or the organisation's when it has no site)
      * @param bool $offlineAllowed the offline_mode_enabled setting
      * @param string $currentBuild the Station build the server serves now
+     * @param int $clockToleranceSeconds a tablet clock further than this from the server's gets a warning (sync_clock_skew_minutes)
      * @return array{code: string, label: string, badge: string, detail: ?string, warnings: list<string>}
      */
-    public static function describe(array $d, DateTimeImmutable $now, string $timeZone, bool $offlineAllowed, string $currentBuild): array
+    public static function describe(array $d, DateTimeImmutable $now, string $timeZone, bool $offlineAllowed, string $currentBuild,
+        int $clockToleranceSeconds = 600): array
     {
         $code = self::code($d);
         $when = fn(?string $utc) => self::at($utc, $timeZone);
@@ -98,6 +100,22 @@ final class DeviceStatus
         $warnings = [];
         $heard = $d['last_seen_at'] !== null;
         $pending = (int) $d['pending_count'];
+        $working = in_array($code, [self::IN_SERVICE, self::RETIRING], true);
+        // Figures only the P2B heartbeat writes: rows from queries that do not select them give no warning.
+        $reportedMax = $d['reported_max_seq'] ?? null;
+        $received = $d['received_count'] ?? null;
+        if ($working && $reportedMax !== null && $received !== null && ($gap = (int) $reportedMax - (int) $received - $pending) > 0) {
+            $warnings[] = $gap . ' record' . ($gap === 1 ? '' : 's') . ' it numbered ' . ($gap === 1 ? 'has' : 'have')
+                . ' neither reached the server nor been reported as waiting on it. They may be lost; ask who used it.';
+        }
+        if ($working && ($d['locked_out_since'] ?? null) !== null) {
+            $warnings[] = 'It locked itself after too many wrong passwords (' . $when($d['locked_out_since'])
+                . '). Its unsynced records are kept; someone must sign in on it with a connection.';
+        }
+        $attention = (int) ($d['attention_count'] ?? 0);
+        if ($working && $attention > 0) {
+            $warnings[] = $attention . ' record' . ($attention === 1 ? '' : 's') . ' on it could not be uploaded. They are kept on the tablet; tell the Administrator.';
+        }
         if (in_array($code, [self::IN_SERVICE, self::RETIRING], true) && $heard && $pending > 0
             && Clock::fromDb($d['last_seen_at'])->modify('+' . self::STALE_PENDING_HOURS . ' hours') <= $now) {
             $warnings[] = 'Holds ' . $pending . ' unsynced record' . ($pending === 1 ? '' : 's') . ', reported ' . self::ago($d['last_seen_at'], $now)
@@ -105,6 +123,17 @@ final class DeviceStatus
         }
         if ($code === self::IN_SERVICE && $heard && (int) $d['storage_persisted'] !== 1) {
             $warnings[] = 'It is not keeping its data, so it cannot work offline. Open the installed app, not a browser tab, and allow storage when asked.';
+        }
+        $mode = $d['display_mode'] ?? null;
+        if ($code === self::IN_SERVICE && $mode !== null && $mode !== 'standalone') {
+            $warnings[] = 'It is running in a browser tab, not the installed app, so it cannot work offline. Open the Station from the tablet\'s home screen.';
+        }
+        $skew = $d['clock_skew_seconds'] ?? null;
+        if ($code === self::IN_SERVICE && $skew !== null && abs((int) $skew) > $clockToleranceSeconds) {
+            $minutes = (int) round(abs((int) $skew) / 60);
+            // clock_skew_seconds is the server's time minus the tablet's: positive means the tablet is behind.
+            $warnings[] = 'Its clock is ' . $minutes . ' minute' . ($minutes === 1 ? '' : 's') . ' ' . ((int) $skew > 0 ? 'slow' : 'fast')
+                . ". Records are timed correctly, but set the tablet's clock to automatic.";
         }
         if ($code === self::IN_SERVICE && $d['app_build'] !== null && $d['app_build'] !== $currentBuild) {
             $warnings[] = 'Runs an older version of the Station (' . $d['app_build'] . '). It updates itself the next time it is opened online.';

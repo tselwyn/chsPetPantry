@@ -35,7 +35,8 @@ final class Audit
 
     /**
      * @param array<string, array{0:mixed,1:mixed}> $changes field => [old, new]
-     * @param array{user_id?:?int, session_id?:?string, site_id?:?int} $actor overrides for this entry
+     * @param array{user_id?:?int, session_id?:?string, site_id?:?int, device_id?:?int, occurred_at?:string} $actor overrides for this
+     *        entry (occurred_at: a column-precision UTC time, e.g. when a tablet reports something that happened offline)
      * @param bool $redactChanges hide old/new values of fields whose name looks secret (pin_hash, token…).
      *        Pass false when the field names are not secrets, e.g. setting keys like pin_max_failed.
      */
@@ -54,7 +55,10 @@ final class Audit
         return self::write(Db::pdo(), $action, $entityType, $entityId, $outcome, $reason, $details, $snapshot, $changes, $actor, $redactChanges);
     }
 
-    /** Same as record(), on the durable connection. Never pass an actor or entity created in the open transaction. */
+    /**
+     * Same as record(), on the durable connection. Never pass an actor or entity created in the open transaction.
+     * @param array{user_id?:?int, session_id?:?string, site_id?:?int, device_id?:?int, occurred_at?:string} $actor
+     */
     public static function durable(
         string $action,
         ?string $entityType = null,
@@ -91,10 +95,10 @@ final class Audit
             'INSERT INTO audit_log (occurred_at, user_id, session_id, device_id, site_id, action, entity_type, entity_id, outcome, reason, snapshot, details)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([
-            Clock::dbMillis(),
+            $actor['occurred_at'] ?? Clock::dbMillis(),
             array_key_exists('user_id', $actor) ? $actor['user_id'] : self::$userId,
             array_key_exists('session_id', $actor) ? $actor['session_id'] : self::$sessionId,
-            self::$deviceId,
+            array_key_exists('device_id', $actor) ? $actor['device_id'] : self::$deviceId,
             array_key_exists('site_id', $actor) ? $actor['site_id'] : self::$siteId,
             mb_substr($action, 0, 40),
             $entityType,

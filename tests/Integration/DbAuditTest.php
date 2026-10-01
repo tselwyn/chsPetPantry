@@ -65,6 +65,42 @@ final class DbAuditTest extends TestCase
         $this->assertSame($user['user_id'], (int) $this->scalar('SELECT user_id FROM audit_log WHERE audit_id = ?', [$id]));
     }
 
+    public function testActorOverrideSetsDeviceAndOccurredAt(): void
+    {
+        $site = $this->makeSite('Test North');
+        $user = $this->makeUser();
+        $requestTablet = $this->makeDevice($site);
+        $reportingTablet = $this->makeDevice($site);
+        Audit::setActor($user['user_id'], null, $site, $requestTablet);
+
+        $id = Audit::record('offline_auth_failures', 'device', $reportingTablet, 'Failed',
+            actor: ['user_id' => null, 'device_id' => $reportingTablet, 'occurred_at' => '2026-09-30 08:15:30.250']);
+        $this->assertSame(['occurred_at' => '2026-09-30 08:15:30.250', 'user_id' => null, 'device_id' => $reportingTablet, 'site_id' => $site],
+            $this->auditRow(Db::pdo(), $id), 'the tablet and the time it reported, the rest from the actor');
+
+        $plain = Audit::record('device_state', 'device', $requestTablet);
+        $this->assertSame(['occurred_at' => '2026-10-01 12:00:00.000', 'user_id' => $user['user_id'], 'device_id' => $requestTablet, 'site_id' => $site],
+            $this->auditRow(Db::pdo(), $plain), 'without an override: the request tablet and the frozen clock, in milliseconds');
+    }
+
+    public function testADeviceOverrideOfNullClearsTheRequestsTablet(): void
+    {
+        $site = $this->makeSite('Test North');
+        $tablet = $this->makeDevice($site);
+        Audit::setActor(null, null, $site, $tablet);
+        $id = Audit::record('device_vault_key_cleared', 'device', $tablet, actor: ['device_id' => null]);
+        $this->assertNull($this->auditRow(Db::pdo(), $id)['device_id'], 'array_key_exists, not ??: an explicit null wins');
+    }
+
+    public function testDurableTakesTheSameOverrides(): void
+    {
+        Audit::setActor(null);
+        $id = Audit::durable('test_durable_override', 'device', null, 'Denied', 'probe', ['k' => 1],
+            actor: ['device_id' => null, 'occurred_at' => '2026-09-29 23:59:59.999']);
+        $this->assertSame(['occurred_at' => '2026-09-29 23:59:59.999', 'user_id' => null, 'device_id' => null, 'site_id' => null],
+            $this->auditRow(Db::durable(), $id), 'on the autocommit connection');
+    }
+
     public function testRateLimitWindow(): void
     {
         $bucket = 'test:' . bin2hex(random_bytes(4));
@@ -73,5 +109,18 @@ final class DbAuditTest extends TestCase
         $this->assertFalse(RateLimit::hit($bucket, 2, 60));
         \Pfpms\Clock::advance('+61 seconds');
         $this->assertTrue(RateLimit::hit($bucket, 2, 60), 'a new window starts');
+    }
+
+    /** @return array{occurred_at: string, user_id: ?int, device_id: ?int, site_id: ?int} */
+    private function auditRow(PDO $pdo, int $auditId): array
+    {
+        $st = $pdo->prepare('SELECT occurred_at, user_id, device_id, site_id FROM audit_log WHERE audit_id = ?');
+        $st->execute([$auditId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        $this->assertIsArray($row, "audit row $auditId");
+        foreach (['user_id', 'device_id', 'site_id'] as $key) {
+            $row[$key] = $row[$key] === null ? null : (int) $row[$key];
+        }
+        return $row;
     }
 }

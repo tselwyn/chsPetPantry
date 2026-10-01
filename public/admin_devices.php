@@ -30,5 +30,5 @@ View::render('pages/admin/devices', [
     // An empty list says "no tablets yet" only when there are none at all, not when the choices hide some.
     'hasHidden' => !$devices && ($siteFilter !== null || !$showAll) && DeviceRepository::list($scope, null, true) !== [],
     'siteFilter' => $siteFilter, 'showAll' => $showAll, 'redemptionAvailable' => DeviceService::redemptionAvailable(),
-    'offlineAllowed' => Settings::bool('offline_mode_enabled', true), 'orgZone' => Settings::string('organisation_time_zone', 'America/New_York'),
+    'offlineAllowed' => Settings::bool('offline_mode_enabled', true), 'clockTolerance' => Settings::int('sync_clock_skew_minutes', 10) * 60, 'orgZone' => Settings::string('organisation_time_zone', 'America/New_York'),
 ]);

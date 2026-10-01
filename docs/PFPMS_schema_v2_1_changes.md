@@ -2,7 +2,7 @@
 
 `docs/PFPMS_schema_v2.sql` is the baseline, now at **v2.0.1**. Later changes are additive migration files in `migrations/`, applied by `php bin/migrate.php`. This page lists every change so the design team can fold them into `PFPMS_ERD_v2.drawio`.
 
-**Where it has been verified:** the full set (0001–0009) loads, re-runs as a no-op, and passes `php bin/schema-check.php` on the engines below; 0010, 0011 and 0012 were verified the same way on MariaDB 10.4 and MySQL 8.0 (0012 also on MySQL 9.4):
+**Where it has been verified:** the full set (0001–0009) loads, re-runs as a no-op, and passes `php bin/schema-check.php` on the engines below; 0010, 0011, 0012 and 0013 were verified the same way on MariaDB 10.4 and MySQL 8.0 (0012 and 0013 also on MySQL 9.4):
 - MariaDB 10.4.28 (XAMPP);
 - MySQL 8.0.43;
 - MySQL 9.4.0.
@@ -83,6 +83,13 @@ Production runs Percona/MySQL 8.4, which sits between the two MySQL versions tes
 - `device` gains `reported_max_seq` (the tablet's reported highest sequence, written by the P2B heartbeat), `revoked_lost` and `revoked_max_seq` (set when a tablet is taken out of service, `revoked_lost` also when a retired tablet is reported lost later; for a lost or erased tablet the cut-off counts only what the server received, and P2B holds every item it uploads for review, so `revoked_max_seq` is a record), `erase_requested_at` and `erase_requested_by` (FK to user_account: when and by whom Erase now was chosen, which may be after the tablet was retired) and `wiped_at` (the tablet confirmed its erase, written by P2B). FKs 166 → 167.
 - One setting, `device_code_minutes` (default 60), bringing the total to 68. Tables stay at 66.
 - A tablet waiting for registration is a device row with `token_hash` NULL. Taking a tablet out of service keeps `token_hash` and `vault_key_ciphertext`, so P2B can still recognise it and tell it to erase itself; code must test `DeviceRepository::IN_SERVICE_SQL`, never `token_hash` or `is_site_registered` alone.
+
+**0013 Station platform** (plan P2B; `docs/design/50-design-station.md` §4)
+- `device` gains what the Station sends at registration and in its heartbeat: `pbkdf2_iterations` (key-derivation rounds calibrated on the tablet, 100 000–2 000 000; NULL means the `offline_pbkdf2_iterations` setting), `proof_key_ciphertext` (the tablet's proof key, made on the tablet and encrypted with the config key ring; sign-in, PIN switching and the erase confirmation must be signed with it; cleared when the erase is confirmed), `display_mode`, `storage_estimate_kb`, `clock_skew_seconds` (server minus tablet), `oldest_pending_at`, `attention_count` (records it could not upload), `locked_out_since` (it erased its offline sign-ins after too many wrong passwords), and `shift_ended_at` (the last "End shift"; PIN switching needs a password sign-in after it). The reported columns are display only; NULL means not reported.
+- `auth_token.created_at`: when the token was issued (offline grants are judged "valid at time t" from it). NULL for rows made before 0013.
+- `sync_item.recorded_at_raw`: the time the tablet's own clock showed. `recorded_at_client` holds the corrected (clamped) time, and `origin` is decided by the server. Index `ix_sync_item_4 (device_id, recorded_by)` lets the device pages count each tablet's authenticated records from the index.
+- `user_session.auth_method` gains 'Offline PIN' (an offline session opened with a PIN; 'Offline' is the password factor). `user_session.end_reason` gains 'User Switch' (ended by another person's sign-in on the same tablet, or by the same person's sign-in or PIN switch on another tablet).
+- No table, foreign key or setting is added: 66 tables, 167 FKs, 68 settings.
 
 **optional/9001 Immutability triggers**
 - BEFORE UPDATE and BEFORE DELETE triggers on `distribution`, `distribution_line`, `distribution_pet`, `audit_log`, `audit_field_change`, `snv_referral_status_log` and `inventory_transaction`.

@@ -1,13 +1,13 @@
 <?php
 /** @var \Pfpms\Http\Context $ctx  @var array $device  @var array<string, string> $errors  @var ?string $open  @var array $typed  @var string $revision
- *  @var ?array $liveCode  @var list<array> $recentUsers  @var bool $redemptionAvailable  @var bool $offlineAllowed  @var int $graceHours  @var string $orgZone */
+ *  @var ?array $liveCode  @var list<array> $recentUsers  @var bool $redemptionAvailable  @var bool $offlineAllowed  @var int $clockTolerance  @var int $graceHours  @var string $orgZone */
 use Pfpms\Clock;
 use Pfpms\Device\DeviceStatus;
 
 $now = Clock::now();
 $tz = $device['time_zone'] ?? $orgZone;
 $build = DeviceStatus::currentBuild();
-$status = DeviceStatus::describe($device, $now, $tz, $offlineAllowed, $build);
+$status = DeviceStatus::describe($device, $now, $tz, $offlineAllowed, $build, $clockTolerance);
 $code = $status['code'];
 $id = (int) $device['device_id'];
 $action = url('admin_device_edit.php', ['id' => $id]);
@@ -74,6 +74,20 @@ $formError = fn(string $form) => $open === $form && isset($errors['_form']) ? '<
         <dt>Last upload</dt><dd><?= $device['last_sync_at'] !== null ? e(DeviceStatus::at($device['last_sync_at'], $tz)) : 'never' ?></dd>
         <dt>Station build</dt><dd><?= $device['app_build'] !== null ? e($device['app_build']) . ($device['app_build'] !== $build ? ' (current is ' . e($build) . ')' : '') : 'not reported' ?></dd>
         <dt>Storage kept</dt><dd><?= (int) $device['storage_persisted'] ? 'Yes' : 'No' ?></dd>
+        <?php $mode = $device['display_mode'] ?? null; $skew = $device['clock_skew_seconds'] ?? null; ?>
+        <dt>Running as</dt><dd><?= $mode === null ? 'not reported' : ($mode === 'standalone' ? 'the installed app' : 'a browser tab (' . e($mode) . ')') ?></dd>
+        <?php if (($device['oldest_pending_at'] ?? null) !== null && $pending > 0): ?>
+          <dt>Oldest unsynced record</dt><dd>from <?= e(DeviceStatus::at($device['oldest_pending_at'], $tz)) ?></dd>
+        <?php endif; ?>
+        <?php if (($device['attention_count'] ?? null) !== null): ?>
+          <dt>Records needing attention</dt><dd><?= number_format((int) $device['attention_count']) ?></dd>
+        <?php endif; ?>
+        <dt>Storage used</dt><dd><?= ($device['storage_estimate_kb'] ?? null) === null ? 'not reported' : e(number_format((int) $device['storage_estimate_kb'] / 1024, 1)) . ' MB' ?></dd>
+        <dt>Clock</dt><dd><?= $skew === null ? 'not reported' : (abs((int) $skew) < 60 ? 'right'
+            : e((string) (int) round(abs((int) $skew) / 60)) . ' minutes ' . ((int) $skew > 0 ? 'slow' : 'fast')) ?></dd>
+        <?php if (($device['pbkdf2_iterations'] ?? null) !== null): ?>
+          <dt>Encryption strength</dt><dd><?= number_format((int) $device['pbkdf2_iterations']) ?> rounds</dd>
+        <?php endif; ?>
         <?php if ($code === DeviceStatus::IN_SERVICE): ?>
           <?php $why = DeviceStatus::onlineOnlyReason($device, $offlineAllowed); ?>
           <dt>Offline</dt><dd><?= e(DeviceStatus::serviceLabel($device, $offlineAllowed)) ?><?= $why !== null ? ': ' . e(lcfirst(rtrim($why, '.'))) : '' ?></dd>

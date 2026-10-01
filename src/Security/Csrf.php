@@ -36,7 +36,7 @@ final class Csrf
         $sent = Request::string('_csrf') ?? Request::header('X-CSRF-Token');
         $expected = $_SESSION['csrf'] ?? null;
         if (!is_string($sent) || !is_string($expected) || !hash_equals($expected, $sent)) {
-            throw new HttpException(400, 'This form has expired or was not sent from this site. Please reload the page and try again.');
+            throw new HttpException(400, 'This form has expired or was not sent from this site. Please reload the page and try again.', 'csrf_failed');
         }
         self::verifyOrigin();
     }
@@ -45,11 +45,11 @@ final class Csrf
     {
         $fetchSite = Request::header('Sec-Fetch-Site');
         if ($fetchSite !== null && !in_array($fetchSite, ['same-origin', 'none'], true)) {
-            throw new HttpException(400, 'Cross-site request refused.');
+            throw new HttpException(400, 'Cross-site request refused.', 'csrf_failed');
         }
         $origin = Request::header('Origin');
         if ($origin !== null && $origin !== 'null' && strcasecmp(rtrim($origin, '/'), self::appOrigin()) !== 0) {
-            throw new HttpException(400, 'Cross-site request refused.');
+            throw new HttpException(400, 'Cross-site request refused.', 'csrf_failed');
         }
     }
 

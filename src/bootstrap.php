@@ -28,8 +28,16 @@ ErrorHandler::$debug = Config::env() === 'dev';
 if (Config::isProd() && Config::get('app.secure_cookies') === false) {
     throw new RuntimeException('Refusing to run in prod with app.secure_cookies = false');
 }
+if (Config::get('station.dev_relax_install') === true && !in_array(Config::env(), ['dev', 'test'], true)) {
+    throw new RuntimeException('Refusing to run with station.dev_relax_install outside dev/test');
+}
+if (PHP_SAPI !== 'cli' && !in_array(Config::env(), ['dev', 'test'], true) && !Request::basePathIsKnown()) {
+    // A wrong guess would give the Station's endpoints in api/device/ the wrong cookie path and break every tablet proof.
+    throw new RuntimeException('Cannot tell where the web root is: set app.base_path in config (e.g. \'/\')');
+}
 
 if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    header_remove('X-Powered-By');
     // Never cache pages or API responses: SiteGround's cache ignores the session cookie.
     header('Cache-Control: no-store, no-cache, private, max-age=0');
     header('Pragma: no-cache');

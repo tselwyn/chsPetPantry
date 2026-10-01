@@ -23,16 +23,30 @@ return [
 
     'app' => [
         // Absolute URL of public/, used in emailed links (password reset, invitations). Required outside dev/test.
+        // With the dev server (php -S 127.0.0.1:8088 -t public) this must be exactly http://localhost:8088, or every
+        // Station POST fails the Origin check.
         'base_url' => 'http://pfpms.localhost',
-        // Only if the automatic detection is wrong: URL path of public/, e.g. '/' or '/chsPetPantry/public/'.
+        // URL path of public/, e.g. '/' or '/chsPetPantry/public/'. Worked out automatically when public/ (or public_html/, the
+        // SiteGround layout) sits beside src/; otherwise set it, or the site refuses to run outside dev/test. On SiteGround: '/'.
         // 'base_path' => '/',
         // Direct peers whose X-Forwarded-For header is trusted (e.g. a front-end proxy). Empty: trust none.
         'trusted_proxies' => [],
         // Defaults to true outside dev/test; must not be false in prod.
         // 'secure_cookies' => true,
+        // true while deploying: every API answers 503 "maintenance", so tablets keep their records queued.
+        'maintenance' => false,
     ],
 
-    // AES-256-GCM keys for data encrypted at rest (mail outbox, import files, pet photos).
+    'station' => [
+        // Emergency only: sw.php serves a worker that removes the Station's cached files (tablets keep their data).
+        'sw_kill' => false,
+        // dev/test only (refused elsewhere): treat a browser tab as installed with kept storage, for testing in a normal tab.
+        'dev_relax_install' => false,
+    ],
+
+    // AES-256-GCM keys for data encrypted at rest (mail outbox, import files, pet photos), and the Station's tablet
+    // vault keys, tablet proof keys, offline grant secrets, sync payloads, PIN hashes and tablet credentials (derived
+    // at registration). Keep every retired key listed while data made with it may remain (docs/design/50-design-station.md §3.7).
     // Generate with: php bin/generate-key.php
     'crypto' => [
         'active' => 'k1',

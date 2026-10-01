@@ -130,6 +130,6 @@ View::render('pages/admin/device_edit', [
     'title' => $device['label'], 'ctx' => $ctx, 'device' => $device, 'errors' => $errors, 'open' => $open, 'typed' => $typed,
     'revision' => DeviceService::revision($device), 'liveCode' => DeviceRepository::liveCode($deviceId),
     'recentUsers' => DeviceRepository::recentUsers($deviceId), 'redemptionAvailable' => DeviceService::redemptionAvailable(),
-    'offlineAllowed' => Settings::bool('offline_mode_enabled', true), 'graceHours' => max(1, Settings::int('offline_grant_hours', 72)),
+    'offlineAllowed' => Settings::bool('offline_mode_enabled', true), 'clockTolerance' => Settings::int('sync_clock_skew_minutes', 10) * 60, 'graceHours' => max(1, Settings::int('offline_grant_hours', 72)),
     'orgZone' => Settings::string('organisation_time_zone', 'America/New_York'),
 ]);

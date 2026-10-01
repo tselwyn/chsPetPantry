@@ -300,7 +300,7 @@ INSERT INTO `system_setting` (`setting_key`, `setting_value`, `description`) VAL
 - Appending ENUM members is a metadata change on both engines. `device` is tiny.
 
 **Counts and checks**
-- Tables stay at **66** and FKs at **166** (no new FK).
+- Tables stay at **66**. FKs were **166** in this design; as built they are **167** (`erase_requested_by`, §0a).
 - Settings go from **67** to **68**.
 - `bin/schema-check.php`:
   - `check('system settings seeded (12 in v2 + 54 in 0002 + 1 in 0010 + 1 in 0012)', $settings === 68, …)`.
@@ -561,8 +561,8 @@ These mirror `Inventory\Locks::with` (`src/Inventory/Locks.php:48-62`): `GET_LOC
 
 ```php
 public static function device(int $deviceId, callable $fn): mixed;
-// key "device:$deviceId". The per-device sync lock of plan:92. P2B push, rescue push, redemption and wipe
-// confirmation MUST take it.
+// key "device:$deviceId". Taken by adding codes, cancelling, renaming and P2B redemption. P2B push, rescue push and the
+// wipe confirmation never take it: they lock the device row only (§0a, §12, 50-design D-37).
 // busy: 'This tablet is in contact with the server right now (registering or uploading). Wait a few seconds and try again.'
 public static function site(int $siteId, callable $fn): mixed;
 // key "devices:site:$siteId". Used by add and rename, so labels stay unique and the pending cap holds.
@@ -1097,6 +1097,14 @@ These use the existing `Notifications::toRoleOnce`, with entity `device` and id.
 
 ## 14. Contract for Phase 2B
 
+> **Superseded in detail by `docs/design/50-design-station.md`** (the Phase 2B design; its S1 is built). The rules below still hold, with these changes:
+> - **§14.2:** the guard is `Api::start(['device' => 'in_service'|'known', 'proof' => …, 'session' => false, 'method' => …])` (50 §5.1). CSRF is verified inside `Api::start` for every session non-GET; the explicit `Csrf::verify()` calls stay.
+> - **§14.3:** registration also takes a `registration_nonce` and the tablet's `proof_key`. The server-made credential is derived from the code's token and the nonce, so a lost answer can be asked for again within 15 minutes (50 §6.3, X-3).
+> - **§14.4:** the heartbeat body gains `client_now`, `attention_count`, `locked_out_since`, `auth_failures` and `clock_rollback`, and the response gains `config`. `offline_enabled` needs the installed app (standalone) on **every** platform and an active site. The wipe confirmation needs a valid proof signature, is sent with credentials so `Clear-Site-Data` applies, and also shreds the tablet's grant secrets (50 §6.4).
+> - **§14.5:** the tablet clears every store except `meta`, confirms, and only then deletes its database (50 X-4).
+> - **§14.7:** grants follow 50 D-19 (expiry) and are superseded, not revoked, by a newer one (D-20); `grant_id` is the `auth_token.token_id`.
+> - **New, the device proof key:** a 32-byte HMAC key the tablet makes at registration and keeps non-extractable; see 50 X-1, §3.1 and §5.1.
+
 ### 14.1 The credential
 - **Value:** `'pfd1_' . Crypto::b64url(random_bytes(32))`.
 - **Server storage:** `device.token_hash = Tokens::hash($credential)` (hex, UNIQUE). It is kept after revocation, so a revoked tablet is still recognised and told to erase.
@@ -1217,7 +1225,7 @@ These use the existing `Notifications::toRoleOnce`, with entity `device` and id.
   - PIN on a revoked or waiting device is refused.
 - Push:
   - Retire pushes before the cut-off are accepted and later ones Held;
-  - a suspect device's items above `revoked_max_seq` are Held.
+  - every item a suspect device uploads once it is suspect is Held (§0a, §14.6).
 - Wipe:
   - wipe confirmation clears `vault_key_ciphertext` and sets `wiped_at`;
   - the count warning then drops the tablet.
@@ -1349,7 +1357,7 @@ These use the existing `Notifications::toRoleOnce`, with entity `device` and id.
    - `composer stan` (PHPStan) and `php bin/ci-guard.php` pass: SQL in capitals, portability, the seed file, no writes to append-only tables.
 2. **Migrations and seeds**, on **MariaDB 10.4** (XAMPP) and **MySQL 8.0**:
    - `php bin/migrate.php` applies 0012; a second run is a no-op.
-   - `php bin/schema-check.php` passes: 66 tables, 166 FKs, 68 settings, and the three 0012 checks.
+   - `php bin/schema-check.php` passes: 66 tables, 167 FKs (as built), 68 settings, and the 0012 checks.
    - `php bin/seed.php --dev` loads `004_devices.sql`; a second run adds nothing.
 3. **Browser** on `http://pfpms.localhost`. There is no dev Coordinator in the seeds: as an Administrator (`bin/create-admin.php`), invite a Coordinator for Dev Site North only and activate them with the printed sheet.
    - **As that Coordinator:**
@@ -1389,7 +1397,7 @@ These use the existing `Notifications::toRoleOnce`, with entity `device` and id.
   > `admin_devices`: register = add a tablet (site, label) and print a single-use registration code (16+1 Crockford symbols, 80 bits, QR `PFPMS-DEVICE:1:…` that is not a URL, `device_code_minutes`) that the installed Station redeems in P2B; revoke or wipe = **Retire** (revoke + Push Then Wipe; "lost or stolen" alerts Administrators) or **Erase now** (revoke + Wipe Now, Administrator only, `device.erase`). Every revocation ends the tablet's sessions ('Device Revoked') and revokes its codes and grants at once, is final, and keeps the credential hash so the wipe directive can still be delivered. Shows last seen, pending count, build, persisted flag (as "not reported" until P2B heartbeats).
 - **§4 capability matrix.** Administrator adds: "erase a tablet together with the records it has not uploaded (Wipe Now, `device.erase`)".
 - **§6 schema table.** Add this row:
-  > `| 0012 | auth_token.purpose += 'Device Registration'; user_session.end_reason += 'Device Revoked'; device += reported_max_seq, revoked_lost, revoked_max_seq, wiped_at; setting device_code_minutes (68 settings; tables 66 and FKs 166 unchanged) | US-01, UC-01 §3.3.3, UC-06 §4.3, P2A admin_devices |`
+  > `| 0012 | auth_token.purpose += 'Device Registration'; user_session.end_reason += 'Device Revoked'; device += reported_max_seq, revoked_lost, revoked_max_seq, wiped_at; setting device_code_minutes (68 settings; tables 66; FKs 167 as built) | US-01, UC-01 §3.3.3, UC-06 §4.3, P2A admin_devices |`
   - Also update line 639 ("`migrations/0002–0011`") to 0012.
 - **P2B section: "Device registration, credential and heartbeat".** Add:
   - redeems the P2A code;
@@ -1398,7 +1406,7 @@ These use the existing `Notifications::toRoleOnce`, with entity `device` and id.
   - the heartbeat is device-authenticated only;
   - rescue push is `api/sync/push.php` with `rescue: true`, and wipe confirmation goes on the heartbeat;
   - add the device guard, the `.htaccess` `Authorization` pass-through and `Request::json` to the file list;
-  - the push cut-off is tightened only for lost or erased tablets (items above `revoked_max_seq` are Held);
+  - the push cut-off is tightened only for lost or erased tablets (every item they upload once suspect is Held);
   - its migration is 0013 (oldest pending, storage estimate, calibrated rounds).
 - **Deviations to list:**
   1. Registration is by code from `admin_devices`, with no Coordinator sign-in on the tablet. Supersedes 12-design:136-137 and 11-design:232 (a cookie set by the admin page).
@@ -1427,7 +1435,7 @@ These use the existing `Notifications::toRoleOnce`, with entity `device` and id.
   > - `auth_token.purpose` gains 'Device Registration': the single-use code printed on `admin_devices`, bound to the waiting device row and to the person who created it; only its SHA-256 is stored.
   > - `user_session.end_reason` gains 'Device Revoked'.
   > - `device` gains `reported_max_seq` (the tablet's reported highest sequence, written by the P2B heartbeat), `revoked_lost` and `revoked_max_seq` (set when a tablet is taken out of service; the cut-off for a lost or erased tablet's uploads) and `wiped_at` (the tablet confirmed its erase, written by P2B). No FK.
-  > - One setting, `device_code_minutes` (default 60), bringing the total to 68. Tables 66 and FKs 166 are unchanged.
+  > - One setting, `device_code_minutes` (default 60), bringing the total to 68. Tables stay at 66; FKs are 167 as built.
 - Update the "Where it has been verified" line to "0010, 0011 and 0012 were verified the same way on MariaDB 10.4 and MySQL 8.0".
 
 ---

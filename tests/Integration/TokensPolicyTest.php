@@ -84,6 +84,94 @@ final class TokensPolicyTest extends TestCase
         $this->assertNotNull(Tokens::find($elsewhere, Tokens::OFFLINE_GRANT), 'another tablet');
     }
 
+    public function testIssueRecordsCreatedAt(): void
+    {
+        $user = $this->makeUser();
+        $reset = Tokens::issue($user['user_id'], Tokens::PASSWORD_RESET, 60);
+        Clock::advance('+90 seconds');
+        Tokens::issueValue($user['user_id'], Tokens::DEVICE_REGISTRATION, 'K7QM2XRD9VHPC4TNS', 30);
+        $this->assertSame(self::NOW, $this->scalar('SELECT created_at FROM auth_token WHERE token_hash = ?', [Tokens::hash($reset)]));
+        $this->assertSame('2026-10-01 12:01:30', $this->scalar('SELECT created_at FROM auth_token WHERE token_hash = ?', [Tokens::hash('K7QM2XRD9VHPC4TNS')]),
+            'the frozen clock at issue, whole seconds');
+        $this->assertSame('2026-10-01 12:01:30', Tokens::findAny('K7QM2XRD9VHPC4TNS', Tokens::DEVICE_REGISTRATION)['created_at']);
+    }
+
+    public function testRevokedGrantIdsListsOnlyThisTabletsRecentGrants(): void
+    {
+        $site = $this->makeSite('Test North');
+        $user = $this->makeUser();
+        $tablet = $this->makeDevice($site);
+        $other = $this->makeDevice($site);
+        $grant = fn(int $deviceId, ?string $revokedAt, string $purpose = Tokens::OFFLINE_GRANT): int => $this->token($user['user_id'], $purpose, $deviceId, $revokedAt);
+
+        $now = $grant($tablet, self::NOW);
+        $grant($tablet, null);                                              // live
+        $justIn = $grant($tablet, '2026-09-24 12:00:01');                   // 167:59:59 ago
+        $grant($tablet, '2026-09-24 12:00:00');                             // exactly 168 hours ago: out
+        $grant($tablet, '2026-09-20 08:00:00');                             // long ago
+        $grant($other, self::NOW);                                          // another tablet
+        $grant($tablet, self::NOW, Tokens::DEVICE_REGISTRATION);            // another purpose
+        $earlier = $grant($tablet, '2026-10-01 09:00:00');
+
+        $ids = Tokens::revokedGrantIds($tablet);
+        $expected = [$now, $justIn, $earlier];
+        sort($expected);
+        $this->assertSame($expected, $ids, 'ordered by token_id, as integers');
+        $this->assertSame([], Tokens::revokedGrantIds($this->makeDevice($site)), 'a tablet with no grants');
+    }
+
+    public function testRevokedGrantIdsIncludeAnExpiredRevokedGrant(): void
+    {
+        $site = $this->makeSite('Test North');
+        $user = $this->makeUser();
+        $tablet = $this->makeDevice($site);
+        $expired = $this->token($user['user_id'], Tokens::OFFLINE_GRANT, $tablet, '2026-10-01 10:00:00', '2026-10-01 11:00:00');
+        $this->assertSame([$expired], Tokens::revokedGrantIds($tablet), 'the tablet still needs to hear of it, whatever the expiry');
+    }
+
+    public function testFindAnyReturnsUsedRows(): void
+    {
+        $site = $this->makeSite('Test North');
+        $user = $this->makeUser();
+        $tablet = $this->makeDevice($site);
+        Tokens::issueValue($user['user_id'], Tokens::DEVICE_REGISTRATION, 'K7QM2XRD9VHPC4TNS', 30, $tablet);
+        $id = (int) Tokens::find('K7QM2XRD9VHPC4TNS', Tokens::DEVICE_REGISTRATION)['token_id'];
+        $this->assertTrue(Tokens::consume($id));
+        $this->assertNull(Tokens::find('K7QM2XRD9VHPC4TNS', Tokens::DEVICE_REGISTRATION), 'find() ignores a used code');
+
+        $row = Tokens::findAny('K7QM2XRD9VHPC4TNS', Tokens::DEVICE_REGISTRATION);
+        $this->assertSame(['token_id', 'user_id', 'purpose', 'device_id', 'expires_at', 'used_at', 'revoked_at', 'created_at'], array_keys($row),
+            'never the hash or a secret');
+        $this->assertSame([$id, $user['user_id'], Tokens::DEVICE_REGISTRATION, $tablet, '2026-10-01 12:30:00', self::NOW, null, self::NOW],
+            [(int) $row['token_id'], (int) $row['user_id'], $row['purpose'], (int) $row['device_id'], $row['expires_at'], $row['used_at'], $row['revoked_at'], $row['created_at']]);
+    }
+
+    public function testFindAnyReturnsRevokedAndExpiredRows(): void
+    {
+        $user = $this->makeUser();
+        $revoked = Tokens::issue($user['user_id'], Tokens::PASSWORD_RESET, 60);
+        Tokens::revokeAll($user['user_id'], Tokens::PASSWORD_RESET);
+        $expired = Tokens::issue($user['user_id'], Tokens::PASSWORD_RESET, 1);
+        Clock::advance('+2 minutes');
+        $this->assertNull(Tokens::find($expired, Tokens::PASSWORD_RESET));
+        $this->assertSame(self::NOW, Tokens::findAny($revoked, Tokens::PASSWORD_RESET)['revoked_at']);
+        $this->assertSame('2026-10-01 12:01:00', Tokens::findAny($expired, Tokens::PASSWORD_RESET)['expires_at']);
+    }
+
+    public function testFindAnyIsPurposeBoundAndRefusesEmptyOrOverlongValues(): void
+    {
+        $user = $this->makeUser();
+        $raw = Tokens::issue($user['user_id'], Tokens::PASSWORD_RESET, 60);
+        $this->assertNull(Tokens::findAny($raw, Tokens::TEMPORARY_CREDENTIAL));
+        $this->assertNull(Tokens::findAny('', Tokens::PASSWORD_RESET));
+        $long = str_repeat('a', 101);
+        $hundred = str_repeat('b', 100);
+        Tokens::issueValue($user['user_id'], Tokens::PASSWORD_RESET, $long, 60);
+        Tokens::issueValue($user['user_id'], Tokens::PASSWORD_RESET, $hundred, 60);
+        $this->assertNull(Tokens::findAny($long, Tokens::PASSWORD_RESET), 'over 100 characters is refused, even though a row has its hash');
+        $this->assertNotNull(Tokens::findAny($hundred, Tokens::PASSWORD_RESET), '100 characters is still looked up');
+    }
+
     public function testPasswordPolicy(): void
     {
         $user = ['username' => 'jmartinez', 'email' => 'jmartinez@example.org', 'first_name' => 'Julia', 'last_name' => 'Martinez'];
@@ -176,5 +264,13 @@ final class TokensPolicyTest extends TestCase
         $this->assertSame('es', Policy::current('SNV Explanation', 'es')['language_code']);
         $this->assertSame('en', Policy::current('SNV Explanation', 'fr')['language_code']);
         $this->assertNull(Policy::current('Retention Notice', 'en'));
+    }
+
+    /** An auth_token row as a later slice would leave it (e.g. an offline grant revoked at a given time); returns its id. */
+    private function token(int $userId, string $purpose, ?int $deviceId, ?string $revokedAt, string $expiresAt = '2026-10-04 12:00:00'): int
+    {
+        Db::pdo()->prepare('INSERT INTO auth_token (user_id, purpose, token_hash, device_id, expires_at, revoked_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$userId, $purpose, Tokens::hash(bin2hex(random_bytes(16))), $deviceId, $expiresAt, $revokedAt, '2026-09-19 12:00:00']);
+        return (int) Db::pdo()->lastInsertId();
     }
 }

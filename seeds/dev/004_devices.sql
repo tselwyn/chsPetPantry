@@ -1,14 +1,21 @@
 -- Development seed data: sample tablets at Dev Site North in the states only Phase 2B can reach
 -- (registered, reporting, retiring), so admin_devices has something to show before the Station
 -- exists. The pages show the flags exactly as seeded. DEVELOPMENT ONLY: each credential hash is the
--- SHA-256 of a known string, so on a dev or test database anyone could present it; these rows have no
--- vault key, so a P2B tablet in service without one gets no key and works online only.
+-- SHA-256 of a known string, so on a dev or test database anyone could present it. The known dev
+-- credentials are 'pfd1_' followed by the lower-case label with hyphens for spaces, padded with 0s to 43
+-- characters (pfd1_front-desk-1000…). The rows have no vault key and no proof key, so they are online-only
+-- test tablets: they sign in, but get no offline grant and cannot record (50-design D-46).
 -- Safe to run repeatedly: a tablet is added only when neither its credential hash nor its name among
--- the site's current tablets is there yet.
+-- the site's current tablets is there yet. The first statement re-keys tablets seeded before P2B.
+
+UPDATE `device` d
+  JOIN (SELECT 'Front desk 1' AS `label` UNION ALL SELECT 'Front desk 2' UNION ALL SELECT 'Intake table' UNION ALL SELECT 'Spare tablet') t
+    ON d.`token_hash` = SHA2(CONCAT('pfpms-dev-device:', t.`label`), 256)
+   SET d.`token_hash` = SHA2(CONCAT('pfd1_', RPAD(REPLACE(LOWER(t.`label`), ' ', '-'), 43, '0')), 256);
 
 INSERT INTO `device` (`site_id`, `label`, `is_site_registered`, `registered_by`, `registered_at`, `token_hash`, `offline_enabled`, `storage_persisted`,
                       `last_seen_at`, `last_sync_at`, `pending_count`, `app_build`, `revoked_at`, `revoked_by`, `wipe_mode`)
-SELECT s.`site_id`, t.`label`, t.`registered`, u.`user_id`, UTC_TIMESTAMP() - INTERVAL 30 DAY, SHA2(CONCAT('pfpms-dev-device:', t.`label`), 256),
+SELECT s.`site_id`, t.`label`, t.`registered`, u.`user_id`, UTC_TIMESTAMP() - INTERVAL 30 DAY, SHA2(CONCAT('pfd1_', RPAD(REPLACE(LOWER(t.`label`), ' ', '-'), 43, '0')), 256),
        t.`offline`, t.`persisted`, CASE WHEN t.`seen_min` IS NULL THEN NULL ELSE UTC_TIMESTAMP() - INTERVAL t.`seen_min` MINUTE END,
        CASE WHEN t.`seen_min` IS NULL THEN NULL ELSE UTC_TIMESTAMP() - INTERVAL t.`seen_min` MINUTE END,
        t.`pending`, t.`build`, CASE WHEN t.`retired_min` IS NULL THEN NULL ELSE UTC_TIMESTAMP() - INTERVAL t.`retired_min` MINUTE END,
@@ -20,5 +27,5 @@ SELECT s.`site_id`, t.`label`, t.`registered`, u.`user_id`, UTC_TIMESTAMP() - IN
         UNION ALL SELECT 'Spare tablet', 0, 0, 1, 1500, 2, '0.1.0-dev', 1440, 'Push Then Wipe') t
   JOIN `site` s ON s.`name` = 'Dev Site North'
   JOIN `user_account` u ON u.`username` = 'system'
- WHERE NOT EXISTS (SELECT 1 FROM `device` d WHERE d.`token_hash` = SHA2(CONCAT('pfpms-dev-device:', t.`label`), 256))
+ WHERE NOT EXISTS (SELECT 1 FROM `device` d WHERE d.`token_hash` = SHA2(CONCAT('pfd1_', RPAD(REPLACE(LOWER(t.`label`), ' ', '-'), 43, '0')), 256))
    AND NOT EXISTS (SELECT 1 FROM `device` x WHERE x.`site_id` = s.`site_id` AND x.`label` = t.`label` AND x.`revoked_at` IS NULL AND x.`wiped_at` IS NULL);

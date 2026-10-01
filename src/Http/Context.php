@@ -11,12 +11,18 @@ final class Context
     /**
      * @param array $user user_account row (no password hash)
      * @param list<array{site_id:int,name:string,time_zone:string}> $sites sites usable right now
+     * @param ?int $deviceId the tablet the session was opened on (Station sessions), else null
+     * @param ?string $authMethod user_session.auth_method (Password, PIN, …)
+     * @param ?array $device the tablet authenticated in this request (Api::start 'device'), without secrets
      */
     public function __construct(
         public readonly array $user,
         public readonly string $sessionId,
         public readonly ?int $siteId,
         public readonly array $sites,
+        public readonly ?int $deviceId = null,
+        public readonly ?string $authMethod = null,
+        public readonly ?array $device = null,
     ) {
     }
 

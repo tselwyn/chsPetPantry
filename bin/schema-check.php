@@ -22,8 +22,8 @@ use Pfpms\Config;
 use Pfpms\Db;
 use Pfpms\Db\Migrator;
 
-const EXPECTED_TABLES = 66;       // 59 (v2.0.1) + 7 (v2.1), excluding schema_version
-const EXPECTED_FOREIGN_KEYS = 167; // 143 (v2.0.1) + 24 (v2.1)
+const EXPECTED_TABLES = 66;       // 59 (v2.0.1) + 7 (v2.1), excluding schema_version; 0013 adds none
+const EXPECTED_FOREIGN_KEYS = 167; // 143 (v2.0.1) + 24 (v2.1); 0013 adds none
 // JSON columns are LONGTEXT COLLATE utf8mb4_bin on MariaDB; that is the only allowed exception.
 const JSON_COLUMNS = [
     'user_account.notification_prefs', 'registration_draft.form_data', 'intake_question.options',
@@ -125,6 +125,15 @@ check("auth_token.purpose includes 'Device Registration' (0012)", str_contains($
 check("user_session.end_reason includes 'Device Revoked' (0012)", str_contains($columnType('user_session', 'end_reason'), "'Device Revoked'"));
 check('device has the 0012 columns', (int) col($pdo, "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'device'
     AND COLUMN_NAME IN ('reported_max_seq', 'revoked_lost', 'revoked_max_seq', 'wiped_at', 'erase_requested_at', 'erase_requested_by')") === 6);
+check('device has the 0013 columns', (int) col($pdo, "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'device'
+    AND COLUMN_NAME IN ('pbkdf2_iterations', 'proof_key_ciphertext', 'display_mode', 'storage_estimate_kb', 'clock_skew_seconds',
+                        'oldest_pending_at', 'attention_count', 'locked_out_since', 'shift_ended_at')") === 9);
+check('auth_token has created_at (0013)', (int) col($pdo, "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'auth_token' AND COLUMN_NAME = 'created_at'") === 1);
+check('sync_item has recorded_at_raw (0013)', (int) col($pdo, "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'sync_item' AND COLUMN_NAME = 'recorded_at_raw'") === 1);
+check("user_session.auth_method includes 'Offline PIN' (0013)", str_contains($columnType('user_session', 'auth_method'), "'Offline PIN'"));
+check("user_session.end_reason includes 'User Switch' (0013)", str_contains($columnType('user_session', 'end_reason'), "'User Switch'"));
 check('system account exists and is inactive', col($pdo, "SELECT status FROM user_account WHERE username = 'system'") === 'Inactive');
 
 // --- Smoke tests (rolled back) -----------------------------------------------------------------

@@ -26,8 +26,19 @@ final class DeviceStatusTest extends TestCase
             'storage_persisted' => 0, 'last_seen_at' => null, 'last_sync_at' => null, 'pending_count' => 0, 'reported_max_seq' => null, 'app_build' => null,
             'revoked_at' => null, 'revoked_by' => null, 'revoked_lost' => 0, 'revoked_max_seq' => null, 'wipe_mode' => 'None', 'erase_requested_at' => null, 'wiped_at' => null,
             'code_expires_at' => null, 'site_active' => 1, 'site_name' => 'Northside',
+            'display_mode' => null, 'clock_skew_seconds' => null, 'locked_out_since' => null, 'attention_count' => null, 'received_count' => null,
         ];
     }
+
+    /** An in-service tablet that reported five minutes ago with nothing to warn about, unless overridden. */
+    private static function reporting(array $overrides = []): array
+    {
+        return self::row($overrides + ['last_seen_at' => '2026-10-01 11:55:00', 'storage_persisted' => 1, 'offline_enabled' => 1, 'app_build' => '1.0',
+            'display_mode' => 'standalone', 'clock_skew_seconds' => 3, 'attention_count' => 0, 'reported_max_seq' => 10, 'received_count' => 10]);
+    }
+
+    /** Retired (Push Then Wipe) after its last report, so no "connected after" warning. */
+    private const RETIRING = ['revoked_at' => '2026-10-01 11:00:00', 'wipe_mode' => 'Push Then Wipe', 'last_seen_at' => '2026-10-01 10:55:00'];
 
     private static function describe(array $row, bool $offline = true, string $build = '1.0'): array
     {
@@ -99,6 +110,96 @@ final class DeviceStatusTest extends TestCase
             'a waiting tablet is cancelled, not retired');
         $this->assertSame([], self::describe(self::row(['revoked_at' => '2026-09-30 12:00:00', 'wipe_mode' => 'Push Then Wipe', 'site_active' => 0]))['warnings'],
             'already out of service: nothing to do');
+    }
+
+    public function testAReportingTabletWithEveryNewFigureInRangeHasNoWarning(): void
+    {
+        $this->assertSame([], self::describe(self::reporting())['warnings']);
+    }
+
+    public function testSequenceGapWarning(): void
+    {
+        $this->assertSame(['8 records it numbered have neither reached the server nor been reported as waiting on it. They may be lost; ask who used it.'],
+            self::describe(self::reporting(['reported_max_seq' => 41, 'received_count' => 30, 'pending_count' => 3]))['warnings'], '41 numbered - 30 received - 3 waiting');
+        $this->assertSame(['1 record it numbered has neither reached the server nor been reported as waiting on it. They may be lost; ask who used it.'],
+            self::describe(self::reporting(['reported_max_seq' => 11, 'received_count' => 10]))['warnings']);
+        $this->assertSame([], self::describe(self::reporting(['reported_max_seq' => 13, 'received_count' => 10, 'pending_count' => 3]))['warnings'], 'all accounted for');
+        $this->assertSame([], self::describe(self::reporting(['reported_max_seq' => 10, 'received_count' => 12]))['warnings'], 'more received than numbered is no gap');
+    }
+
+    public function testSequenceGapWarningForARetiringTablet(): void
+    {
+        $this->assertSame(['2 records it numbered have neither reached the server nor been reported as waiting on it. They may be lost; ask who used it.'],
+            self::describe(self::reporting(self::RETIRING + ['reported_max_seq' => 12]))['warnings'], 'it may still upload them');
+    }
+
+    public function testNoGapWarningOnceTheTabletIsBeingErased(): void
+    {
+        $erasing = ['revoked_at' => '2026-10-01 11:00:00', 'wipe_mode' => 'Wipe Now', 'last_seen_at' => '2026-10-01 10:55:00', 'reported_max_seq' => 20];
+        $this->assertSame([], self::describe(self::reporting($erasing))['warnings'], 'erasing: in service or retiring only');
+        $this->assertSame([], self::describe(self::reporting($erasing + ['wiped_at' => '2026-10-01 11:30:00']))['warnings'], 'erased');
+    }
+
+    public function testNoGapWarningBeforeTheTabletReports(): void
+    {
+        $this->assertSame([], self::describe(self::reporting(['reported_max_seq' => null, 'received_count' => 0]))['warnings'], 'no max_seq reported yet');
+        $this->assertSame([], self::describe(self::reporting(['reported_max_seq' => 41, 'received_count' => null]))['warnings'],
+            'a row whose query did not count the received records');
+    }
+
+    public function testBrowserTabWarning(): void
+    {
+        $warning = "It is running in a browser tab, not the installed app, so it cannot work offline. Open the Station from the tablet's home screen.";
+        foreach (['browser', 'minimal-ui', 'fullscreen', 'other'] as $mode) {
+            $this->assertSame([$warning], self::describe(self::reporting(['display_mode' => $mode]))['warnings'], $mode);
+        }
+        $this->assertSame([], self::describe(self::reporting(['display_mode' => null]))['warnings'], 'not reported');
+        $this->assertSame([], self::describe(self::reporting(self::RETIRING + ['display_mode' => 'browser']))['warnings'], 'in service only');
+    }
+
+    public function testClockSkewWarningBeyondTheTolerance(): void
+    {
+        $warning = fn(string $text) => ["Its clock is $text. Records are timed correctly, but set the tablet's clock to automatic."];
+        $this->assertSame([], self::describe(self::reporting(['clock_skew_seconds' => 600]))['warnings'], 'exactly the default 10 minutes is tolerated');
+        $this->assertSame($warning('10 minutes slow'), self::describe(self::reporting(['clock_skew_seconds' => 601]))['warnings'],
+            'server minus tablet > 0: the tablet is behind');
+        $this->assertSame($warning('20 minutes fast'), self::describe(self::reporting(['clock_skew_seconds' => -1200]))['warnings']);
+        $this->assertSame($warning('1 minute slow'),
+            DeviceStatus::describe(self::reporting(['clock_skew_seconds' => 61]), self::now(), 'UTC', true, '1.0', 60)['warnings'],
+            'the tolerance comes from the page (sync_clock_skew_minutes)');
+        $this->assertSame([], DeviceStatus::describe(self::reporting(['clock_skew_seconds' => -1200]), self::now(), 'UTC', true, '1.0', 1800)['warnings'],
+            'within a wider tolerance');
+        $this->assertSame([], self::describe(self::reporting(self::RETIRING + ['clock_skew_seconds' => 5000]))['warnings'], 'in service only');
+    }
+
+    public function testLockedOutWarning(): void
+    {
+        $warning = ['It locked itself after too many wrong passwords (Oct 1, 6:30 AM). Its unsynced records are kept; someone must sign in on it with a connection.'];
+        $this->assertSame($warning, self::describe(self::reporting(['locked_out_since' => '2026-10-01 10:30:00']))['warnings'], 'in the site zone');
+        $this->assertSame($warning, self::describe(self::reporting(self::RETIRING + ['locked_out_since' => '2026-10-01 10:30:00']))['warnings'], 'retiring too');
+        $this->assertSame([], self::describe(self::reporting(['locked_out_since' => '2026-10-01 10:30:00', 'revoked_at' => '2026-10-01 11:00:00',
+            'wipe_mode' => 'Wipe Now', 'last_seen_at' => '2026-10-01 10:55:00']))['warnings'], 'not once it is being erased');
+    }
+
+    public function testAttentionWarning(): void
+    {
+        $this->assertSame(['2 records on it could not be uploaded. They are kept on the tablet; tell the Administrator.'],
+            self::describe(self::reporting(['attention_count' => 2]))['warnings']);
+        $this->assertSame(['1 record on it could not be uploaded. They are kept on the tablet; tell the Administrator.'],
+            self::describe(self::reporting(['attention_count' => 1]))['warnings']);
+        $this->assertSame([], self::describe(self::reporting(['attention_count' => 0]))['warnings']);
+        $this->assertSame([], self::describe(self::reporting(['attention_count' => null]))['warnings'], 'not reported');
+    }
+
+    public function testRowsWithoutTheNewKeysGiveNoWarning(): void
+    {
+        $row = self::row(['last_seen_at' => '2026-10-01 11:55:00', 'storage_persisted' => 1, 'offline_enabled' => 1, 'reported_max_seq' => 41]);
+        foreach (['display_mode', 'clock_skew_seconds', 'locked_out_since', 'attention_count', 'received_count'] as $key) {
+            unset($row[$key]); // shaped as today's list queries and the P2A row() were
+        }
+        $described = self::describe($row);
+        $this->assertSame([], $described['warnings'], 'and no PHP warning, which failOnWarning would turn into a failure');
+        $this->assertSame('Ready to work offline', $described['label']);
     }
 
     public function testAgo(): void

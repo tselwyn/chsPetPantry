@@ -48,6 +48,25 @@ final class Clock
         return $value === null || $value === '' ? null : new DateTimeImmutable($value, new DateTimeZone('UTC'));
     }
 
+    /**
+     * A time sent by a tablet: exactly "YYYY-MM-DD HH:MM:SS.mmm" in UTC (the column-precision format both PHP and the
+     * Station write), else null. Impossible dates (Feb 30) are refused by the round trip.
+     */
+    public static function fromClient(?string $value): ?DateTimeImmutable
+    {
+        if ($value === null || !preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/D', $value)) {
+            return null;
+        }
+        $at = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.v', $value, new DateTimeZone('UTC'));
+        return $at !== false && $at->format('Y-m-d H:i:s.v') === $value ? $at : null;
+    }
+
+    /** 00:00 of an organisation date (Y-m-d), as a UTC instant: when an account's date-based rule starts to apply. */
+    public static function orgDayStartUtc(string $date): DateTimeImmutable
+    {
+        return (new DateTimeImmutable("$date 00:00:00", new DateTimeZone(self::orgTimeZone())))->setTimezone(new DateTimeZone('UTC'));
+    }
+
     /** Today's date (Y-m-d) in a site's local time zone, e.g. for distribution.local_date. */
     public static function localDate(string $timeZone, ?DateTimeImmutable $at = null): string
     {

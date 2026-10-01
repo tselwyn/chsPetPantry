@@ -55,7 +55,9 @@ final class RbacTest extends TestCase
     {
         $known = Rbac::all();
         $root = dirname(__DIR__, 2);
-        $files = array_merge(glob("$root/public/*.php") ?: [], glob("$root/public/*/*.php") ?: [], [$root . '/src/View/nav.php']);
+        $files = array_merge(glob("$root/public/*.php") ?: [], glob("$root/public/*/*.php") ?: [], glob("$root/public/*/*/*.php") ?: [],
+            [$root . '/src/View/nav.php']);
+        $this->assertContains("$root/public/api/device/register.php", $files, 'endpoints two levels down (public/api/device/) are checked too');
         foreach ($files as $file) {
             preg_match_all("/'capability'\\s*=>\\s*'([a-z_.]+)'/", (string) file_get_contents($file), $m);
             foreach ($m[1] as $capability) {

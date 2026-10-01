@@ -348,7 +348,13 @@ final class DeviceService
     /** Whether this server can redeem codes yet (the Station's registration endpoint arrives in P2B). */
     public static function redemptionAvailable(): bool
     {
-        return is_file(APP_ROOT . '/public/api/device/register.php');
+        return self::redemptionAvailableAt(APP_ROOT . '/public');
+    }
+
+    /** Both the endpoint and the Station shell it serves (a sheet is only useful once the installed app exists). */
+    public static function redemptionAvailableAt(string $publicDir): bool
+    {
+        return is_file($publicDir . '/api/device/register.php') && is_file($publicDir . '/station/index.php');
     }
 
     /**

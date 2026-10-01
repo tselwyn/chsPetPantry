@@ -13,12 +13,25 @@ use RuntimeException;
  * PHP's native session, hardened: strict mode (no attacker-chosen ids), cookie only,
  * HttpOnly, SameSite=Lax, Secure outside dev/test, stored under storage/sessions.
  * The session only carries ids; everything else is re-read and re-checked each request.
+ *
+ * The Station has its own cookie (PFPMSST, path <base>api/), so a PIN switch on a tablet never changes the
+ * user of a web tab in the same browser (50-design D-52).
  */
 final class WebSession
 {
     public const COOKIE = 'PFPMSSID';
+    public const STATION_COOKIE = 'PFPMSST';
 
-    public static function start(): void
+    /** Whether this request's session is the Station's (remembered for restart()). */
+    private static bool $station = false;
+
+    /** @return array{name: string, path: string} the cookie a web page or the Station uses */
+    public static function cookieFor(bool $station): array
+    {
+        return ['name' => $station ? self::STATION_COOKIE : self::COOKIE, 'path' => Request::basePath() . ($station ? 'api/' : '')];
+    }
+
+    public static function start(bool $station = false): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
             return;
@@ -34,10 +47,12 @@ final class WebSession
         ini_set('session.gc_maxlifetime', (string) (max(1, Settings::int('session_absolute_hours', 12)) * 3600));
         session_save_path($dir);
         session_cache_limiter(''); // keep bootstrap's Cache-Control header instead of PHP's
-        session_name(self::COOKIE);
+        self::$station = $station;
+        $cookie = self::cookieFor($station);
+        session_name($cookie['name']);
         session_set_cookie_params([
             'lifetime' => 0,
-            'path' => Request::basePath(),
+            'path' => $cookie['path'],
             'secure' => self::secureCookies(),
             'httponly' => true,
             'samesite' => 'Lax',
@@ -68,7 +83,7 @@ final class WebSession
         }
         $_SESSION = [];
         $params = session_get_cookie_params();
-        setcookie(self::COOKIE, '', ['expires' => time() - 3600, 'path' => $params['path'], 'secure' => $params['secure'],
+        setcookie(session_name(), '', ['expires' => time() - 3600, 'path' => $params['path'], 'secure' => $params['secure'],
             'httponly' => true, 'samesite' => 'Lax']);
         session_destroy();
     }
@@ -77,7 +92,7 @@ final class WebSession
     public static function restart(): void
     {
         self::destroy();
-        self::start();
+        self::start(self::$station);
         session_regenerate_id(true);
     }
 

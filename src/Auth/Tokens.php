@@ -37,8 +37,8 @@ final class Tokens
     public static function issueValue(int $userId, string $purpose, #[\SensitiveParameter] string $raw, int $ttlMinutes, ?int $deviceId = null): string
     {
         $expires = Clock::db(Clock::now()->modify("+$ttlMinutes minutes"));
-        Db::pdo()->prepare('INSERT INTO auth_token (user_id, purpose, token_hash, device_id, expires_at) VALUES (?, ?, ?, ?, ?)')
-            ->execute([$userId, $purpose, self::hash($raw), $deviceId, $expires]);
+        Db::pdo()->prepare('INSERT INTO auth_token (user_id, purpose, token_hash, device_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute([$userId, $purpose, self::hash($raw), $deviceId, $expires, Clock::db()]);
         return $expires;
     }
 
@@ -54,6 +54,38 @@ final class Tokens
         );
         $st->execute([self::hash($raw), $purpose, Clock::db()]);
         return $st->fetch() ?: null;
+    }
+
+    /**
+     * The token row whatever its state (used, revoked or expired), or null: registration replays need the used code
+     * (50-design X-3).
+     */
+    public static function findAny(#[\SensitiveParameter] string $raw, string $purpose): ?array
+    {
+        if ($raw === '' || strlen($raw) > 100) {
+            return null;
+        }
+        $st = Db::pdo()->prepare(
+            'SELECT token_id, user_id, purpose, device_id, expires_at, used_at, revoked_at, created_at FROM auth_token WHERE token_hash = ? AND purpose = ?'
+        );
+        $st->execute([self::hash($raw), $purpose]);
+        return $st->fetch() ?: null;
+    }
+
+    /**
+     * Ids of this tablet's offline grants revoked in the last 168 hours (the longest offline_grant_hours): the tablet
+     * deletes a person's offline sign-in when its current grant is listed (50-design D-21).
+     * @return list<int>
+     */
+    public static function revokedGrantIds(int $deviceId): array
+    {
+        $st = Db::pdo()->prepare(
+            "SELECT token_id FROM auth_token
+              WHERE device_id = ? AND purpose = 'Offline Grant' AND revoked_at IS NOT NULL AND revoked_at > ?
+              ORDER BY token_id"
+        );
+        $st->execute([$deviceId, Clock::db(Clock::now()->modify('-168 hours'))]);
+        return array_map('intval', $st->fetchAll(\PDO::FETCH_COLUMN));
     }
 
     /**

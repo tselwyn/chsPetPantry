@@ -7,16 +7,19 @@ use Pfpms\Clock;
 use Pfpms\Db;
 
 /**
- * SQL for device (tablets that run the Station). Prepared statements only. The credential hash
- * and the vault key are never selected: rows carry has_credential instead, so pages, templates
- * and audit snapshots can never show them.
+ * SQL for device (tablets that run the Station). Prepared statements only. The credential hash, the
+ * vault key and the proof key are never selected into a row: rows carry has_credential (and, for the
+ * Station guard, has_vault_key and has_proof_key) instead, so pages, templates and audit snapshots can
+ * never show them. The two keys are read only by their own narrow queries. Booleans are bound as 1/0:
+ * PHP binds false as '', which a TINYINT refuses under strict mode.
  */
 final class DeviceRepository
 {
     public const COLUMNS = 'd.device_id, d.site_id, d.label, d.is_site_registered, d.registered_by, d.registered_at,
         (d.token_hash IS NOT NULL) AS has_credential, d.offline_enabled, d.storage_persisted, d.last_seen_at, d.last_sync_at,
         d.pending_count, d.reported_max_seq, d.app_build, d.revoked_at, d.revoked_by, d.revoked_lost, d.revoked_max_seq,
-        d.wipe_mode, d.erase_requested_at, d.erase_requested_by, d.wiped_at';
+        d.wipe_mode, d.erase_requested_at, d.erase_requested_by, d.wiped_at, d.pbkdf2_iterations, d.display_mode, d.storage_estimate_kb,
+        d.clock_skew_seconds, d.oldest_pending_at, d.attention_count, d.locked_out_since, d.shift_ended_at';
 
     /** The one test of a tablet P2B may trust (with its site active): registered, not taken out of service, not erased. */
     public const IN_SERVICE_SQL = 'd.token_hash IS NOT NULL AND d.is_site_registered = 1 AND d.revoked_at IS NULL AND d.wiped_at IS NULL';
@@ -31,7 +34,8 @@ final class DeviceRepository
                COALESCE(NULLIF(eb.display_name, ''), CONCAT(eb.first_name, ' ', eb.last_name)) AS erase_requested_by_name,
                (SELECT MAX(t.token_id) FROM auth_token t WHERE " . self::ANY_CODE . ") AS code_id,
                (SELECT MAX(t.token_id) FROM auth_token t WHERE " . self::LIVE_CODE . ") AS live_code_id,
-               (SELECT MAX(t.expires_at) FROM auth_token t WHERE " . self::LIVE_CODE . ") AS code_expires_at
+               (SELECT MAX(t.expires_at) FROM auth_token t WHERE " . self::LIVE_CODE . ") AS code_expires_at,
+               (SELECT COUNT(*) FROM sync_item si WHERE si.device_id = d.device_id AND si.recorded_by IS NOT NULL) AS received_count
           FROM device d
           LEFT JOIN site s ON s.site_id = d.site_id
           LEFT JOIN user_account rb ON rb.user_id = d.registered_by
@@ -81,6 +85,137 @@ final class DeviceRepository
         $st = Db::pdo()->prepare('SELECT ' . self::COLUMNS . ' FROM device d WHERE d.device_id = ? FOR UPDATE');
         $st->execute([$deviceId]);
         return $st->fetch() ?: null;
+    }
+
+    /**
+     * The tablet presenting this credential (its SHA-256, Tokens::hash), for the Station guard: the display-safe
+     * columns plus has_vault_key, has_proof_key, in_service (IN_SERVICE_SQL) and its site. Never a secret.
+     */
+    public static function byCredentialHash(string $hash): ?array
+    {
+        $st = Db::pdo()->prepare(
+            'SELECT ' . self::COLUMNS . ', (d.vault_key_ciphertext IS NOT NULL) AS has_vault_key, (d.proof_key_ciphertext IS NOT NULL) AS has_proof_key,
+                    (' . self::IN_SERVICE_SQL . ') AS in_service, s.name AS site_name, s.time_zone, COALESCE(s.is_active, 0) AS site_active
+               FROM device d LEFT JOIN site s ON s.site_id = d.site_id
+              WHERE d.token_hash = ?'
+        );
+        $st->execute([$hash]);
+        return $st->fetch() ?: null;
+    }
+
+    /** The tablet's vault key, encrypted (Crypto, AAD device:<id>:dvk): read only where it is released or opened. */
+    public static function vaultKeyCiphertext(int $deviceId): ?string
+    {
+        $st = Db::pdo()->prepare('SELECT vault_key_ciphertext FROM device WHERE device_id = ?');
+        $st->execute([$deviceId]);
+        $value = $st->fetchColumn();
+        return is_string($value) ? $value : null;
+    }
+
+    /** The tablet's proof key, encrypted (Crypto, AAD device:<id>:proof): read only by DeviceProof::check(). */
+    public static function proofKeyCiphertext(int $deviceId): ?string
+    {
+        $st = Db::pdo()->prepare('SELECT proof_key_ciphertext FROM device WHERE device_id = ?');
+        $st->execute([$deviceId]);
+        $value = $st->fetchColumn();
+        return is_string($value) ? $value : null;
+    }
+
+    /**
+     * A tablet redeemed its registration code (40-design §14.3): its credential hash, vault key, proof key and
+     * calibrated rounds. offline_enabled stays 0 until a heartbeat shows the tablet can work offline.
+     */
+    public static function register(int $deviceId, string $tokenHash, string $vaultKeyCiphertext, string $proofKeyCiphertext, int $registeredBy,
+        string $at, bool $persisted, ?string $displayMode, ?string $appBuild, ?int $iterations): bool
+    {
+        $st = Db::pdo()->prepare(
+            'UPDATE device SET token_hash = ?, vault_key_ciphertext = ?, proof_key_ciphertext = ?, pbkdf2_iterations = ?, is_site_registered = 1,
+                    registered_by = ?, registered_at = ?, offline_enabled = 0, storage_persisted = ?, display_mode = ?, app_build = ?, last_seen_at = ?
+              WHERE device_id = ? AND token_hash IS NULL AND revoked_at IS NULL AND wiped_at IS NULL'
+        );
+        $st->execute([$tokenHash, $vaultKeyCiphertext, $proofKeyCiphertext, $iterations, $registeredBy, $at, $persisted ? 1 : 0, $displayMode,
+            $appBuild, $at, $deviceId]);
+        return $st->rowCount() === 1;
+    }
+
+    /**
+     * What the tablet reported (40-design §14.4). The UPDATE locks the row and evaluates "in service" in it, so a
+     * concurrent Retire is never overwritten with offline_enabled = 1; reported_max_seq only rises, and only in service.
+     * None of the SET columns appears in IN_SERVICE_SQL, so MySQL's left-to-right SET cannot change the predicate. The same lockout
+     * reported again (within 2 seconds, the jitter of the skew correction) keeps its stored time, so it is not a change.
+     * @param array{app_build: ?string, storage_persisted: bool, display_mode: ?string, pending_count: ?int, attention_count: ?int,
+     *   oldest_pending_at: ?string, storage_estimate_kb: ?int, locked_out_since: ?string, max_seq: ?int} $r
+     */
+    public static function heartbeat(int $deviceId, array $r, bool $offlineEligible, ?int $clockSkewSeconds, string $at): void
+    {
+        Db::pdo()->prepare(
+            'UPDATE device d
+                SET d.last_seen_at = ?, d.app_build = COALESCE(?, d.app_build), d.storage_persisted = ?, d.display_mode = COALESCE(?, d.display_mode),
+                    d.pending_count = COALESCE(?, d.pending_count), d.attention_count = ?, d.oldest_pending_at = ?, d.storage_estimate_kb = ?,
+                    d.clock_skew_seconds = ?,
+                    d.locked_out_since = CASE WHEN ? IS NULL THEN NULL
+                        WHEN d.locked_out_since IS NOT NULL AND ABS(TIMESTAMPDIFF(SECOND, d.locked_out_since, ?)) <= 2 THEN d.locked_out_since ELSE ? END,
+                    d.reported_max_seq = IF((' . self::IN_SERVICE_SQL . ') AND ? IS NOT NULL, GREATEST(COALESCE(d.reported_max_seq, 0), CAST(? AS SIGNED)), d.reported_max_seq),
+                    d.offline_enabled = IF((' . self::IN_SERVICE_SQL . ') AND CAST(? AS SIGNED) = 1, 1, 0)
+              WHERE d.device_id = ? AND d.wiped_at IS NULL'
+        )->execute([$at, $r['app_build'], $r['storage_persisted'] ? 1 : 0, $r['display_mode'], $r['pending_count'], $r['attention_count'],
+            $r['oldest_pending_at'], $r['storage_estimate_kb'], $clockSkewSeconds, $r['locked_out_since'], $r['locked_out_since'], $r['locked_out_since'],
+            $r['max_seq'], $r['max_seq'],
+            $offlineEligible ? 1 : 0, $deviceId]);
+    }
+
+    /** Whether any tablet in service authenticated (heartbeat or registration) since $since. */
+    public static function anySeenSince(string $since): bool
+    {
+        $st = Db::pdo()->prepare('SELECT 1 FROM device d WHERE ' . self::IN_SERVICE_SQL . ' AND d.last_seen_at >= ? LIMIT 1');
+        $st->execute([$since]);
+        return $st->fetchColumn() !== false;
+    }
+
+    /** A revoked tablet confirmed it erased itself: nothing on the server can open a copy of its old storage any more. */
+    public static function confirmWipe(int $deviceId, string $at): bool
+    {
+        $st = Db::pdo()->prepare(
+            'UPDATE device SET wiped_at = ?, pending_count = 0, attention_count = NULL, vault_key_ciphertext = NULL, proof_key_ciphertext = NULL, offline_enabled = 0
+              WHERE device_id = ? AND revoked_at IS NOT NULL AND wiped_at IS NULL'
+        );
+        $st->execute([$at, $deviceId]);
+        return $st->rowCount() === 1;
+    }
+
+    /** Forget the secrets of the tablet's offline grants (its erase was confirmed). Returns how many. */
+    public static function shredGrantSecrets(int $deviceId): int
+    {
+        $st = Db::pdo()->prepare("UPDATE auth_token SET secret_ciphertext = NULL WHERE device_id = ? AND purpose = 'Offline Grant' AND secret_ciphertext IS NOT NULL");
+        $st->execute([$deviceId]);
+        return $st->rowCount();
+    }
+
+    /**
+     * Tablets revoked before $before that never confirmed their erase and still hold their vault key on the server
+     * (devices:clear-unconfirmed-wipes).
+     * @return list<int>
+     */
+    public static function unconfirmedWipes(string $before): array
+    {
+        $st = Db::pdo()->prepare(
+            'SELECT device_id FROM device
+              WHERE revoked_at IS NOT NULL AND wiped_at IS NULL AND vault_key_ciphertext IS NOT NULL AND revoked_at <= ?
+              ORDER BY device_id'
+        );
+        $st->execute([$before]);
+        return array_map('intval', $st->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
+    /** Clear the vault key of a revoked tablet whose erase was never confirmed (its proof key stays, for a late confirmation). */
+    public static function clearKeys(int $deviceId): bool
+    {
+        $st = Db::pdo()->prepare(
+            'UPDATE device SET vault_key_ciphertext = NULL
+              WHERE device_id = ? AND revoked_at IS NOT NULL AND wiped_at IS NULL AND vault_key_ciphertext IS NOT NULL'
+        );
+        $st->execute([$deviceId]);
+        return $st->rowCount() === 1;
     }
 
     /** @return ?array{token_id: int, expires_at: string, issued_by_name: string} the tablet's working registration code */
