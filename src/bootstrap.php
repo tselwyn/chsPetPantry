@@ -13,6 +13,7 @@ require __DIR__ . '/View/helpers.php';
 use Pfpms\Config;
 use Pfpms\Http\ErrorHandler;
 use Pfpms\Http\Request;
+use Pfpms\Http\SecurityHeaders;
 
 define('APP_VERSION', trim((string) @file_get_contents(APP_ROOT . '/VERSION')) ?: 'dev');
 
@@ -38,16 +39,10 @@ if (PHP_SAPI !== 'cli' && !in_array(Config::env(), ['dev', 'test'], true) && !Re
 
 if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header_remove('X-Powered-By');
-    // Never cache pages or API responses: SiteGround's cache ignores the session cookie.
-    header('Cache-Control: no-store, no-cache, private, max-age=0');
-    header('Pragma: no-cache');
-    header('X-Content-Type-Options: nosniff');
-    header('X-Frame-Options: DENY');
-    header('Referrer-Policy: same-origin');
-    header('Permissions-Policy: camera=(self), microphone=(), geolocation=()');
-    header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; "
-        . "font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'");
+    foreach (SecurityHeaders::LINES as $line) {
+        header($line);
+    }
     if (Request::isHttps()) {
-        header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+        header(SecurityHeaders::HSTS);
     }
 }

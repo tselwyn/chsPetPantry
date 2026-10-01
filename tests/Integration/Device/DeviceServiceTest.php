@@ -816,11 +816,11 @@ final class DeviceServiceTest extends TestCase
         $this->assertDirectoryDoesNotExist($public, 'the temporary web root was removed');
     }
 
-    public function testRedemptionIsNotAvailableInThisRepoYet(): void
+    public function testRedemptionIsAvailableNowTheShellExists(): void
     {
         $this->assertFileExists(APP_ROOT . '/public/api/device/register.php', 'S1 adds the redemption endpoint');
-        $this->assertFileDoesNotExist(APP_ROOT . '/public/station/index.php', 'the Station shell arrives in S2 (then this test expects true)');
-        $this->assertFalse(DeviceService::redemptionAvailable(), 'until S2, admin_devices keeps saying tablets cannot be registered yet');
+        $this->assertFileExists(APP_ROOT . '/public/station/index.php', 'S2 adds the Station shell');
+        $this->assertTrue(DeviceService::redemptionAvailable(), 'admin_devices no longer says tablets cannot be registered yet');
     }
 
     public function testAnAccountEventThatCancelsAnExpiredCodeDoesNotMakeFormsStale(): void

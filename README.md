@@ -15,7 +15,7 @@ A web application for running a pet food pantry. It keeps records of participant
 
 | Path | What it is |
 |---|---|
-| `public/` | The only web-reachable folder; SiteGround's `public_html`. One PHP file per page, plus `assets/`. |
+| `public/` | The only web-reachable folder; SiteGround's `public_html`. One PHP file per page, plus `assets/` and the tablets' Station app in `station/`. |
 | `src/` | Application code (`Pfpms\` namespace): database, auth, security, audit, views. |
 | `templates/` | Page templates and layouts. |
 | `migrations/` | Versioned schema changes, applied by `bin/migrate.php`. |
@@ -23,7 +23,7 @@ A web application for running a pet food pantry. It keeps records of participant
 | `bin/` | Command-line tools: migrate, schema check, seed, create an admin, generate a key. |
 | `config/` | `config.example.php` and `config.test.example.php`. Your real `config.php` is never committed. |
 | `storage/` | Runtime files: sessions, logs, dev mail, encrypted uploads. Never web-reachable. |
-| `tests/` | PHPUnit tests (unit, integration, contract). |
+| `tests/` | PHPUnit tests (unit, integration, contract), the Station's JavaScript tests (`js/`) and the fixtures both share. |
 | `legacy/` | Reference-only code from the inherited app. Not runnable, never deployed, removed by Phase 7. |
 
 ## Requirements
@@ -68,7 +68,20 @@ Schedule it every 30 minutes, the most often SiteGround's fair-use policy allows
 CI (`.github/workflows/ci.yml`) runs on every push and pull request:
 - `bin/ci-guard.php`, the SQL portability, immutability and hygiene guard from plan §8;
 - PHP lint, PHPStan and a scan of the working tree for secrets;
-- then, for PHP 8.2 and 8.3 against each of MariaDB 10.4, MySQL 8.4 and Percona 8.4: migrate twice, check the schema, load the seeds twice, and run the suite.
+- then, for PHP 8.2 and 8.3 against each of MariaDB 10.4, MySQL 8.4 and Percona 8.4: migrate twice, check the schema, load the seeds twice, and run the suite;
+- and, on its own, the Station's JavaScript tests on Node 24 (`npm run test:js`, nothing to install).
+
+## Station development
+
+The Station is the offline app the pantry's tablets run, in `public/station/` (design: [`docs/design/50-design-station.md`](docs/design/50-design-station.md)).
+
+- **Dev server:** `php -S 127.0.0.1:8088 -t public` (or the `pfpms-dev` launch config), then open http://localhost:8088/station/. Always use `localhost`, never `127.0.0.1`: the browser treats them as different origins. `app.base_url` must be exactly `http://localhost:8088`.
+- **Trying it in a normal browser tab:** set `station.dev_relax_install = true` (dev and test only; the bootstrap refuses it elsewhere). A browser tab can then register, and the Station shows the red "Development mode: install checks relaxed." banner.
+- **JavaScript tests:** `node --test --test-timeout=30000 "tests/js/**/*.test.js"` or `npm run test:js`. They run on plain Node 24 with `node:test`; there is nothing to install. Keep the timeout: without it a test that never settles hangs the run instead of failing.
+- **After changing a Station file** nothing else is needed: the build name (`DeviceStatus::currentBuild()`) is a hash of the Station's files, its shell, headers and worker, so it changes, and tablets update at the next quiet lock screen.
+- **Icons:** `php bin/station-icons.php` draws the four PNGs in `public/station/icons/` from the colour tokens in `app.css`. Run it only when those tokens change, and commit the PNGs.
+- **Hosting checks:** `php bin/station-smoke.php <base URL>` against Apache (a local XAMPP alias, staging, production). `php -S` ignores `.htaccess`, so the caching and `nosniff` checks of its Station step fail or warn there by design.
+- **Service workers** do not run in the desktop app's browser pane. Installing, offline reloads, Repair, updates and the kill switch (`station.sw_kill`) are checked in a real Chrome profile (design §11.4, Part B).
 
 ## Security notes
 

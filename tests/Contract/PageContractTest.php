@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Pfpms\Tests\Contract;
 
 use PHPUnit\Framework\TestCase;
+use Pfpms\Station\StationShell;
 
 /**
  * Every web entry point follows the page skeleton (plan §4): bootstrap first, then the
@@ -126,6 +127,76 @@ final class PageContractTest extends TestCase
         }
         $this->assertGreaterThan(0, $scanned);
         $this->assertFileExists("$root/public/.htaccess", '.htaccess is scanned too (Header set would be another way to send one)');
+    }
+
+    public function testNothingHardCodesTheWebRootDirectory(): void
+    {
+        // The web root is public/ in the repo and public_html/ on SiteGround: code that runs on the host finds it through
+        // Request::publicDir(), never by naming public/ (s2 F1; a hard-coded public/ only fails on the host).
+        $root = dirname(__DIR__, 2);
+        $patterns = [
+            '~\bAPP_ROOT\s*\.\s*[\'"]/public\b~',
+            '~\b__DIR__\s*\.\s*[\'"](?:/\.\.)+/public\b~',
+            '~\bdirname\(__DIR__(?:\s*,\s*\d+)?\)\s*\.\s*[\'"]/public\b~',
+        ];
+        $scanned = 0;
+        foreach (['src', 'public', 'templates'] as $dir) {
+            $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator("$root/$dir", \FilesystemIterator::SKIP_DOTS));
+            foreach ($iterator as $file) {
+                if (!str_ends_with($file->getFilename(), '.php')) {
+                    continue;
+                }
+                $scanned++;
+                $code = (string) file_get_contents($file->getPathname());
+                $name = substr(str_replace('\\', '/', $file->getPathname()), strlen($root) + 1);
+                foreach ($patterns as $pattern) {
+                    $this->assertSame(0, preg_match($pattern, $code, $m), "$name names public/ on disk (" . ($m[0] ?? '') . '): use Request::publicDir() (public_html/ on SiteGround)');
+                }
+            }
+        }
+        $this->assertGreaterThan(100, $scanned, 'src/, public/ and templates/ were scanned');
+        foreach (["APP_ROOT . '/public/notifications.php'", "__DIR__ . '/../public/x'", "dirname(__DIR__, 2) . '/public'"] as $sample) {
+            $this->assertTrue(array_reduce($patterns, static fn(bool $hit, string $p): bool => $hit || preg_match($p, $sample) === 1, false),
+                "the rule catches $sample");
+        }
+        $this->assertSame(0, preg_match($patterns[0], "Request::publicDir() . '/notifications.php'"), 'publicDir() passes');
+    }
+
+    // The Station shell and its worker (50-design §5.8, S2) ----------------------------------------------
+
+    public function testStationShellFilesStartNoSession(): void
+    {
+        $root = dirname(__DIR__, 2) . '/public/station';
+        $files = glob("$root/*.php") ?: [];
+        sort($files);
+        $this->assertSame(['index.php', 'sw.php'], array_map('basename', $files), 'public/station/ has exactly the shell and the worker as PHP');
+        foreach ($files as $file) {
+            $code = (string) file_get_contents($file);
+            $this->assertMatchesRegularExpression("~^\\s*Page::start\\(\\['public' => true, 'session' => false\\]\\);~", $this->afterImports($code),
+                'station/' . basename($file) . ": the first statement must be Page::start(['public' => true, 'session' => false]);");
+            foreach (['WebSession', 'Api::start', '$_SESSION', 'Csrf::'] as $forbidden) {
+                $this->assertStringNotContainsString($forbidden, $code, 'station/' . basename($file) . " must not use $forbidden");
+            }
+        }
+    }
+
+    public function testStationShellHasNoInlineScriptOrStyle(): void
+    {
+        foreach (['', 'test+0123456789'] as $build) {
+            $html = StationShell::html($build);
+            $this->assertSame(1, preg_match_all('~<script\b([^>]*)>~i', $html, $m), 'the shell has one script element');
+            $this->assertMatchesRegularExpression('~\btype="module"~', $m[1][0]);
+            $this->assertMatchesRegularExpression('~\bsrc="boot\.js\?v=[^"]*"~', $m[1][0]);
+            $this->assertDoesNotMatchRegularExpression('~<script\b[^>]*>\s*[^<\s]~i', $html, 'no inline script body');
+            $this->assertDoesNotMatchRegularExpression('~<style\b~i', $html);
+            $this->assertDoesNotMatchRegularExpression('~\sstyle\s*=~i', $html);
+            $this->assertDoesNotMatchRegularExpression('~\son[a-z]+\s*=~i', $html, 'no inline event handlers');
+            $this->assertStringNotContainsStringIgnoringCase('javascript:', $html);
+        }
+        foreach (glob(dirname(__DIR__, 2) . '/public/station/*.php') ?: [] as $file) {
+            $this->assertStringNotContainsString('<script', (string) file_get_contents($file), basename($file) . ' prints the shell through StationShell only');
+            $this->assertStringNotContainsString('?>', (string) file_get_contents($file), basename($file) . ' prints nothing outside PHP');
+        }
     }
 
     /** @return array<string, string> every PHP file under public/api/, by its path under public/ */

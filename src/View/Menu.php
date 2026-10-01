@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Pfpms\View;
 
 use Pfpms\Http\Context;
+use Pfpms\Http\Request;
 
 final class Menu
 {
@@ -12,7 +13,7 @@ final class Menu
     {
         $groups = [];
         foreach (require __DIR__ . '/nav.php' as $item) {
-            if ($ctx->can($item['capability']) && is_file(APP_ROOT . '/public/' . $item['file'])) {
+            if ($ctx->can($item['capability']) && is_file(Request::publicDir() . '/' . $item['file'])) {
                 $groups[$item['group']][] = ['file' => $item['file'], 'label' => $item['label']];
             }
         }

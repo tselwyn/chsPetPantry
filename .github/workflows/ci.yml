@@ -93,3 +93,16 @@ jobs:
         env:
           PFPMS_TEST_CONFIG: /tmp/pfpms/test.php
         run: vendor/bin/phpunit
+
+  station-js:
+    name: Station JavaScript (Node 24, node:test, no install)
+    runs-on: ubuntu-latest
+    # Each test has its own 30 s timeout (package.json); this caps a hang outside a test, such as a module that never settles.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Station unit tests (no dependencies to install)
+        run: npm run test:js

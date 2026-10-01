@@ -7,9 +7,13 @@ declare(strict_types=1);
  *
  *   php bin/station-smoke.php https://staging.example.org/
  *
- * It prints PASS or FAIL per check and exits 1 on any FAIL. It never sends a real credential. If the unknown-credential
- * check says the credential is missing, the web host removes the Authorization header: stop, tablets cannot work there
- * until the hosting is fixed.
+ * It prints PASS or FAIL per check (what it saw and, on a FAIL only, what is likely wrong) and exits 1 on any FAIL. It
+ * never sends a real credential. If the unknown-credential check says the credential is missing, the web host removes
+ * the Authorization header: stop, tablets cannot work there until the hosting is fixed.
+ *
+ * Step 5 (S2: the Station's shell, worker and every file it precaches, GET and compared with the hashes the worker
+ * verifies) needs Apache (.htaccess): on php -S the cache and nosniff checks report FAIL/WARN by design. While
+ * app.maintenance is on, sw.php answers 503: that is one FAIL, and the checks that need the worker are skipped.
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -73,10 +77,27 @@ function said(array $r): string
     return "status {$r['status']}, " . (is_array($r['json']) ? (string) ($r['json']['error'] ?? 'ok') : 'not JSON');
 }
 
-function check(string $name, bool $ok, string $detail = ''): bool
+/**
+ * Prints one PASS or FAIL line. $detail is what was seen and is printed either way; $hint (what is likely wrong, or
+ * what to do) is printed only on a FAIL, so a passing line never reads like a problem.
+ */
+function check(string $name, bool $ok, string $detail = '', string $hint = ''): bool
 {
-    echo ($ok ? 'PASS  ' : 'FAIL  ') . $name . ($detail !== '' ? "  ($detail)" : '') . "\n";
+    echo ($ok ? 'PASS  ' : 'FAIL  ') . $name . shown($detail, $ok ? '' : $hint) . "\n";
     return $ok;
+}
+
+/** A check that is reported but never fails the run (PASS or WARN; $hint only on a WARN). */
+function warn(string $name, bool $ok, string $detail = '', string $hint = ''): void
+{
+    echo ($ok ? 'PASS  ' : 'WARN  ') . $name . shown($detail, $ok ? '' : $hint) . "\n";
+}
+
+/** "  (detail: hint)", "  (detail)", "  (hint)" or ''. */
+function shown(string $detail, string $hint): string
+{
+    $text = implode(': ', array_filter([$detail, $hint], static fn(string $part): bool => $part !== ''));
+    return $text !== '' ? "  ($text)" : '';
 }
 
 // 1. The server answers, says which build it serves, has found its web root, and is never cached.
@@ -84,8 +105,7 @@ $ping = request('GET', $base . 'api/ping.php', ['X-PFPMS-Client' => 'station']);
 $pingJson = is_array($ping['json']) ? $ping['json'] : [];
 $results[] = check('api/ping.php answers 200 JSON with a build', $ping['status'] === 200 && isset($pingJson['build']), said($ping));
 $results[] = check('the server found its web root (tablet proofs sign "api/ping.php" here)', ($pingJson['script_path'] ?? null) === 'api/ping.php',
-    'script_path = ' . var_export($pingJson['script_path'] ?? null, true)
-    . ($ping['status'] === 200 && ($pingJson['script_path'] ?? null) !== 'api/ping.php' ? '; set app.base_path in config' : ''));
+    'script_path = ' . var_export($pingJson['script_path'] ?? null, true), $ping['status'] === 200 ? 'set app.base_path in config' : '');
 $results[] = check('api/ping.php is sent with Cache-Control no-store', str_contains($ping['headers']['cache-control'] ?? '', 'no-store'),
     $ping['headers']['cache-control'] ?? 'no Cache-Control');
 $proxy = $ping['headers']['x-proxy-cache'] ?? null;
@@ -125,12 +145,74 @@ $results[] = check('a heartbeat without a credential is 401 device_credential_mi
 $unknown = request('POST', $base . 'api/device/heartbeat.php', $json + ['Authorization' => 'PFPMS-Device pfd1_' . str_repeat('A', 43)], '{}');
 $code = is_array($unknown['json']) ? ($unknown['json']['error'] ?? '?') : 'not JSON';
 $hint = match (true) {
-    $code === 'device_credential_missing' => ': THE HOST STRIPS Authorization. Stop: tablets cannot work here.',
-    $unknown['status'] === 429 => ': rate limited by earlier runs; wait 15 minutes and run again',
+    $code === 'device_credential_missing' => 'THE HOST STRIPS Authorization. Stop: tablets cannot work here.',
+    $unknown['status'] === 429 => 'rate limited by earlier runs; wait 15 minutes and run again',
     default => '',
 };
 $results[] = check('a heartbeat with an unknown credential is 401 device_unknown (the header arrived)',
-    $unknown['status'] === 401 && $code === 'device_unknown', said($unknown) . $hint);
+    $unknown['status'] === 401 && $code === 'device_unknown', said($unknown), $hint);
+
+// 7. Step 5 of 50-design §5.4 (S2): the Station's files reach the tablets as the service worker will verify them (§5.7).
+$build = $pingJson['build'] ?? null;
+$sw = request('GET', $base . 'station/sw.php');
+$h = $sw['headers'];
+$maintenance = $sw['status'] === 503;
+$results[] = check('station/sw.php is JavaScript and never stored', $sw['status'] === 200 && str_contains($h['content-type'] ?? '', 'javascript')
+    && str_contains($h['cache-control'] ?? '', 'no-store'), said($sw) . ', ' . ($h['content-type'] ?? 'no Content-Type') . ', ' . ($h['cache-control'] ?? 'no Cache-Control'),
+    $maintenance ? 'app.maintenance is on, so no worker is served; run this again once the deploy is finished' : '');
+if (!$maintenance) {
+    $results[] = check('station/sw.php carries the Station CSP', str_contains($h['content-security-policy'] ?? '', 'trusted-types pfpms-sw'),
+        $h['content-security-policy'] ?? 'no Content-Security-Policy');
+}
+if ($maintenance) {
+    // No worker, so nothing below can be checked: each check would fail for this same reason, some with a hint that
+    // blames something else (a proxy, the Station files). The FAIL above is the one report of it.
+    warn('the worker, precache and shell checks', false, 'skipped: station/sw.php answered 503');
+} elseif (str_contains($sw['raw'], 'SW_KILLED') && !str_contains($sw['raw'], 'const PRECACHE')) {
+    warn('the precache checks', false, 'the kill switch (station.sw_kill) is on, so they were skipped');
+} else {
+    $workerBuild = preg_match('/^const BUILD = (".*?");$/m', $sw['raw'], $m) ? json_decode($m[1]) : null;
+    $precache = preg_match('/^const PRECACHE = (\[.*\]);$/m', $sw['raw'], $m) ? json_decode($m[1], true) : null;
+    $results[] = check('the worker serves the build api/ping.php reports', $workerBuild !== null && $workerBuild === $build,
+        var_export($workerBuild, true) . ' vs ' . var_export($build, true));
+    $results[] = check('the worker lists its precache', is_array($precache) && $precache !== [], is_array($precache) ? count($precache) . ' files' : 'no PRECACHE line');
+    $results[] = check('the worker carries its code (js/sw-core.js)', str_contains($sw['raw'], 'var PFPMS_SW'), '', 'the server did not find its Station files');
+    $empty = hash('sha256', '');
+    $emptyFiles = is_array($precache) ? array_column(array_filter($precache, static fn($e): bool => ($e['sha256'] ?? '') === $empty), 'path') : [];
+    $results[] = check('no precache file hashes as empty (the server found public/station or public_html/station)',
+        is_array($precache) && $emptyFiles === [], implode(', ', $emptyFiles));
+    foreach (is_array($precache) ? $precache : [] as $entry) {
+        $path = (string) ($entry['path'] ?? '');
+        $head = request('GET', $base . 'station/' . ($path === './' ? '' : $path));
+        $type = strtolower($head['headers']['content-type'] ?? '');
+        $results[] = check("station/$path is 200 with a " . ($entry['type'] ?? '?') . ' Content-Type',
+            $head['status'] === 200 && str_contains($type, (string) ($entry['type'] ?? '?')), said($head) . ', ' . ($type ?: 'no Content-Type'));
+        if ($path !== './') {
+            // What a tablet installs: a stale copy (NGINX Direct Delivery, a CDN) or a wrong Station root fails every tablet's install.
+            $results[] = check("station/$path is the file the worker verifies", hash('sha256', $head['raw']) === ($entry['sha256'] ?? ''), '',
+                'a cache or proxy is serving another copy, or the server reads its files from the wrong directory');
+            warn("station/$path is sent with nosniff", strtolower($head['headers']['x-content-type-options'] ?? '') === 'nosniff',
+                $head['headers']['x-content-type-options'] ?? 'missing');
+        }
+        if (in_array($path, ['js/app.js', 'css/station.css'], true)) {
+            $cc = strtolower($head['headers']['cache-control'] ?? '');
+            $results[] = check("station/$path revalidates (the .htaccess rule is reached)",
+                str_contains($cc, 'no-cache') || str_contains($cc, 'no-store') || str_contains($cc, 'max-age=0'), $cc ?: 'no Cache-Control',
+                $cc === '' || str_contains($cc, 'max-age=6') ? 'NGINX Direct Delivery may serve it (switch it off)' : '');
+            echo "      caching headers seen: x-proxy-cache=" . ($head['headers']['x-proxy-cache'] ?? '-') . ', server=' . ($head['headers']['server'] ?? '-')
+                . ', expires=' . ($head['headers']['expires'] ?? '-') . ', cache-control=' . ($cc ?: '-') . "\n";
+        }
+    }
+    $shell = request('GET', $base . 'station/');
+    $sh = $shell['headers'];
+    $shellCsp = $sh['content-security-policy'] ?? '';
+    $results[] = check('the shell is never stored and carries the Station CSP', $shell['status'] === 200 && str_contains($sh['cache-control'] ?? '', 'no-store')
+        && str_contains($shellCsp, "worker-src 'self'") && str_contains($shellCsp, 'trusted-types pfpms-sw'),
+        said($shell) . ', ' . ($sh['cache-control'] ?? 'no Cache-Control'));
+    $results[] = check('the shell is exactly the bytes the worker verifies', is_array($precache) && hash('sha256', $shell['raw']) === ($precache[0]['sha256'] ?? ''),
+        '', 'a proxy or optimiser may be rewriting the page');
+    $results[] = check('the shell names the build api/ping.php reports', is_string($build) && str_contains($shell['raw'], 'data-build="' . $build . '"'));
+}
 
 $failed = count(array_filter($results, static fn(bool $ok): bool => !$ok));
 echo $failed === 0 ? "\nAll checks passed.\n" : "\n$failed check(s) failed.\n";

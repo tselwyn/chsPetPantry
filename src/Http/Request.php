@@ -230,6 +230,18 @@ final class Request
     /** Where the web root may be: public/ in the repo (dev), or public_html/ beside src/ (SiteGround). */
     private const PUBLIC_DIRS = ['/public', '/public_html'];
 
+    /** The web root on disk: $root/public (the repo, XAMPP, CI) or $root/public_html (SiteGround), the first that exists. */
+    public static function publicDir(?string $root = null): string
+    {
+        $root ??= APP_ROOT;
+        foreach (self::PUBLIC_DIRS as $dir) {
+            if (is_dir($root . $dir)) {
+                return $root . $dir;
+            }
+        }
+        return $root . self::PUBLIC_DIRS[0];
+    }
+
     /**
      * URL path prefix of the public/ directory, e.g. "/" on SiteGround or
      * "/chsPetPantry/public/" when the repo sits inside XAMPP's htdocs.

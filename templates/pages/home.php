@@ -24,7 +24,7 @@ $site = $ctx->site();
 <?php if ($openNotifications > 0): ?>
   <div class="flash flash-info" role="status">
     You have <?= (int) $openNotifications ?> item<?= $openNotifications === 1 ? '' : 's' ?> needing attention.
-    <?php if (is_file(APP_ROOT . '/public/notifications.php')): ?><a href="<?= e(url('notifications.php')) ?>">View</a><?php endif; ?>
+    <?php if (is_file(\Pfpms\Http\Request::publicDir() . '/notifications.php')): ?><a href="<?= e(url('notifications.php')) ?>">View</a><?php endif; ?>
   </div>
 <?php endif; ?>
 

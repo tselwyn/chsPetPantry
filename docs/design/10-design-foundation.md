@@ -763,6 +763,9 @@ Protected tables: `distribution`, `distribution_line`, `distribution_pet`, `audi
 
 ### d5. Deploying to SiteGround
 
+> **As built (Phase 2B):** maintenance is the config switch `app.maintenance` (every API and the Station's `sw.php` answer 503 with `Retry-After`). It must stay on from before the first rsync until both rsync steps (`public/`, then `src/`) and the migration have finished, so no tablet installs a half-deployed Station build (50-design D-58). Then run `bin/station-smoke.php` against the site.
+
+
 **One-time setup:**
 - a new site and database, the two DB users, an SSH key (SiteGround SSH port 18765; verify);
 - PHP 8.3 or later with the extensions above;

@@ -42,7 +42,7 @@ if (!function_exists('e')) {
     /** URL of a static asset with a cache-busting version. */
     function asset(string $path): string
     {
-        $file = APP_ROOT . '/public/assets/' . ltrim($path, '/');
+        $file = Request::publicDir() . '/assets/' . ltrim($path, '/');
         $version = is_file($file) ? substr(md5((string) filemtime($file)), 0, 8) : APP_VERSION;
         return Request::basePath() . 'assets/' . ltrim($path, '/') . '?v=' . $version;
     }

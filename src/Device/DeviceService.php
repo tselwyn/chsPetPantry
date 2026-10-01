@@ -11,6 +11,7 @@ use Pfpms\Auth\SessionStore;
 use Pfpms\Auth\Tokens;
 use Pfpms\Clock;
 use Pfpms\Db;
+use Pfpms\Http\Request;
 use Pfpms\Notify\Notifications;
 use Pfpms\Reference\SiteRepository;
 use Pfpms\Settings;
@@ -345,10 +346,10 @@ final class DeviceService
         return max(10, min(1440, Settings::int('device_code_minutes', 60)));
     }
 
-    /** Whether this server can redeem codes yet (the Station's registration endpoint arrives in P2B). */
+    /** Whether this server can redeem codes yet: the Station's registration endpoint and shell are in the web root (public/ or public_html/). */
     public static function redemptionAvailable(): bool
     {
-        return self::redemptionAvailableAt(APP_ROOT . '/public');
+        return self::redemptionAvailableAt(Request::publicDir());
     }
 
     /** Both the endpoint and the Station shell it serves (a sheet is only useful once the installed app exists). */

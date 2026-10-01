@@ -6,6 +6,7 @@ namespace Pfpms\Device;
 use DateTimeImmutable;
 use DateTimeZone;
 use Pfpms\Clock;
+use Pfpms\Station\StationAssets;
 
 /**
  * A tablet's state, worked out from its device row (DeviceRepository::COLUMNS) and never stored,
@@ -28,10 +29,15 @@ final class DeviceStatus
     /** A tablet holding unsynced records that has not been heard from for this long gets a warning. */
     public const STALE_PENDING_HOURS = 24;
 
-    /** The Station build the server serves now: tablets reporting another build are older. P2B's api/ping.php returns the same. */
+    /**
+     * The Station build the server serves now (50-design D-07): the version (characters outside [0-9A-Za-z._-] become
+     * '-', at most 29), '+', and the first 10 hex digits of StationAssets::hash(). At most 40 characters, always matching
+     * the heartbeat's app_build pattern. Ping, heartbeat, registration, the sign-in responses, sw.php, the shell and the
+     * admin pages all call this one method; tablets reporting another build are older.
+     */
     public static function currentBuild(): string
     {
-        return APP_VERSION;
+        return substr((string) preg_replace('/[^0-9A-Za-z._-]/', '-', APP_VERSION), 0, 29) . '+' . substr(StationAssets::hash(), 0, 10);
     }
 
     /**

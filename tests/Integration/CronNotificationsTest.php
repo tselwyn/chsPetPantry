@@ -79,7 +79,9 @@ final class CronNotificationsTest extends TestCase
         $admin1 = $this->ctx($this->makeUser(['role' => 'Administrator']));
         $admin2 = $this->ctx($this->makeUser(['role' => 'Administrator']));
         $coordinator = $this->makeUser(['role' => 'Coordinator']);
-        Db::pdo()->prepare('INSERT INTO user_site_access (user_id, site_id, granted_by) VALUES (?, ?, ?)')->execute([$coordinator['user_id'], $north, $admin1->userId()]);
+        // starts_at from the frozen clock: the column default is the real time, which may be after the test's NOW.
+        Db::pdo()->prepare('INSERT INTO user_site_access (user_id, site_id, granted_by, starts_at) VALUES (?, ?, ?, ?)')
+            ->execute([$coordinator['user_id'], $north, $admin1->userId(), Clock::db()]);
         $coordNorth = $this->ctx($coordinator);
         $volunteer = $this->ctx($this->makeUser());
 
