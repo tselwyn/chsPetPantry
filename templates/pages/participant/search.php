@@ -1,5 +1,6 @@
 <?php
 /** @var \Pfpms\Http\Context $ctx  @var array $filters  @var bool $canIncludeDeleted  @var int $limit  @var bool $tooLong  @var ?array{rows: list<array>, truncated: bool} $result */
+use Pfpms\Participant\ParticipantName;
 use Pfpms\Participant\ParticipantRepository;
 
 $site = $ctx->site();
@@ -41,7 +42,8 @@ $day = static fn(?string $date): string => $date === null ? '' : date('M j, Y', 
       <tbody>
       <?php foreach ($result['rows'] as $p): ?>
         <tr<?= $p['status'] === 'Active' ? '' : ' class="status-inactive"' ?>>
-          <th scope="row"><a href="<?= e(url('participant_view.php', ['id' => $p['participant_id']])) ?>"><?= e($p['legal_last_name'] . ', ' . $p['legal_first_name']) ?></a></th>
+          <th scope="row"><a href="<?= e(url('participant_view.php', ['id' => $p['participant_id']])) ?>"><?= e(ParticipantName::display($p)) ?></a>
+            <?php if (($legal = ParticipantName::legalIfDifferent($p)) !== null): ?><br><span class="meta">Legal name: <?= e($legal) ?></span><?php endif; ?></th>
           <td><?= e($p['participant_code']) ?></td>
           <td><?= $p['status'] === 'Active' ? 'Active' : '<span class="badge badge-inactive">' . e($p['status']) . '</span>' ?></td>
           <td class="num"><?= (int) $p['pet_count'] ?></td>

@@ -22,7 +22,7 @@ final class ParticipantRepository
         p.last_distribution_date, (SELECT COUNT(*) FROM pet pt WHERE pt.participant_id = p.participant_id AND pt.status = \'Active\') AS pet_count';
 
     /**
-     * Participants registered at $siteId matching $term over name, phone and participant code, best match first.
+     * Participants registered at $siteId matching $term over legal and preferred names, phone and participant code, best match first.
      * Merged records never show; Deleted ones only with $includeDeleted (Administrators).
      * @return array{rows: list<array>, truncated: bool} at most $limit rows; truncated when more matched
      */
@@ -74,8 +74,11 @@ final class ParticipantRepository
         $words = self::words($term);
         if ($words !== []) {
             $name = implode(' ', $words);
-            $tiers[] = [self::RANK_EXACT, '(p.legal_first_name = ? OR p.legal_last_name = ? OR CONCAT(p.legal_first_name, \' \', p.legal_last_name) = ?
-                OR CONCAT(p.legal_last_name, \' \', p.legal_first_name) = ?)', [$name, $name, $name, $name]];
+            // Exact legal or preferred name (US-05): either name alone, or with the surname in either order.
+            $tiers[] = [self::RANK_EXACT, '(p.legal_first_name = ? OR p.legal_last_name = ? OR p.preferred_name = ?
+                OR CONCAT(p.legal_first_name, \' \', p.legal_last_name) = ? OR CONCAT(p.legal_last_name, \' \', p.legal_first_name) = ?
+                OR CONCAT(p.preferred_name, \' \', p.legal_last_name) = ? OR CONCAT(p.legal_last_name, \' \', p.preferred_name) = ?)',
+                array_fill(0, 7, $name)];
             $tiers[] = self::everyWord(self::RANK_PREFIX, $words, fn(string $w): string => self::like($w) . '%');
             $partial = self::everyWord(self::RANK_PARTIAL, $words, fn(string $w): string => '%' . self::like($w) . '%');
         }
@@ -90,7 +93,7 @@ final class ParticipantRepository
     }
 
     /**
-     * Each word must match the first or last name with $pattern.
+     * Each word must match the legal first or last name, or the preferred name (US-05), with $pattern.
      * @param list<string> $words
      * @return array{0: int, 1: string, 2: list<string>}
      */
@@ -99,9 +102,9 @@ final class ParticipantRepository
         $parts = [];
         $args = [];
         foreach ($words as $word) {
-            $parts[] = '(p.legal_first_name LIKE ? OR p.legal_last_name LIKE ?)';
+            $parts[] = '(p.legal_first_name LIKE ? OR p.legal_last_name LIKE ? OR p.preferred_name LIKE ?)';
             $like = $pattern($word);
-            array_push($args, $like, $like);
+            array_push($args, $like, $like, $like);
         }
         return [$rank, '(' . implode(' AND ', $parts) . ')', $args];
     }

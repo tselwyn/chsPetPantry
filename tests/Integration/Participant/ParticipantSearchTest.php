@@ -110,6 +110,24 @@ final class ParticipantSearchTest extends TestCase
         $this->assertSame(['P3', 'P6', 'P1'], array_slice($this->codes('ann'), 0, 3), 'ties sort by last name: Ann, Fifth, Hannah');
     }
 
+    public function testPreferredNamesAreFoundLikeLegalNames(): void
+    {
+        $this->participant($this->north, ['participant_code' => 'P1', 'legal_first_name' => 'Elizabeth', 'legal_last_name' => 'Johnson',
+            'preferred_name' => 'Liz']);
+        $this->participant($this->north, ['participant_code' => 'P2', 'legal_first_name' => 'Lizbeth', 'legal_last_name' => 'Moore']);
+        $this->participant($this->north, ['participant_code' => 'P3', 'legal_first_name' => 'Dorothy', 'legal_last_name' => 'Washington',
+            'preferred_name' => 'Dot']);
+        foreach (['Liz', 'liz johnson', 'Johnson Liz', 'Johnson, Liz', 'Elizabeth Johnson'] as $term) {
+            $this->assertSame('P1', $this->codes($term)[0], $term);
+        }
+        $rows = ParticipantRepository::search($this->north, 'liz', 100)['rows'];
+        $this->assertSame(['P1', 'P2'], array_column($rows, 'participant_code'), 'the exact preferred name (P1) before a legal prefix (P2)');
+        $this->assertSame([ParticipantRepository::RANK_EXACT, ParticipantRepository::RANK_PREFIX], array_map('intval', array_column($rows, 'match_rank')));
+        $this->assertSame(['P3'], $this->codes('dot wash'), 'preferred and legal words mix');
+        $this->assertSame(['P3'], $this->codes('Dorothy'), 'the legal name still finds them');
+        $this->assertSame('Dot', ParticipantRepository::search($this->north, 'dot', 100)['rows'][0]['preferred_name'], 'returned for display');
+    }
+
     public function testPhonesMatchByAnyRunOfDigits(): void
     {
         $this->participant($this->north, ['participant_code' => 'P1', 'phone' => '5405550101']);
