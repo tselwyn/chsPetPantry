@@ -130,7 +130,7 @@ final class Request
     public static function scriptPath(): string
     {
         $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
-        $base = self::basePath();
+        $base = self::publicBasePath();
         return str_starts_with($script, $base) ? substr($script, strlen($base)) : ltrim($script, '/');
     }
 
@@ -243,10 +243,24 @@ final class Request
     }
 
     /**
-     * URL path prefix of the public/ directory, e.g. "/" on SiteGround or
-     * "/chsPetPantry/public/" when the repo sits inside XAMPP's htdocs.
+     * URL path prefix the app is served at, for links, redirects and cookie paths: "/" on SiteGround, "/chsPetPantry/"
+     * when the repo sits inside XAMPP's htdocs and the root .htaccess rewrites every request into public/, or
+     * "/chsPetPantry/public/" when public/ is opened directly.
      */
     public static function basePath(): string
+    {
+        $configured = Config::get('app.base_path');
+        if (is_string($configured) && $configured !== '') {
+            return self::publicBasePath();
+        }
+        return self::rewrittenBasePath(self::detectedBasePath(), self::rewriteBase()) ?? self::publicBasePath();
+    }
+
+    /**
+     * URL path prefix of the public/ directory itself (what SCRIPT_NAME starts with), e.g. "/" on SiteGround or
+     * "/chsPetPantry/public/" in XAMPP's htdocs, whether or not the request came in through the root .htaccess.
+     */
+    private static function publicBasePath(): string
     {
         $configured = Config::get('app.base_path');
         if (is_string($configured) && $configured !== '') {
@@ -254,6 +268,30 @@ final class Request
         }
         $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '/index.php');
         return self::detectedBasePath() ?? rtrim(dirname(str_replace('\\', '/', $script)), '/') . '/';
+    }
+
+    /**
+     * The pure part of the htdocs case: the root .htaccess passes the URL prefix of the repo's folder (PFPMS_BASE),
+     * which counts only when public/ is really served from that prefix plus "public/", so a stray value is ignored.
+     */
+    public static function rewrittenBasePath(?string $publicBase, ?string $rewriteBase): ?string
+    {
+        if ($publicBase === null || $rewriteBase === null || !str_starts_with($rewriteBase, '/') || !str_ends_with($rewriteBase, '/')) {
+            return null;
+        }
+        return $publicBase === $rewriteBase . 'public/' ? $rewriteBase : null;
+    }
+
+    /** PFPMS_BASE from the root .htaccess; Apache adds REDIRECT_ for each internal redirect (the rewrite, then DirectoryIndex). */
+    private static function rewriteBase(): ?string
+    {
+        foreach (['REDIRECT_PFPMS_BASE', 'REDIRECT_REDIRECT_PFPMS_BASE', 'PFPMS_BASE'] as $name) {
+            $value = $_SERVER[$name] ?? null;
+            if (is_string($value) && $value !== '') {
+                return str_replace('\\', '/', $value);
+            }
+        }
+        return null;
     }
 
     /**
