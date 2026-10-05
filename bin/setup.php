@@ -256,13 +256,16 @@ function createAdmin(string $username, string $email): void
 }
 
 /**
- * Run a PHP script (path relative to the repo) with this PHP, in the repo, and stop on failure. Its output (stderr
- * merged) is relayed line by line, so it stays in order with this script's own when redirected to a file.
+ * Run a PHP script (path relative to the repo) with this PHP, in the repo, and stop on failure. Its output is relayed
+ * line by line (stderr merged), so it stays in order with this script's own when redirected to a file. Neither
+ * passing STDERR through (its own file offset) nor stream_select() (unsupported on proc_open pipes on Windows) does.
  */
 function run(array $args, string $error): void
 {
     $script = str_starts_with($args[0], '/') || preg_match('/^[A-Za-z]:/', $args[0]) ? $args[0] : APP_ROOT . '/' . $args[0];
-    $process = proc_open(array_merge([PHP_BINARY, $script], array_slice($args, 1)), [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['redirect', 1]], $pipes, APP_ROOT);
+    $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['redirect', 1]];
+    // @phpstan-ignore argument.type (PHP 7.4+ accepts ['redirect', <fd>]; the stub only knows 'pipe' and 'file')
+    $process = proc_open(array_merge([PHP_BINARY, $script], array_slice($args, 1)), $descriptors, $pipes, APP_ROOT);
     if (!is_resource($process)) {
         fail($error);
     }
