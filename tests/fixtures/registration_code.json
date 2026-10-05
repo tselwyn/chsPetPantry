@@ -1,0 +1,109 @@
+{
+    "_comment": "Cases for the tablet RegistrationCode class (plan P2A admin_devices). The offline Station's JavaScript port must give exactly the same answers when a tablet checks a typed or scanned registration code (plan P2B: PHP/JS parity fixtures). Normalising is ASCII-only: remove space, tab, CR, LF and hyphen, upper-case A-Z only, and refuse anything else (other Unicode spaces, control characters, look-alike letters).",
+    "check": [
+        {
+            "data": "0000000000000000",
+            "check": "0"
+        },
+        {
+            "data": "K7QM2XRD9VHPC4TN",
+            "check": "S"
+        },
+        {
+            "data": "ZZZZZZZZZZZZZZZZ",
+            "check": "G"
+        },
+        {
+            "data": "0123456789ABCDEF",
+            "check": "8"
+        }
+    ],
+    "bytes": [
+        {
+            "hex": "00010203040506070809",
+            "code": "000G40R40M30E209B"
+        },
+        {
+            "hex": "ffffffffffffffffffff",
+            "code": "ZZZZZZZZZZZZZZZZG"
+        }
+    ],
+    "normalise": [
+        {
+            "in": "k7qm-2xrd-9vhp-c4tn-s",
+            "out": "K7QM2XRD9VHPC4TNS"
+        },
+        {
+            "in": " K7QM 2XRD 9VHP C4TN S ",
+            "out": "K7QM2XRD9VHPC4TNS"
+        },
+        {
+            "in": "PFPMS-DEVICE:1:K7QM2XRD9VHPC4TNS",
+            "out": "K7QM2XRD9VHPC4TNS"
+        },
+        {
+            "in": "oL23-4567-89AB-CDEF-8",
+            "out": "0123456789ABCDEF8"
+        },
+        {
+            "in": "K7QM-2XRD-9VHP-C4TN-8",
+            "out": null
+        },
+        {
+            "in": "K7QM-2XRD-9VHP-C4TU-S",
+            "out": null
+        },
+        {
+            "in": "K7QM-2XRD-9VHP-C4TN",
+            "out": null
+        },
+        {
+            "in": "K7QM-2XRD-9VHP-C4TN-SS",
+            "out": null
+        },
+        {
+            "in": "https://example.org/?code=K7QM2XRD9VHPC4TNS",
+            "out": null
+        },
+        {
+            "in": "",
+            "out": null
+        },
+        {
+            "in": "K7QM\t2XRD 9VHP\r\nC4TN S",
+            "out": "K7QM2XRD9VHPC4TNS"
+        },
+        {
+            "in": "pfpms-device:1:k7qm2xrd9vhpc4tns",
+            "out": "K7QM2XRD9VHPC4TNS"
+        },
+        {
+            "in": "\u00a0K7QM2XRD9VHPC4TNS",
+            "out": null
+        },
+        {
+            "in": "\u0000K7QM2XRD9VHPC4TNS",
+            "out": null
+        },
+        {
+            "in": "K7QM2XRD9VHPC4TN\u0131",
+            "out": null
+        },
+        {
+            "in": "K7QM\u20132XRD9VHPC4TNS",
+            "out": null
+        }
+    ],
+    "format": [
+        {
+            "in": "K7QM2XRD9VHPC4TNS",
+            "out": "K7QM-2XRD-9VHP-C4TN-S"
+        }
+    ],
+    "pairing": [
+        {
+            "token_hash": "fce09e1ed4b4929ad287aa5bfb05b8addec26e0a6582b3b5953c35d23fbde977",
+            "check": "AJA875"
+        }
+    ]
+}
