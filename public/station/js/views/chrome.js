@@ -1,5 +1,6 @@
-// The Station's header, its banners and its footer (S2 spec §4.2). A pure renderer: app.js's chrome controller holds
-// the model and re-renders the header in place (it replaces the children of one host element with render()'s nodes).
+// The Station's header, the person bar (S3 spec §3.4), its banners and its footer (S2 spec §4.2). A pure renderer:
+// app.js's chrome controller holds the model and re-renders the header in place (it replaces the children of one host
+// element with render()'s nodes).
 import { el } from '../dom.js';
 import { t } from '../copy.js';
 
@@ -25,14 +26,37 @@ export const BANNERS = Object.freeze([
  *   window holds the tablet, or the storage failed), so there is no chip
  * @property {Set<'dev_relax'|'header_missing'|'unknown_tablet'|'close_other_window'|'update_ready'>} banners
  * @property {boolean} [minimal] the wipe screens: only the brand, no banners
+ * @property {string|null} [person] the ACTIVE person's name (S3), shown in the person bar
+ * @property {'none'|'end'|'both'} [controls] the person bar's buttons (S3): 'end' End shift only, 'both' Switch user
+ *   and End shift; 'none' or absent: no person bar
+ */
+/**
+ * @typedef {object} ChromeActions
+ * @property {() => void} [onSwitchUser]
+ * @property {() => void} [onEndShift]
  */
 
 /**
- * The header and the banners that are on.
- * @param {ChromeModel} model
- * @returns {HTMLElement[]} [header.topbar, ...div.banner]
+ * The person bar under the header: the person's name, Switch user and End shift / Lock device. The buttons' ids name
+ * them across a re-render, so app.js's header redrawn in place gives the focus back to the same one (dom.js keepFocus()).
  */
-export function render(model) {
+function sessionBar(model, actions) {
+  if (model.controls !== 'end' && model.controls !== 'both') return null;
+  return el('div', { class: 'session-bar' },
+    typeof model.person === 'string' && model.person !== '' ? el('span', { class: 'person' }, model.person) : null,
+    model.controls === 'both'
+      ? el('button', { id: 'switch-user', class: 'button button-secondary', type: 'button', on: { click: () => actions.onSwitchUser?.() } }, t('switch_user'))
+      : null,
+    el('button', { id: 'end-shift', class: 'button button-secondary', type: 'button', on: { click: () => actions.onEndShift?.() } }, t('end_shift')));
+}
+
+/**
+ * The header, the person bar (when model.controls asks for one) and the banners that are on.
+ * @param {ChromeModel} model
+ * @param {ChromeActions} [actions]
+ * @returns {HTMLElement[]} [header.topbar, div.session-bar?, ...div.banner]
+ */
+export function render(model, actions = {}) {
   const brand = el('div', { class: 'brand' },
     el('img', { class: 'brand-icon', image: 'icons/icon-192.png', alt: '', width: 40, height: 40 }),
     el('span', { class: 'brand-name' }, t('app_name')));
@@ -44,16 +68,19 @@ export function render(model) {
     conn === null ? null : el('span', { class: `chip chip-${conn}`, role: 'status', 'aria-live': 'polite' }, t(CHIP[conn])));
   const banners = BANNERS.filter((b) => model.banners?.has(b.kind))
     .map((b) => el('div', { class: `banner ${b.cls}`, role: b.role }, t(b.kind)));
-  return [el('header', { class: 'topbar' }, brand, meta), ...banners];
+  const bar = sessionBar(model, actions);
+  return [el('header', { class: 'topbar' }, brand, meta), ...(bar ? [bar] : []), ...banners];
 }
 
 /**
- * The footer after the view: the version and, where About may open, its link (About itself shows Back instead).
+ * The footer after the view: the version and, where About may open, its link (About itself shows Back instead). The
+ * link's id names it across a re-render, so a screen drawn again in place of itself (dom.js remount()) gives it the
+ * focus back.
  * @param {{build: string, aboutLink: boolean}} options
  * @returns {HTMLElement} footer.footer
  */
 export function footer({ build, aboutLink }) {
   return el('footer', { class: 'footer' },
     el('span', {}, t('version', { build })),
-    aboutLink ? [' · ', el('a', { class: 'link', link: '#/about' }, t('about_link'))] : null);
+    aboutLink ? [' · ', el('a', { id: 'about-link', class: 'link', link: '#/about' }, t('about_link'))] : null);
 }

@@ -183,7 +183,7 @@ final class SettingsServiceTest extends TestCase
     {
         $user = $this->makeUser(['role' => 'Administrator']);
         try {
-            SettingsService::update(['pin_min_digits' => '8'], $user['user_id']); // longest is 6
+            SettingsService::update(['pin_min_digits' => '6', 'pin_max_digits' => '5'], $user['user_id']); // 6 > 5, both within 4-6
             $this->fail('expected a ValidationException');
         } catch (ValidationException $e) {
             $this->assertSame(['pin_min_digits'], array_keys($e->errors));
@@ -194,13 +194,29 @@ final class SettingsServiceTest extends TestCase
         } catch (ValidationException $e) {
             $this->assertSame(['voucher_expiry_days'], array_keys($e->errors));
         }
-        $this->assertSame(['pin_min_digits', 'pin_max_digits'], SettingsService::update(['pin_min_digits' => '8', 'pin_max_digits' => '8'], $user['user_id']));
+        $this->assertSame(['pin_min_digits', 'pin_max_digits'], SettingsService::update(['pin_min_digits' => '5', 'pin_max_digits' => '5'], $user['user_id']));
         try {
             SettingsService::update(['import_max_rows_sync' => '20000', 'import_max_rows' => '10000'], $user['user_id']);
             $this->fail('expected a ValidationException');
         } catch (ValidationException $e) {
             $this->assertSame(['import_max_rows_sync'], array_keys($e->errors), 'when both change, the smaller one carries the message');
         }
+    }
+
+    public function testPinDigitsCannotExceedSix(): void
+    {
+        $user = $this->makeUser(['role' => 'Administrator']);
+        foreach (['pin_max_digits' => '7', 'pin_min_digits' => '8'] as $key => $value) {
+            try {
+                SettingsService::update([$key => $value], $user['user_id']);
+                $this->fail("accepted $key = $value");
+            } catch (ValidationException $e) {
+                $this->assertSame([$key], array_keys($e->errors), "$key = $value");
+                $this->assertSame('Enter a whole number from 4 to 6 (digits).', $e->errors[$key]);
+            }
+        }
+        $this->assertSame([], SettingsService::update(['pin_max_digits' => '6'], $user['user_id']), 'the seeded 6 is unchanged');
+        $this->assertSame([4, 6], [Settings::int('pin_min_digits', 0), Settings::int('pin_max_digits', 0)]);
     }
 
     public function testAnOutOfRangeStoredValueDoesNotBlockOtherChanges(): void

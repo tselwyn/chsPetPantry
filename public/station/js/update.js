@@ -24,7 +24,7 @@ export const FAILED_UPDATE_RETRY_MS = 3600000;
  * @property {(reason: string) => Promise<void>} update registration.update(), skipped for an hour after a failed install
  * @property {() => boolean} waiting whether a worker waits
  * @property {() => void} inputSeen a person touched the tablet (resets the 60-s quiet time)
- * @property {(kind: string) => void} begin a request that must not be cut by a reload starts ('register', S3 'signin'/'pin', S5 'push')
+ * @property {(kind: string) => void} begin a request that must not be cut by a reload starts ('register', S3 'signin'/'pin'/'end_shift'/'logout', S5 'push')
  * @property {(kind: string) => void} end that request ended; a reload that waited for it runs now, unless a sent
  *   registration body is still kept (registrationPending())
  * @property {() => boolean} inFlight whether any such request runs

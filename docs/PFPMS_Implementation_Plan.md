@@ -254,16 +254,20 @@ Each semester ends with a demonstrable staging milestone.
   - **Go-live gate:** `php bin/station-smoke.php https://<staging>/` must pass on staging before S2 goes there: if SiteGround strips the `Authorization` header, tablets cannot work.
   - **S2 as built:** the Station shell (`public/station/index.php`, `sw.php`, `manifest.json`, four icons from `bin/station-icons.php`), a service worker that installs only a precache it has verified by SHA-256 and type, never touches `/api/`, waits for a quiet minute before switching builds and has a config kill switch; the client modules (`env`, `db` with the seven-store schema v1, `clock`, `api`, `proof`, `vault` crypto core, `canonical`, `registration_code`, `fold`, `calc`, `update`, `device`, `app`, `router`, `dom`, `copy` and the views); registration by typed or scanned code, the proof-signed heartbeat, directives and both wipes; one primary window per tablet; the build string `<version>+<asset hash>`; the PHP twins `Canonical` and `Fold` and the shared fixtures (`station_crypto.json`, canonical, datetime, HMAC, accent fold, phonetic); JS tests on plain Node 24 (`npm run test:js`, CI job `station-js`). Deviations and the review changes are recorded in 50-design §7.1 ("S2 as built", "S2 review changes").
   - **Staging check for S2:** NGINX Direct Delivery off for the site (50-design §5.7), then the smoke script, whose step 5 checks every precached file through the host.
-- Offline grants: expiry = **min(`offline_grant_hours`, the user's `user_site_access.ends_at`, the account expiry)**, enforced when the vault unlocks (US-28 AC2).
+  - **S3 as built:** online sign-in on the tablet (`api/auth/login.php`) with the device proof, the offline grant (expiry per 50-design D-19, superseded rather than revoked by the next one) and the vault key released in memory; the in-app agreement (`api/auth/policy.php`) and forced password change (`api/auth/password.php`); PIN set (`api/auth/pin_set.php`) and online PIN switch (`api/auth/pin.php`) with the attempt counted before the check; End shift (`api/auth/logout.php`), replayed with its own time when it did not get through; the revocation hooks; `session.js` and the S3 screens. No migration. Deviations and the review changes are recorded in 50-design §12.3 ("S3 as built", "S3 review changes"); among them, `change_password.php` now re-checks the account under its lock, so a reset made during the change wins.
+  - **Managed-tablet rule (S3 review):** every Station tablet has the browser's password manager turned off by managed policy (Chrome / Android Enterprise `PasswordManagerEnabled = false`, with no personal account password sync; supervised iPadOS `allowPasswordAutoFill = false`). A password saved on a shared tablet lets anyone there sign in as that person, and End shift and Erase do not remove it (50-design §9, §13.2).
+- Offline grants: expiry = **the earliest of** now + `offline_grant_hours` (`session_absolute_hours` on an online-only tablet), the end of the person's access at the tablet's site, the account expiry, a scheduled deactivation, the agreement's due date, the start of a later agreement version already scheduled when the grant is issued, and the password's maximum age (50-design D-19); no grant when that is not in the future. Enforced when the vault unlocks (US-28 AC2).
 - Outbox and sync engine (item handlers stubbed).
-- **Files:** `station/{index.php,sw.php,manifest.json}`, `station/js/{app,router,api,db,vault,session,outbox,sync,rules,calc}.js`, views `{login,home,device,sync-status}`, `api/{ping,session}.php`, `api/auth/{login,pin,logout}.php`, `api/device/{register,heartbeat}.php`, `api/sync/{push,status}.php`.
-- **PHP/JS parity fixtures:** canonical JSON, HMAC, accent fold, phonetic key, datetime formatting at column precision with no offset.
+- **Files:** `station/{index.php,sw.php,manifest.json,boot.js}`, `station/js/{app,router,api,db,vault,session,outbox,sync,drafts,calc,clock,proof,device,canonical,registration_code,fold,env,dom,copy,update,sw-core}.js`, views `{starting,device,login,ack,password,pin_set,home,sync-status,about,wipe,elsewhere,chrome,screens}`, `api/{ping,session}.php`, `api/auth/{login,pin,pin_set,policy,password,logout}.php`, `api/device/{register,heartbeat}.php`, `api/sync/{push,status}.php`, `src/{Station,Sync,Text}/…`. `rules.js` moves to P3 (50-design §13.2).
+- **PHP/JS parity fixtures:** canonical JSON, HMAC, accent fold, phonetic key, datetime formatting at column precision with no offset, and `station_crypto.json` (the key hierarchy and record formats).
 - **Exit:**
   - Offline unlock after reload.
   - **PIN switch under 5 s** and **password unlock ≤3 s on the slowest target tablet**.
   - PIN refused on an unregistered device.
   - A duplicate push is a no-op; a reused uuid with a different payload gives 409; a bad HMAC is Held.
-  - A first-login tablet cannot receive a grant or pack before policy acknowledgement.
+  - A first-login tablet cannot receive a grant before policy acknowledgement (the pack half moves to P3).
+  - The restricted offline session exposes only `offline.*`.
+  - Grant expiry is capped by the end of site access, the account expiry, a scheduled deactivation, the agreement's due date and the password's age (50-design D-19).
   - Remote wipe works, and a failed-unlock wipe keeps the outbox.
   - The IndexedDB and Cache Storage privacy grep finds no seeded names.
 
@@ -300,7 +304,7 @@ Each semester ends with a demonstrable staging milestone.
   - `events` and `event_edit` (logic sources `calendar`, `addEvent`, `editEvent`): at most one Open event per site; closing sets Waiting to Left Unserved.
   - `check_in`, `api/event/{check_in,queue}.php` (polled every `station_poll_seconds`).
 - **Station:**
-  - `api/sync/pack.php` (bulk extract, audited). Views `search`, `participant`, `checkin`, `register`, `pet`.
+  - `api/sync/pack.php` (bulk extract, audited; refused before policy acknowledgement, the pack half of the P2B exit check). Views `search`, `participant`, `checkin`, `register`, `pet`.
   - Offline flows: cached search with a "may be stale" banner, and manual identification; provisional registration (`T<site>-<device>-<seq>` plus a printed slip); queued pet saves (`base_row_version`; `size_band_id` and `household_size` required); offline check-in.
   - **Replay:** a provisional participant is **committed immediately as a new participant with a 'Duplicate Candidate' alert**, so its distributions post to the ledger and eligibility at once; duplicates are resolved by merge (minimal merge, P4).
   - An offline check-in that collides on `(event_id, participant_id)` with 1062 is merged: the item's uuid is mapped to the existing `check_in_id`.

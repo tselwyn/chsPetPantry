@@ -5,6 +5,7 @@ namespace Pfpms\Tests\Integration;
 
 use Pfpms\Auth\PasswordPolicy;
 use Pfpms\Auth\Policy;
+use Pfpms\Auth\SiteAccess;
 use Pfpms\Auth\Tokens;
 use Pfpms\Clock;
 use Pfpms\Db;
@@ -264,6 +265,103 @@ final class TokensPolicyTest extends TestCase
         $this->assertSame('es', Policy::current('SNV Explanation', 'es')['language_code']);
         $this->assertSame('en', Policy::current('SNV Explanation', 'fr')['language_code']);
         $this->assertNull(Policy::current('Retention Notice', 'en'));
+    }
+
+    // The offline grant's caps (S3 spec §2.3) ----------------------------------------------------------
+
+    public function testDueAgainOnIsTheCurrentAcceptancesDueDate(): void
+    {
+        $this->setSetting('organisation_time_zone', 'America/New_York');
+        $user = $this->makeUser();
+        $this->assertNull(Policy::dueAgainOn($user), 'no agreement');
+        $v1 = $this->confidentiality('1', 'en', '2026-01-01');
+        $this->assertNull(Policy::dueAgainOn($user), 'not accepted: the gate applies first');
+
+        $this->setSetting('policy_reack_days', '365');
+        Policy::acknowledge($user['user_id'], $v1);
+        $this->assertSame('2027-10-01', Policy::dueAgainOn($user));
+        $this->setSetting('policy_reack_days', '0');
+        Policy::acknowledge($user['user_id'], $v1);
+        $this->assertNull(Policy::dueAgainOn($user), 'accepted with no due date (policy_reack_days 0)');
+
+        $v2 = $this->confidentiality('2', 'en', '2026-09-15');
+        $this->assertNull(Policy::dueAgainOn($user), "only an older version's acceptance");
+        $this->setSetting('policy_reack_days', '30');
+        Policy::acknowledge($user['user_id'], $v2);
+        $this->assertSame('2026-10-31', Policy::dueAgainOn($user));
+        $this->assertNull(Policy::dueAgainOn($this->makeUser()), "another person's acceptance does not count");
+    }
+
+    public function testAcknowledgementRequiredIsUnchangedByTheRefactor(): void
+    {
+        $this->setSetting('organisation_time_zone', 'America/New_York');
+        $user = $this->makeUser();
+        $this->assertFalse(Policy::acknowledgementRequired($user), 'no agreement');
+        $doc = $this->confidentiality('1', 'en', '2026-01-01');
+        $this->assertTrue(Policy::acknowledgementRequired($user), 'not accepted');
+        Policy::acknowledge($user['user_id'], $doc);
+        $this->assertFalse(Policy::acknowledgementRequired($user));
+        $due = Db::pdo()->prepare('UPDATE policy_acknowledgement SET due_again_on = ? WHERE user_id = ?');
+        $due->execute(['2026-10-01', $user['user_id']]);
+        $this->assertTrue(Policy::acknowledgementRequired($user), 'due today: required');
+        $due->execute(['2026-10-02', $user['user_id']]);
+        $this->assertFalse(Policy::acknowledgementRequired($user), 'due tomorrow');
+        $due->execute([null, $user['user_id']]);
+        $this->assertFalse(Policy::acknowledgementRequired($user), 'never due again');
+        $this->assertTrue(Policy::acknowledgementRequired($this->makeUser()));
+    }
+
+    public function testAccessEndIsTheLatestLiveEnd(): void
+    {
+        $north = $this->makeSite('Access North');
+        $south = $this->makeSite('Access South');
+        $user = $this->makeUser();
+        $grant = fn(int $site, string $starts, ?string $ends) => Db::pdo()
+            ->prepare('INSERT INTO user_site_access (user_id, site_id, starts_at, ends_at, granted_by) VALUES (?, ?, ?, ?, ?)')
+            ->execute([$user['user_id'], $site, $starts, $ends, $user['user_id']]);
+
+        $this->assertSame(self::NOW, SiteAccess::accessEnd($user, $north), 'no live grant: now, never "no end"');
+        $grant($north, '2026-01-01 00:00:00', '2026-10-01 11:00:00');
+        $grant($north, '2026-10-02 00:00:00', null);
+        $this->assertSame(self::NOW, SiteAccess::accessEnd($user, $north), 'an ended grant and one not yet started are not live');
+
+        $grant($north, '2026-01-01 00:00:00', '2026-10-05 00:00:00');
+        $grant($north, '2026-09-01 00:00:00', '2026-10-09 06:00:00');
+        $grant($south, '2026-01-01 00:00:00', null);
+        $this->assertSame('2026-10-09 06:00:00', SiteAccess::accessEnd($user, $north), 'the later of two ends; another site does not count');
+        $grant($north, '2026-06-01 00:00:00', null);
+        $this->assertNull(SiteAccess::accessEnd($user, $north), 'one open-ended grant: no end');
+        $this->assertNull(SiteAccess::accessEnd($user, $south));
+
+        $this->assertNull(SiteAccess::accessEnd($this->makeUser(['role' => 'Administrator']), $north), 'site.all');
+    }
+
+    public function testNextVersionFromIsTheEarliestScheduledVersion(): void
+    {
+        $this->setSetting('organisation_time_zone', 'America/New_York');
+        $this->assertNull(Policy::nextVersionFrom(), 'none');
+        $this->confidentiality('1', 'en', '2026-10-10');
+        $this->assertNull(Policy::current(Policy::CONFIDENTIALITY));
+        $this->assertSame('2026-10-10', Policy::nextVersionFrom(), 'no version in force and one scheduled: its date');
+        $this->confidentiality('2', 'en', '2026-10-20');
+        $this->confidentiality('3', 'en', '2026-10-05');
+        Db::pdo()->exec("INSERT INTO policy_document (doc_type, version, language_code, body, effective_from) VALUES ('Retention Notice', '9', 'en', 'Text', '2026-10-02')");
+        $this->assertSame('2026-10-05', Policy::nextVersionFrom(), 'the earliest of the scheduled versions; another document type does not count');
+
+        Clock::freeze('2026-10-25 12:00:00');
+        $this->assertSame('2', Policy::current(Policy::CONFIDENTIALITY)['version']);
+        $this->assertNull(Policy::nextVersionFrom(), 'every version in force');
+        $this->confidentiality('2', 'es', '2026-11-01');
+        $this->assertNull(Policy::nextVersionFrom(), 'a translation of the current version dated later');
+        $this->confidentiality('4', 'en', '2026-10-25');
+        $this->assertNull(Policy::nextVersionFrom(), 'a version in force today is current, not scheduled');
+    }
+
+    private function confidentiality(string $version, string $language, string $effectiveFrom): int
+    {
+        Db::pdo()->prepare("INSERT INTO policy_document (doc_type, version, language_code, body, effective_from) VALUES ('Confidentiality Agreement', ?, ?, ?, ?)")
+            ->execute([$version, $language, "Agreement $version", $effectiveFrom]);
+        return (int) Db::pdo()->lastInsertId();
     }
 
     /** An auth_token row as a later slice would leave it (e.g. an offline grant revoked at a given time); returns its id. */

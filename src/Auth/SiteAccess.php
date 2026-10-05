@@ -35,4 +35,26 @@ final class SiteAccess
     {
         return in_array($siteId, array_column(self::sitesFor($user), 'site_id'), true);
     }
+
+    /**
+     * When the person's access to $siteId ends (UTC Clock::db text): null for site.all or a live grant with no end; now itself
+     * when no grant is live (an access removed a moment ago), so OfflineGrants::expiry() caps at now and no grant is issued.
+     */
+    public static function accessEnd(array $user, int $siteId): ?string
+    {
+        if (Rbac::can($user['role'], 'site.all')) {
+            return null;
+        }
+        $now = Clock::db();
+        $st = Db::pdo()->prepare(
+            "SELECT MAX(COALESCE(ends_at, '9999-12-31 23:59:59')) FROM user_site_access
+              WHERE user_id = ? AND site_id = ? AND starts_at <= ? AND (ends_at IS NULL OR ends_at > ?)"
+        );
+        $st->execute([$user['user_id'], $siteId, $now, $now]);
+        $end = $st->fetchColumn();
+        if ($end === false || $end === null) {
+            return $now; // no live grant: never "no end"
+        }
+        return (string) $end === '9999-12-31 23:59:59' ? null : (string) $end;
+    }
 }

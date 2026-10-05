@@ -1,15 +1,21 @@
-// Hash routes for the Station (S2 spec §3.12): '#/<view>' → a view, gated by the tablet state. A view that the
-// state does not allow falls back to the state's home view (the first of its list). Imports nothing; the hash and
-// its hashchange event come through env (js/env.js).
+// Hash routes for the Station (S2 spec §3.12, S3 spec §3.8): '#/<view>' → a view, gated by the tablet state and, on a
+// registered tablet, by the session's state and gate. A view that is not allowed falls back to the home view (the
+// first of its list). Imports nothing; the hash and its hashchange event come through env (js/env.js).
 
 /** Every view the router knows. */
-export const ROUTES = Object.freeze(['starting', 'device', 'login', 'about', 'wipe', 'elsewhere']);
+export const ROUTES = Object.freeze(['starting', 'device', 'login', 'home', 'ack', 'password', 'pin', 'about', 'wipe', 'elsewhere']);
 
-/** The views each tablet state allows; the first is the state's home view (the fallback). S3 adds ack, password, pin, home to REGISTERED. */
+/** The views each tablet state allows; the first is the state's home view (the fallback). */
 export const ALLOWED = Object.freeze({
-  STARTING: ['starting'], UNREGISTERED: ['device', 'about'], REGISTERED: ['login', 'about'], WIPING: ['wipe'], ERASED: ['wipe'],
-  ELSEWHERE: ['elsewhere'], REPLACED: ['elsewhere'], NO_STORAGE: ['starting'],
+  STARTING: ['starting'], UNREGISTERED: ['device', 'about'], REGISTERED: ['login', 'home', 'ack', 'password', 'pin', 'about'], WIPING: ['wipe'],
+  ERASED: ['wipe'], ELSEWHERE: ['elsewhere'], REPLACED: ['elsewhere'], NO_STORAGE: ['starting'],
 });
+
+/** Inside REGISTERED, the views each session state allows (about always); the first is its home. GATE: its gate's view only. */
+export const SESSION_VIEWS = Object.freeze({ LOCKED: ['login'], PICKER: ['login'], IDLE: ['login'], ACTIVE: ['home', 'pin'], GATE: [] });
+
+/** At a gate, the one view it shows. */
+export const GATE_VIEWS = Object.freeze({ policy_ack: 'ack', password_change: 'password' });
 
 /**
  * Whether a view may show in a tablet state.
@@ -25,6 +31,25 @@ export const allowedIn = (state, name) => (ALLOWED[state] ?? []).includes(name);
  * @returns {string}
  */
 export const homeOf = (state) => (ALLOWED[state] ?? ['starting'])[0];
+
+/**
+ * On a registered tablet, the session's home view: its gate's view at a gate ('login' for an unknown gate), else the
+ * first view its state allows ('login' for an unknown state).
+ * @param {string} state session.state()
+ * @param {string|null} gate session.gate()
+ * @returns {string}
+ */
+export const sessionHome = (state, gate) => (state === 'GATE' ? (GATE_VIEWS[gate] ?? 'login') : (SESSION_VIEWS[state] ?? ['login'])[0]);
+
+/**
+ * On a registered tablet, whether the session's state and gate allow a view (About always).
+ * @param {string} state
+ * @param {string|null} gate
+ * @param {string} name
+ * @returns {boolean}
+ */
+export const sessionAllows = (state, gate, name) => name === 'about'
+  || (state === 'GATE' ? GATE_VIEWS[gate] === name : (SESSION_VIEWS[state] ?? ['login']).includes(name));
 
 /**
  * '#/about' → 'about'; anything else → null.
@@ -47,8 +72,8 @@ export function parseHash(hash) { const m = /^#\/([a-z_-]+)$/.exec(hash ?? ''); 
  * @param {object} options
  * @param {{hash: () => string, setHash: (h: string) => void, on: Function}} options.env the Env of js/env.js
  * @param {(name: string) => void} options.render draws that view now
- * @param {(name: string) => boolean} options.allowed may this view show in the current tablet state?
- * @param {() => string} options.fallback the view to show instead (the state's home view)
+ * @param {(name: string) => boolean} options.allowed may this view show now (the tablet state, and the session's)?
+ * @param {() => string} options.fallback the view to show instead (the home view)
  * @returns {Router}
  */
 export function createRouter({ env, render, allowed, fallback }) {

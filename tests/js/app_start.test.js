@@ -186,7 +186,8 @@ test('a registered tablet shows the lock screen disabled until the start-up hear
   await p.env.advance(1);
   const app = await run;
   assert.equal(app.state(), 'REGISTERED');
-  assert.ok(text(p.root).includes(COPY.signin_not_ready));
+  assert.equal(p.root.querySelector('button[type="submit"]').disabled, false, 'the form is enabled once the 5 s pass');
+  assert.equal(text(p.root.querySelector('p.status')), '');
   assert.ok(!text(p.root).includes(COPY.checking));
   assert.equal(text(p.root.querySelector('span.chip')), COPY.offline, 'the heartbeat timed out: offline');
   assert.equal(p.env.persistCalls, 1, 'persistence is asked again at a registered start');
@@ -201,7 +202,8 @@ test('a registered tablet shows the lock screen disabled until the start-up hear
   const app2 = await q.run();
   assert.deepEqual(order, [COPY.checking], 'checking while the heartbeat is out');
   assert.equal(app2.state(), 'REGISTERED');
-  assert.equal(text(q.root.querySelector('p.status')), COPY.signin_not_ready);
+  assert.equal(q.root.querySelector('button[type="submit"]').disabled, false, 'the form is enabled once the heartbeat answers');
+  assert.equal(text(q.root.querySelector('p.status')), '');
   assert.equal(q.env.persistCalls, 0, 'already persisted');
 });
 
@@ -217,7 +219,7 @@ test('dev_relax creates __pfpms.debug and the banner, and its absence creates ne
     assert.equal(text(on.root.querySelector('.banner-danger')), COPY.dev_relax);
     const debug = globalThis.__pfpms?.debug;
     assert.ok(debug);
-    assert.deepEqual(Object.keys(debug).sort(), ['draft', 'dump', 'heartbeat', 'record', 'skipDelay', 'state']);
+    assert.deepEqual(Object.keys(debug).sort(), ['draft', 'dump', 'heartbeat', 'record', 'session', 'skipDelay', 'state']);
     assert.equal(debug.state(), 'REGISTERED');
     assert.equal(debug.state(), app.state());
     const before = beats(on.f).length;
@@ -610,7 +612,8 @@ test('Continue after a registration shows the lock screen and starts the 5-minut
   await until(() => sectionClass(p.root) === 'view view-login');
   assert.equal(text(p.root.querySelector('section p.tablet')), 'E2E 1 at Dev Site North');
   assert.equal(text(p.root.querySelector('span.tablet')), 'E2E 1 at Dev Site North', 'the header names the tablet too');
-  assert.equal(text(p.root.querySelector('p.status')), COPY.signin_not_ready, 'not "Checking this tablet…": the first heartbeat already ran');
+  assert.equal(text(p.root.querySelector('p.status')), '', 'not "Checking this tablet…": the first heartbeat already ran');
+  assert.equal(p.root.querySelector('button[type="submit"]').disabled, false, 'the form is enabled');
   const n = beats(p.f).length;
   await p.env.advance(HEARTBEAT_MS - 1);
   await flush(20);

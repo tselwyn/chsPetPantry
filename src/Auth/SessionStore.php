@@ -27,10 +27,11 @@ final class SessionStore
     /** Don't rewrite last_activity_at more often than this (seconds). */
     private const TOUCH_INTERVAL = 60;
 
-    public static function create(int $userId, ?int $siteId, string $authMethod = 'Password', ?int $deviceId = null): string
+    /** $startedAt (Clock::db text): the instant the session starts at, for started_at and last_activity_at (default now). */
+    public static function create(int $userId, ?int $siteId, string $authMethod = 'Password', ?int $deviceId = null, ?string $startedAt = null): string
     {
         $sessionId = bin2hex(random_bytes(32));
-        $now = Clock::db();
+        $now = $startedAt ?? Clock::db();
         Db::pdo()->prepare(
             'INSERT INTO user_session (session_id, user_id, device_id, site_id, auth_method, started_at, last_activity_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
         )->execute([$sessionId, $userId, $deviceId, $siteId, $authMethod, $now, $now]);
@@ -114,5 +115,40 @@ final class SessionStore
     public static function setSite(string $sessionId, ?int $siteId): void
     {
         Db::pdo()->prepare('UPDATE user_session SET site_id = ? WHERE session_id = ?')->execute([$siteId, $sessionId]);
+    }
+
+    /** End the tablet's open online sessions (Password, PIN; never Offline rows). $startedBefore (Clock::db text): only sessions
+     *  started before it (an End shift made offline and replayed later, 50-design §6.8). Returns how many. */
+    public static function endOnlineForDevice(int $deviceId, string $reason, ?int $endedBy = null, ?string $startedBefore = null): int
+    {
+        $sql = "UPDATE user_session SET ended_at = ?, end_reason = ?, ended_by = ?
+                 WHERE device_id = ? AND ended_at IS NULL AND auth_method IN ('Password', 'PIN')";
+        $args = [Clock::db(), $reason, $endedBy, $deviceId];
+        if ($startedBefore !== null) {
+            $sql .= ' AND started_at < ?';
+            $args[] = $startedBefore;
+        }
+        $st = Db::pdo()->prepare($sql);
+        $st->execute($args);
+        return $st->rowCount();
+    }
+
+    /** End the person's open online sessions on OTHER tablets (D-17); web sessions (device_id NULL) are untouched. */
+    public static function endOnlineElsewhere(int $userId, int $deviceId, string $reason, int $endedBy): int
+    {
+        $st = Db::pdo()->prepare(
+            "UPDATE user_session SET ended_at = ?, end_reason = ?, ended_by = ?
+              WHERE user_id = ? AND device_id IS NOT NULL AND device_id <> ? AND ended_at IS NULL AND auth_method IN ('Password', 'PIN')"
+        );
+        $st->execute([Clock::db(), $reason, $endedBy, $userId, $deviceId]);
+        return $st->rowCount();
+    }
+
+    /** One session row by id, whatever its state (a plain read: inside a transaction, after its account lock, §2.1). */
+    public static function row(string $sessionId): ?array
+    {
+        $st = Db::pdo()->prepare('SELECT session_id, user_id, device_id, auth_method, started_at, ended_at FROM user_session WHERE session_id = ?');
+        $st->execute([$sessionId]);
+        return $st->fetch() ?: null;
     }
 }

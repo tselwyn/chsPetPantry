@@ -379,6 +379,91 @@ final class SessionTest extends TestCase
         Page::start(['session' => false]);
     }
 
+    // The Station's session ends (S3 spec §2.3) ------------------------------------------------------
+
+    public function testEndOnlineForDeviceEndsOnlyThatTabletsOnlineSessions(): void
+    {
+        $site = $this->makeSite('Test North');
+        $user = $this->makeUser();
+        $actor = $this->makeUser();
+        $tablet = $this->makeDevice($site);
+        $other = $this->makeDevice($site);
+        $password = SessionStore::create($user['user_id'], $site, 'Password', $tablet);
+        $pin = SessionStore::create($actor['user_id'], $site, 'PIN', $tablet);
+        $offline = SessionStore::create($user['user_id'], $site, 'Offline', $tablet);
+        $offlinePin = SessionStore::create($user['user_id'], $site, 'Offline PIN', $tablet);
+        $elsewhere = SessionStore::create($user['user_id'], $site, 'Password', $other);
+        $web = SessionStore::create($user['user_id'], $site);
+        $ended = SessionStore::create($user['user_id'], $site, 'PIN', $tablet);
+        SessionStore::end($ended, 'Logout');
+
+        Clock::advance('+1 minute');
+        $this->assertSame(2, SessionStore::endOnlineForDevice($tablet, 'Device Lock', $actor['user_id']));
+        foreach ([$password, $pin] as $sid) {
+            $this->assertSame(['ended_at' => '2026-10-01 12:01:00', 'end_reason' => 'Device Lock', 'ended_by' => $actor['user_id']], $this->ending($sid));
+        }
+        foreach ([$offline, $offlinePin, $elsewhere, $web] as $sid) {
+            $this->assertNull($this->ending($sid)['ended_at'], 'offline rows, other tablets and web sessions stay open');
+        }
+        $this->assertSame('Logout', $this->ending($ended)['end_reason'], 'an ended session keeps its reason');
+        $this->assertSame(0, SessionStore::endOnlineForDevice($tablet, 'Device Lock'));
+
+        $row = SessionStore::row($password);
+        $this->assertSame(['session_id', 'user_id', 'device_id', 'auth_method', 'started_at', 'ended_at'], array_keys($row));
+        $this->assertSame([$password, $user['user_id'], $tablet, 'Password', self::NOW, '2026-10-01 12:01:00'], array_values($row));
+        $this->assertNull(SessionStore::row(str_repeat('f', 64)));
+    }
+
+    public function testEndOnlineForDeviceWithStartedBeforeSparesLaterSessions(): void
+    {
+        $site = $this->makeSite('Test North');
+        $user = $this->makeUser();
+        $tablet = $this->makeDevice($site);
+        $early = SessionStore::create($user['user_id'], $site, 'Password', $tablet, '2026-10-01 10:00:00');
+        $boundary = SessionStore::create($user['user_id'], $site, 'PIN', $tablet, '2026-10-01 11:00:00');
+        $later = SessionStore::create($user['user_id'], $site, 'Password', $tablet);
+        $times = Db::pdo()->prepare('SELECT started_at, last_activity_at FROM user_session WHERE session_id = ?');
+        $times->execute([$early]);
+        $this->assertSame(['started_at' => '2026-10-01 10:00:00', 'last_activity_at' => '2026-10-01 10:00:00'], $times->fetch(), 'create($startedAt) sets both times');
+
+        $this->assertSame(1, SessionStore::endOnlineForDevice($tablet, 'Device Lock', null, '2026-10-01 11:00:00'));
+        $this->assertSame(['ended_at' => self::NOW, 'end_reason' => 'Device Lock', 'ended_by' => null], $this->ending($early));
+        $this->assertNull($this->ending($boundary)['ended_at'], 'started at the replayed time itself: after it');
+        $this->assertNull($this->ending($later)['ended_at']);
+    }
+
+    public function testEndOnlineElsewhereSparesThisTabletWebAndOfflineSessions(): void
+    {
+        $site = $this->makeSite('Test North');
+        $user = $this->makeUser();
+        $someone = $this->makeUser();
+        $here = $this->makeDevice($site);
+        $there = $this->makeDevice($site);
+        $third = $this->makeDevice($site);
+        $mine = SessionStore::create($user['user_id'], $site, 'Password', $here);
+        $therePassword = SessionStore::create($user['user_id'], $site, 'Password', $there);
+        $thirdPin = SessionStore::create($user['user_id'], $site, 'PIN', $third);
+        $thereOffline = SessionStore::create($user['user_id'], $site, 'Offline', $there);
+        $web = SessionStore::create($user['user_id'], $site);
+        $theirs = SessionStore::create($someone['user_id'], $site, 'Password', $there);
+
+        $this->assertSame(2, SessionStore::endOnlineElsewhere($user['user_id'], $here, 'User Switch', $user['user_id']));
+        foreach ([$therePassword, $thirdPin] as $sid) {
+            $this->assertSame(['ended_at' => self::NOW, 'end_reason' => 'User Switch', 'ended_by' => $user['user_id']], $this->ending($sid));
+        }
+        foreach ([$mine, $thereOffline, $web, $theirs] as $sid) {
+            $this->assertNull($this->ending($sid)['ended_at'], 'this tablet, offline rows, the web session and other people stay');
+        }
+    }
+
+    /** @return array{ended_at: ?string, end_reason: ?string, ended_by: ?int} */
+    private function ending(string $sessionId): array
+    {
+        $st = Db::pdo()->prepare('SELECT ended_at, end_reason, ended_by FROM user_session WHERE session_id = ?');
+        $st->execute([$sessionId]);
+        return $st->fetch();
+    }
+
     private function ids(array $sites): array
     {
         $ids = array_column($sites, 'site_id');

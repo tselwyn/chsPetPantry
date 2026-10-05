@@ -452,6 +452,7 @@ export function createDevice({ env, db, api, clock, ui, inflight, bootRepair, ho
         const old = await t.get('meta', 'config');
         // The organisation name comes from api/session.php; a heartbeat's config does not carry it.
         if (isObject(old) && old.organisation_name !== undefined && config.organisation_name === undefined) config.organisation_name = old.organisation_name;
+        if (isObject(old) && old.offline_allowed === true && config.offline_enabled === true) config.offline_allowed = true; // S3: the sign-in's, until offline is disabled
         await t.put('meta', config, 'config');
       }
       const d = await t.get('meta', 'device');

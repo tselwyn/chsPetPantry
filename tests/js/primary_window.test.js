@@ -110,7 +110,7 @@ test('Use this window here steals it and the first window\'s onLost runs', async
   await until(() => b.f.requests.some((r) => r.url.endsWith('api/session.php')));
   assert.equal(text(b.root.querySelector('span.chip')), COPY.connecting, 'the window that took over shows Connecting… until its first answer');
   releaseSession();
-  await until(() => appB.state() === 'REGISTERED' && text(b.root).includes(COPY.signin_not_ready));
+  await until(() => appB.state() === 'REGISTERED' && b.root.querySelector('button[type="submit"]')?.disabled === false);
   assert.equal(appA.state(), 'REPLACED');
   assert.equal(text(a.root.querySelector('h1')), COPY.replaced);
   assert.equal(a.root.querySelector('span.chip'), null, 'the replaced window shows no chip');

@@ -74,14 +74,43 @@ final class Policy
         if ($doc === null) {
             return false;
         }
+        $due = self::latestDue((int) $user['user_id'], $doc);
+        return $due === null || $due <= Clock::orgToday();
+    }
+
+    /** The organisation date from which the current agreement must be accepted again (D-19 cap), or null: no agreement, not
+     *  accepted (the gate applies first), or accepted with no due date (policy_reack_days = 0). */
+    public static function dueAgainOn(array $user): ?string
+    {
+        $doc = self::current(self::CONFIDENTIALITY);
+        $due = $doc === null ? null : self::latestDue((int) $user['user_id'], $doc);
+        return $due === null || $due === '9999-12-31' ? null : $due;
+    }
+
+    /** The organisation date on which a later version of the agreement takes effect (D-19 cap: from that day the person must
+     *  accept it before the server lets them work), or null. Versions are decided by the default-language texts, as in current(). */
+    public static function nextVersionFrom(): ?string
+    {
+        $current = self::current(self::CONFIDENTIALITY);
         $st = Db::pdo()->prepare(
-            'SELECT MAX(COALESCE(a.due_again_on, \'9999-12-31\')) FROM policy_acknowledgement a
-               JOIN policy_document d ON d.document_id = a.document_id
-              WHERE a.user_id = ? AND d.doc_type = ? AND d.version = ?'
+            'SELECT MIN(effective_from) FROM policy_document WHERE doc_type = ? AND language_code = ? AND effective_from > ? AND version <> ?'
         );
-        $st->execute([$user['user_id'], $doc['doc_type'], $doc['version']]);
+        $st->execute([self::CONFIDENTIALITY, Settings::string('default_language', 'en'), Clock::orgToday(), $current === null ? '' : (string) $current['version']]);
+        $from = $st->fetchColumn();
+        return $from === false || $from === null ? null : (string) $from;
+    }
+
+    /** MAX(due_again_on) over this person's acceptances of the current version ('9999-12-31' for "never due"), or null. */
+    private static function latestDue(int $userId, array $doc): ?string
+    {
+        $st = Db::pdo()->prepare(
+            "SELECT MAX(COALESCE(a.due_again_on, '9999-12-31')) FROM policy_acknowledgement a
+               JOIN policy_document d ON d.document_id = a.document_id
+              WHERE a.user_id = ? AND d.doc_type = ? AND d.version = ?"
+        );
+        $st->execute([$userId, $doc['doc_type'], $doc['version']]);
         $due = $st->fetchColumn();
-        return $due === null || $due === false || $due <= Clock::orgToday();
+        return $due === false || $due === null ? null : (string) $due;
     }
 
     public static function acknowledge(int $userId, int $documentId): void

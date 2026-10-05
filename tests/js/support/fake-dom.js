@@ -95,12 +95,27 @@ class FakeElement {
     this.append(...nodes);
   }
 
-  _insert(n) {
+  /**
+   * Puts node just before ref, one of this element's children (at the end when ref is null), as in the DOM; a node
+   * that already has a parent moves. Returns node.
+   */
+  insertBefore(node, ref) {
+    if (ref !== null && ref !== undefined && ref.parentNode !== this) throw new Error('fake-dom: insertBefore: the reference is not a child');
+    this._insert(node, ref ?? null);
+    return node;
+  }
+
+  /** Takes this element out of its parent (focus inside it goes back to the body, as in a browser). */
+  remove() { detach(this); }
+
+  _insert(n, before = null) {
     const node = n instanceof FakeElement || n instanceof FakeText ? n : new FakeText(this.ownerDocument, String(n));
     if (node === this || (node instanceof FakeElement && node.contains(this))) throw new Error('fake-dom: a node cannot contain itself');
+    if (node === before) return;
     if (node.parentNode) detach(node);
     node.parentNode = this;
-    this.childNodes.push(node);
+    if (before === null) this.childNodes.push(node);
+    else this.childNodes.splice(this.childNodes.indexOf(before), 0, node);
   }
 
   contains(other) {

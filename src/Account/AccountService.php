@@ -15,6 +15,7 @@ use Pfpms\Db;
 use Pfpms\Mail\Mailer;
 use Pfpms\Reference\SiteRepository;
 use Pfpms\Settings;
+use Pfpms\Station\OfflineGrants;
 use Pfpms\Validation\ValidationException;
 use Pfpms\Validation\Validator;
 
@@ -35,7 +36,7 @@ use Pfpms\Validation\Validator;
  *   their own role, sites, dates, email or status, or resets their own sign-in (§3.3.4); every
  *   refusal is audited.
  * - Any change to role, sites, dates, email or the export permission ends the person's sessions
- *   at once (§4.4).
+ *   at once (§4.4) and revokes their offline grants on every tablet (REQ-67), grants first.
  * - Deactivation never deletes anything: attribution in history stays (§3.2.3).
  * - Account dates are organisation dates (Clock::orgToday), not UTC dates.
  */
@@ -147,6 +148,7 @@ final class AccountService
                 Audit::record('user_update', 'user_account', $userId, reason: $reason, changes: $changes);
                 if ($accessChanged) {
                     Tokens::revokeAll($userId, Tokens::DEVICE_REGISTRATION); // tablet codes they created stop working (P2A admin_devices)
+                    OfflineGrants::revokeForUser($userId, 'access'); // grants before sessions (lock order auth_token → user_session)
                     SessionStore::endAllForUser($userId, 'Permission Change', $actorId);
                 }
                 if (!$emailChanged) {
@@ -215,7 +217,7 @@ final class AccountService
         $account = self::load($userId);
         self::refuseSelf($userId, $actorId, 'user_unlock');
         Db::transaction(function () use ($userId, $account): void {
-            Db::pdo()->prepare("UPDATE user_account SET failed_login_count = 0, locked_until = NULL, status = IF(status = 'Locked', 'Active', status)
+            Db::pdo()->prepare("UPDATE user_account SET failed_login_count = 0, locked_until = NULL, pin_failed_count = 0, status = IF(status = 'Locked', 'Active', status)
                                  WHERE user_id = ?")->execute([$userId]);
             Audit::record('user_unlock', 'user_account', $userId, changes: ['locked_until' => [$account['locked_until'], null]]);
         });
@@ -226,8 +228,10 @@ final class AccountService
     }
 
     /**
-     * Deactivate now or from a date (§3.2.3). When it takes effect, sessions end and outstanding
-     * links are cancelled (for a later date the cron job does that). History is kept.
+     * Deactivate now or from a date (§3.2.3). Offline grants are revoked at once, even for a later
+     * date (a tablet must not keep working offline for someone who is leaving). When it takes
+     * effect, sessions end and outstanding links are cancelled (for a later date the cron job does
+     * that). History is kept.
      * @return bool true when it took effect now, false when it was scheduled
      * @throws ValidationException
      */
@@ -254,6 +258,7 @@ final class AccountService
             self::recheckLastAdministrator($account, 'Board', null);
             Db::pdo()->prepare('UPDATE user_account SET status = ?, deactivated_reason = ?, deactivation_effective_date = ?, row_version = row_version + 1 WHERE user_id = ?')
                 ->execute([$now ? 'Inactive' : $account['status'], $reason, $date, $userId]);
+            OfflineGrants::revokeForUser($userId, 'deactivate'); // always: a future date revokes live grants now (sessions end on the date)
             if ($now) {
                 Tokens::revokeAll($userId, Tokens::TEMPORARY_CREDENTIAL);
                 Tokens::revokeAll($userId, Tokens::PASSWORD_RESET);
@@ -373,14 +378,18 @@ final class AccountService
         return Tokens::issue($userId, Tokens::TEMPORARY_CREDENTIAL, self::tokenHours() * 60);
     }
 
-    /** Replace the password with an unusable one, clear any lockout, end every session and cancel self-service links; returns the new link. */
+    /**
+     * Replace the password with an unusable one, clear any lockout and the PIN, revoke offline grants, end every session and
+     * cancel self-service links; returns the new link.
+     */
     private static function resetCredentials(int $userId, int $actorId): string
     {
         Db::pdo()->prepare("UPDATE user_account SET password_hash = ?, failed_login_count = 0, locked_until = NULL, must_change_password = 1,
-                                   status = IF(status = 'Locked', 'Active', status) WHERE user_id = ?")
+                                   pin_hash = NULL, pin_failed_count = 0, status = IF(status = 'Locked', 'Active', status) WHERE user_id = ?")
             ->execute([self::unusablePasswordHash(), $userId]);
         Tokens::revokeAll($userId, Tokens::PASSWORD_RESET);
         Tokens::revokeAll($userId, Tokens::DEVICE_REGISTRATION); // the account may be in the wrong hands: its tablet codes stop working
+        OfflineGrants::revokeForUser($userId, 'reset'); // and its tablets stop working offline for it
         $token = self::newActivationToken($userId); // before the sessions: tokens, then sessions, the order every path uses
         SessionStore::endAllForUser($userId, 'Password Reset', $actorId);
         return $token;

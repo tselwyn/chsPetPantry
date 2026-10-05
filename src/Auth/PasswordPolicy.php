@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 namespace Pfpms\Auth;
 
+use Closure;
 use Pfpms\Clock;
+use Pfpms\Config;
 use Pfpms\Settings;
 
 /**
@@ -13,6 +15,12 @@ use Pfpms\Settings;
 final class PasswordPolicy
 {
     public const MAX_LENGTH = 128;
+
+    /**
+     * Tests only (honoured when Config::env() === 'test'): runs after every hash(), so a test can place the ≈0.4 s of Argon2
+     * among a request's statements (QueryLog::mark()) and see that none runs while the transaction holds a row lock.
+     */
+    public static ?Closure $afterHash = null;
 
     /**
      * @param array $user optional user row: its username, email and names may not be the password
@@ -52,9 +60,13 @@ final class PasswordPolicy
 
     public static function hash(#[\SensitiveParameter] string $password): string
     {
-        return defined('PASSWORD_ARGON2ID')
+        $hash = defined('PASSWORD_ARGON2ID')
             ? password_hash($password, PASSWORD_ARGON2ID)
             : password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+        if (self::$afterHash !== null && Config::env() === 'test') {
+            (self::$afterHash)();
+        }
+        return $hash;
     }
 
     public static function needsRehash(string $hash): bool

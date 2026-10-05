@@ -703,7 +703,77 @@ final class DeviceGuardTest extends TestCase
         $this->assertSame('device_proof_invalid', $this->refusal(fn() => $this->guard(DeviceGuard::KNOWN, true))->code(), 'another method');
         $_SERVER['REQUEST_METHOD'] = 'POST';
 
-        $this->assertSame('valid', $this->guard(DeviceGuard::KNOWN, true)['proof'], 'the original request still verifies');
+        // Checked unenforced: an enforced proof is single-use (S3), and this header already passed once above.
+        $this->assertSame('valid', $this->guard(DeviceGuard::KNOWN)['proof'], 'the original request still verifies');
+    }
+
+    public function testAnEnforcedProofIsSingleUse(): void
+    {
+        [$id, $credential] = $this->tablet(['label' => 'Front desk 7']);
+        $key = $this->giveProofKey($id);
+        $header = $this->sign($key);
+        $this->sendCredential($credential, $header);
+        $this->assertSame('valid', $this->guard(DeviceGuard::IN_SERVICE, true)['proof']);
+        $bucket = 'proof_used:' . $id . ':' . hash('sha256', $header);
+        $this->assertMatchesRegularExpression('/^proof_used:' . $id . ':[0-9a-f]{64}$/D', $bucket);
+        $this->assertSame(1, $this->bucketHits($bucket), 'keyed by the lower-case hex SHA-256 of the header');
+        $this->assertNull($this->bucketHits("device_proof:device:$id"));
+
+        $e = $this->refusal(fn() => $this->guard(DeviceGuard::IN_SERVICE, true)); // the same signed request, sent again
+        $this->assertSame([401, 'device_proof_invalid', 'This tablet needs to be registered again. Ask a Coordinator.', []], $this->shape($e));
+        $this->assertSame(1, $this->bucketHits("device_proof:device:$id"), 'counted as a failed proof');
+        $rows = $this->audits('device_unproven');
+        $this->assertCount(1, $rows);
+        $this->assertSame(['endpoint' => self::HEARTBEAT, 'signal' => 'proof_replayed'], $this->details($rows[0]));
+        $this->assertCount(1, $this->notifications('device_clone_suspected'), 'a reused proof is the clone signal');
+
+        Clock::advance('+1 millisecond');
+        $this->sendCredential($credential, $this->sign($key));
+        $this->assertSame('valid', $this->guard(DeviceGuard::IN_SERVICE, true)['proof'], 'a request signed afresh passes');
+        $this->assertSame('device_proof_invalid', $this->refusal(fn() => $this->guard(DeviceGuard::IN_SERVICE, true))->code());
+        $this->assertCount(1, $this->audits('device_unproven'), 'one row an hour (S1 bucket)');
+
+        Clock::advance('+14 minutes'); // the first proof is still inside its own ±15 minutes: still used
+        $this->sendCredential($credential, $header);
+        $this->assertSame('device_proof_invalid', $this->refusal(fn() => $this->guard(DeviceGuard::IN_SERVICE, true))->code(),
+            'single-use for as long as the proof is fresh, not for a minute');
+
+        Clock::advance('+17 minutes');
+        $this->sendCredential($credential, $header);
+        $this->assertSame('device_proof_stale', $this->refusal(fn() => $this->guard(DeviceGuard::IN_SERVICE, true))->code(),
+            'after the bucket window the proof is long out of its own window');
+    }
+
+    public function testAProofFromATabletClockAheadStaysSingleUseForItsWholeWindow(): void
+    {
+        [$id, $credential] = $this->tablet();
+        $key = $this->giveProofKey($id);
+        // Signed by a tablet whose clock runs 14 minutes ahead: fresh from now until now + 29 minutes, 29 minutes in all.
+        $header = $this->sign($key, (int) Clock::now()->modify('+14 minutes')->format('Uv'));
+        $this->sendCredential($credential, $header);
+        $this->assertSame('valid', $this->guard(DeviceGuard::IN_SERVICE, true)['proof']);
+
+        Clock::advance('+28 minutes'); // still fresh (14 minutes after its own time), and still used: the bucket is 2 × the window
+        $this->sendCredential($credential, $header);
+        $this->assertSame('device_proof_invalid', $this->refusal(fn() => $this->guard(DeviceGuard::IN_SERVICE, true))->code());
+        $this->assertSame(['endpoint' => self::HEARTBEAT, 'signal' => 'proof_replayed'], $this->details($this->audits('device_unproven')[0]));
+    }
+
+    public function testAnUnenforcedProofMayRepeat(): void
+    {
+        [$id, $credential] = $this->tablet();
+        $key = $this->giveProofKey($id);
+        $this->sendCredential($credential, $this->sign($key));
+        $this->assertSame('valid', $this->guard(DeviceGuard::KNOWN)['proof']);
+        $this->assertSame('valid', $this->guard(DeviceGuard::KNOWN)['proof'], 'the heartbeat and S1/S2 endpoints behave as built');
+        $this->assertSame(0, (int) $this->scalar("SELECT COUNT(*) FROM rate_limit_bucket WHERE bucket LIKE 'proof_used:%'"), 'no single-use bucket is written');
+        $this->assertSame([], $this->audits('device_unproven'));
+
+        [$seeded, $seededCredential] = $this->tablet(); // no proof key: 'none' passes an enforced call, and is never single-use
+        $this->sendCredential($seededCredential);
+        $this->assertSame('none', $this->guard(DeviceGuard::IN_SERVICE, true)['proof']);
+        $this->assertSame('none', $this->guard(DeviceGuard::IN_SERVICE, true)['proof']);
+        $this->assertSame(0, (int) $this->scalar("SELECT COUNT(*) FROM rate_limit_bucket WHERE bucket LIKE 'proof_used:%'"));
     }
 
     public function testAnUnprovenCallIsServedButAlertsOncePerHour(): void

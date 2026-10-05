@@ -59,13 +59,93 @@ function append(node, children) {
 export function clear(node) { node.replaceChildren(); }
 
 /**
- * Replace root's content and move focus to [data-autofocus], else the first h1 (made focusable with tabindex -1).
+ * Replace root's content and move focus to the first [data-autofocus] that is not disabled, else the first h1 (made
+ * focusable with tabindex -1).
  * @param {Element} root
  * @param {...(Node|string|null|undefined|false|Array)} nodes
  */
 export function mount(root, ...nodes) {
   root.replaceChildren();
   append(root, nodes);
-  const target = root.querySelector('[data-autofocus]') ?? root.querySelector('h1');
+  autofocus(root);
+}
+
+function autofocus(root) {
+  const target = [...root.querySelectorAll('[data-autofocus]')].find((n) => n.disabled !== true) ?? root.querySelector('h1');
   if (target) { if (target.tagName === 'H1') target.setAttribute('tabindex', '-1'); target.focus?.({ preventScroll: true }); }
+}
+
+/** The attributes that name a control across a re-render: an element with the same value is the same control. */
+const NAMES = Object.freeze(['id', 'data-key', 'data-user-id']);
+
+/** The focused control under root, as [attribute, value] (the first of NAMES it has), or null. */
+function focusedName(root) {
+  const active = (root.ownerDocument ?? doc)?.activeElement;
+  if (!active || active === root || !root.contains(active)) return null;
+  for (const name of NAMES) {
+    const value = active.getAttribute?.(name);
+    if (typeof value === 'string' && value !== '') return [name, value];
+  }
+  return null;
+}
+
+/** Focuses the control under root that focusedName() named, when it is there and can take focus. */
+function refocus(root, [name, value]) {
+  for (const node of root.querySelectorAll(`[${name}]`)) {
+    if (node.getAttribute(name) !== value) continue;
+    node.focus?.();
+    return (root.ownerDocument ?? doc).activeElement === node;
+  }
+  return false;
+}
+
+/**
+ * mount() for a view drawn again in place of itself (a header or connection change, a new answer on the same
+ * screen): the control that had the focus keeps it when the new content has the same one (the same id, data-key or
+ * data-user-id) and it can take focus; otherwise as mount().
+ * @param {Element} root
+ * @param {...(Node|string|null|undefined|false|Array)} nodes
+ */
+export function remount(root, ...nodes) {
+  const name = focusedName(root);
+  root.replaceChildren();
+  append(root, nodes);
+  if (name !== null && refocus(root, name)) return;
+  autofocus(root);
+}
+
+/**
+ * Runs change(), which re-renders part of root in place (app.js's header), and gives the focus back to the same
+ * control (as remount()) when change() replaced the one that had it. Focus elsewhere is left alone.
+ * @param {Element} root
+ * @param {() => void} change
+ */
+export function keepFocus(root, change) {
+  const d = root.ownerDocument ?? doc;
+  const before = d?.activeElement ?? null;
+  const name = focusedName(root);
+  change();
+  if (name === null || (d.activeElement === before && root.contains(before))) return;
+  refocus(root, name);
+}
+
+/**
+ * Marks a control unavailable while it keeps its place in the focus order (aria-disabled="true"), or available again.
+ * A sign-in or a save in flight marks its buttons so: the person's focus stays on the button they pressed (a disabled
+ * one would drop it), and the button's listener asks unavailable() and does nothing.
+ * @param {Element} node
+ * @param {boolean} on
+ */
+export function setUnavailable(node, on) {
+  if (!node) return;
+  if (on) node.setAttribute('aria-disabled', 'true'); else node.removeAttribute('aria-disabled');
+}
+
+/**
+ * Is this control marked unavailable by setUnavailable()?
+ * @param {Element|null|undefined} node
+ * @returns {boolean}
+ */
+export function unavailable(node) {
+  return node?.getAttribute?.('aria-disabled') === 'true';
 }

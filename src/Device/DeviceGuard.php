@@ -67,6 +67,13 @@ final class DeviceGuard
         $d['proof'] = (int) $d['has_proof_key'] === 1
             ? DeviceProof::check($id, Request::header(DeviceProof::HEADER), Request::method(), $endpoint, Request::bodySha256(), Clock::now())
             : 'none';
+        // An enforced proof is single-use (S3): the same signed request sent again, from anywhere, within the window counts as
+        // invalid. The key is the hex SHA-256 of the header (the bucket column's collation ignores case; b64url does not).
+        if ($proofRequired && $d['proof'] === 'valid'
+            && !RateLimit::hit('proof_used:' . $id . ':' . hash('sha256', (string) Request::header(DeviceProof::HEADER)), 1, 2 * DeviceProof::WINDOW_SECONDS)) {
+            self::noteUnproven($d, $endpoint, 'proof_replayed');
+            $d['proof'] = 'invalid';
+        }
         if ($proofRequired && !in_array($d['proof'], ['valid', 'none'], true)) {
             if ($d['proof'] === 'stale') {
                 throw new HttpException(401, "The tablet's clock is too far from the server's. Try again.", 'device_proof_stale',

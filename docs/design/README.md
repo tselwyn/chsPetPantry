@@ -16,4 +16,4 @@ These documents are the analysis and design work behind [`../PFPMS_Implementatio
 | 20-merged-plan-pre-review.md | Merged plan **before** the review corrections |
 | 30–33 review-*.md | Adversarial reviews: schema and DB, repo facts, requirements coverage, and hosting/offline/security |
 | 40-design-devices.md | Tablet administration (P2A `admin_devices`, as built) and the contract Phase 2B must follow: registration codes, Retire and Erase now, locks, the trusted-device test |
-| 50-design-station.md | Phase 2B, the offline platform and the Station PWA: key hierarchy, formats, endpoints, sync protocol, tests and the five slices (S1 built first). Where it and 12-design or 40-design §14 differ, this one wins |
+| 50-design-station.md | Phase 2B, the offline platform and the Station PWA: key hierarchy, formats, endpoints, sync protocol, tests and the five slices (S1, S2 and S3 built, each with its "as built" and review notes; S4 and S5 to come). Where it and 12-design or 40-design §14 differ, this one wins |

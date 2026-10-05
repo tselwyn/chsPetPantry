@@ -17,6 +17,8 @@ use Pfpms\Config;
 use Pfpms\Cron\Jobs\DeactivateDueAccounts;
 use Pfpms\Db;
 use Pfpms\Mail\Mailer;
+use Pfpms\Station\OfflineGrants;
+use Pfpms\Tests\Support\QueryLog;
 use Pfpms\Tests\TestCase;
 use Pfpms\Validation\ValidationException;
 
@@ -88,6 +90,57 @@ final class AccountServiceTest extends TestCase
     private function valid(string $token): bool
     {
         return Tokens::find($token, Tokens::TEMPORARY_CREDENTIAL) !== null;
+    }
+
+    /** A live offline grant for the person on a new tablet at $siteId, issued as a Station sign-in issues it (S3 spec §2.4). */
+    private function offlineGrant(int $userId, int $siteId): int
+    {
+        $device = $this->makeDevice($siteId, ['is_site_registered' => 1]);
+        $grant = OfflineGrants::issue(AccountRepository::find($userId), ['device_id' => $device, 'site_id' => $siteId], true);
+        $this->assertNotNull($grant, 'a grant was issued');
+        return $grant['grant_id'];
+    }
+
+    /**
+     * A Volunteer with a standing grant to $siteId and a live offline grant there.
+     * @return array{0: int, 1: int} [user id, grant id]
+     */
+    private function personWithGrant(int $siteId, array $overrides = []): array
+    {
+        $id = $this->makeUser($overrides)['user_id'];
+        AccountRepository::grantSite($id, $siteId, $this->actor, 'Test');
+        return [$id, $this->offlineGrant($id, $siteId)];
+    }
+
+    private function revokedAt(int $grantId): ?string
+    {
+        $at = $this->scalar("SELECT revoked_at FROM auth_token WHERE token_id = ? AND purpose = 'Offline Grant'", [$grantId]);
+        return $at === false || $at === null ? null : (string) $at;
+    }
+
+    /** @return list<array<string, mixed>> the offline_grant_revoke details for the person, oldest first, keys sorted */
+    private function revocations(int $userId): array
+    {
+        $st = Db::pdo()->prepare("SELECT details FROM audit_log WHERE action = 'offline_grant_revoke' AND entity_type = 'user_account' AND entity_id = ? ORDER BY audit_id");
+        $st->execute([$userId]);
+        return array_map(static function (mixed $json): array {
+            $details = (array) json_decode((string) $json, true);
+            ksort($details);
+            return $details;
+        }, $st->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
+    /**
+     * In one call's statements, the person's grants are revoked before any session is ended (lock order auth_token → user_session).
+     * @param list<string> $log
+     */
+    private function assertGrantsRevokedBeforeSessionsEnd(array $log, string $path): void
+    {
+        $grants = QueryLog::last($log, "/^UPDATE auth_token SET revoked_at = \\? WHERE purpose = 'Offline Grant' AND user_id = \\?/");
+        $sessions = QueryLog::first($log, '/^UPDATE user_session SET ended_at = \?/');
+        $this->assertNotNull($grants, "$path revokes the grants");
+        $this->assertNotNull($sessions, "$path ends the sessions");
+        $this->assertLessThan($sessions, $grants, "$path: grants before sessions");
     }
 
     public function testInviteCreatesPendingAccountWithGrantsAndMailsALink(): void
@@ -524,5 +577,155 @@ final class AccountServiceTest extends TestCase
         AccountService::deactivate($scheduled, 'Leaving', '2026-11-01', $this->actor);
         AccountService::reactivate($scheduled, 'Staying on', $this->actor);
         $this->assertNull(AccountRepository::find($scheduled)['deactivation_effective_date'], 'a scheduled deactivation can be cancelled');
+    }
+
+    public function testPasswordChangeRevokesOfflineGrants(): void
+    {
+        $site = $this->makeSite('Site A');
+        [$id, $first] = $this->personWithGrant($site);
+        $second = $this->offlineGrant($id, $site); // on another tablet
+        $sid = SessionStore::create($id, $site);
+
+        Auth::setPassword($id, self::GOOD_PASSWORD, 'Password Reset'); // change_password.php, reset_password.php, activate, the Station
+        $this->assertSame([self::NOW, self::NOW], [$this->revokedAt($first), $this->revokedAt($second)], 'on every tablet');
+        $this->assertSame([['cause' => 'password', 'count' => 2]], $this->revocations($id), 'one row, with no secret');
+        $this->assertSame('Password Reset', $this->scalar('SELECT end_reason FROM user_session WHERE session_id = ?', [$sid]));
+
+        Clock::advance('+1 minute');
+        Auth::setPassword($id, 'Another-Good-Passphrase-7', 'Password Reset');
+        $this->assertSame(self::NOW, $this->revokedAt($first), 'a revoked grant keeps its time');
+        $this->assertCount(1, $this->revocations($id), 'nothing left to revoke: no row');
+    }
+
+    public function testAccessChangeRevokesOfflineGrants(): void
+    {
+        $a = $this->makeSite('Site A');
+        $b = $this->makeSite('Site B');
+        [$moved, $movedGrant] = $this->personWithGrant($a);
+        $sid = SessionStore::create($moved, $a);
+        $this->update($moved, ['reason' => 'Moved to Site B'], [$b]);
+        $this->assertSame(self::NOW, $this->revokedAt($movedGrant));
+        $this->assertSame([['cause' => 'access', 'count' => 1]], $this->revocations($moved));
+        $this->assertSame('Permission Change', $this->scalar('SELECT end_reason FROM user_session WHERE session_id = ?', [$sid]));
+
+        [$ending, $endingGrant] = $this->personWithGrant($a);
+        $this->update($ending, ['expiry_date' => '2026-12-31', 'reason' => 'Season ends']);
+        $this->assertSame(self::NOW, $this->revokedAt($endingGrant), 'an end date is an access change too');
+        $this->assertSame([['cause' => 'access', 'count' => 1]], $this->revocations($ending));
+    }
+
+    public function testAPhoneChangeKeepsOfflineGrants(): void
+    {
+        $site = $this->makeSite('Site A');
+        [$id, $grant] = $this->personWithGrant($site);
+        $sid = SessionStore::create($id, $site);
+        $this->assertSame(['phone'], array_keys($this->update($id, ['phone' => '8435550106'])));
+        $this->assertNull($this->revokedAt($grant), 'the tablet keeps working offline for them');
+        $this->assertSame([], $this->revocations($id));
+        $this->assertArrayHasKey('user', SessionStore::validate($sid));
+    }
+
+    public function testDeactivationRevokesOfflineGrants(): void
+    {
+        $site = $this->makeSite('Site A');
+        [$id, $grant] = $this->personWithGrant($site);
+        $sid = SessionStore::create($id, $site);
+        $this->assertTrue(AccountService::deactivate($id, 'Left', null, $this->actor));
+        $this->assertSame(self::NOW, $this->revokedAt($grant));
+        $this->assertSame([['cause' => 'deactivate', 'count' => 1]], $this->revocations($id));
+        $this->assertSame('Deactivated', $this->scalar('SELECT end_reason FROM user_session WHERE session_id = ?', [$sid]));
+    }
+
+    public function testAFutureDeactivationDateRevokesGrantsButKeepsSessions(): void
+    {
+        $site = $this->makeSite('Site A');
+        [$id, $grant] = $this->personWithGrant($site);
+        $sid = SessionStore::create($id, $site);
+        $this->assertFalse(AccountService::deactivate($id, 'Moving away', '2026-10-15', $this->actor));
+        $this->assertSame(self::NOW, $this->revokedAt($grant), 'no offline work for someone who is leaving, from now');
+        $this->assertSame([['cause' => 'deactivate', 'count' => 1]], $this->revocations($id));
+        $this->assertNull($this->scalar('SELECT ended_at FROM user_session WHERE session_id = ?', [$sid]), 'still signed in online until the date');
+        $this->assertSame('Active', AccountRepository::find($id)['status']);
+    }
+
+    public function testCredentialResetRevokesGrantsAndClearsThePin(): void
+    {
+        $site = $this->makeSite('Site A');
+        $resets = [
+            'sendReset' => fn(int $id) => AccountService::sendReset($id, $this->actor),
+            'issueActivationSheet' => fn(int $id) => AccountService::issueActivationSheet($id, $this->actor),
+        ];
+        $pin = Db::pdo()->prepare('SELECT pin_hash, pin_failed_count FROM user_account WHERE user_id = ?');
+        foreach ($resets as $path => $reset) {
+            [$id, $grant] = $this->personWithGrant($site, ['pin_hash' => 'p1.k1.not-a-real-hash', 'pin_failed_count' => 2]);
+            $reset($id);
+            $pin->execute([$id]);
+            $row = $pin->fetch();
+            $this->assertSame([null, 0], [$row['pin_hash'], (int) $row['pin_failed_count']], "$path clears the PIN: whoever had the account may know it");
+            $this->assertSame(self::NOW, $this->revokedAt($grant), $path);
+            $this->assertSame([['cause' => 'reset', 'count' => 1]], $this->revocations($id), $path);
+        }
+    }
+
+    public function testUnlockResetsThePinCounter(): void
+    {
+        $user = $this->makeUser(['failed_login_count' => 5, 'locked_until' => '2026-10-01 12:30:00', 'pin_hash' => 'p1.k1.kept', 'pin_failed_count' => 3]);
+        AccountService::unlock($user['user_id'], $this->actor);
+        $st = Db::pdo()->prepare('SELECT pin_hash, pin_failed_count, failed_login_count FROM user_account WHERE user_id = ?');
+        $st->execute([$user['user_id']]);
+        $row = $st->fetch();
+        $this->assertSame(['p1.k1.kept', 0, 0], [$row['pin_hash'], (int) $row['pin_failed_count'], (int) $row['failed_login_count']],
+            'the online PIN counter is cleared; the PIN itself stays');
+    }
+
+    public function testScheduledDeactivationRevokesOfflineGrants(): void
+    {
+        $site = $this->makeSite('Site A');
+        $id = $this->makeUser()['user_id'];
+        AccountService::deactivate($id, 'Moving away', '2026-10-03', $this->actor);
+        $this->assertSame([], $this->revocations($id), 'nothing to revoke when it was scheduled');
+        // A grant that outlives the date (issue() caps new grants at it; this row stands in for one that was not capped).
+        Db::pdo()->prepare("INSERT INTO auth_token (user_id, purpose, token_hash, device_id, expires_at, created_at) VALUES (?, 'Offline Grant', ?, ?, ?, ?)")
+            ->execute([$id, Tokens::hash(random_bytes(32)), $this->makeDevice($site, ['is_site_registered' => 1]), '2026-12-01 00:00:00', Clock::db()]);
+        $grant = (int) Db::pdo()->lastInsertId();
+
+        Clock::advance('+1 day');
+        (new DeactivateDueAccounts())->run();
+        $this->assertNull($this->revokedAt($grant), 'not before the date');
+        Clock::advance('+1 day');
+        $this->assertSame('deactivated 1 account(s)', (new DeactivateDueAccounts())->run());
+        $this->assertSame('2026-10-03 12:00:00', $this->revokedAt($grant));
+        $this->assertSame([['cause' => 'deactivate', 'count' => 1]], $this->revocations($id));
+    }
+
+    public function testGrantsAreRevokedBeforeSessionsEnd(): void
+    {
+        $a = $this->makeSite('Site A');
+        $b = $this->makeSite('Site B');
+
+        [$moved] = $this->personWithGrant($a);
+        SessionStore::create($moved, $a);
+        $this->assertGrantsRevokedBeforeSessionsEnd(QueryLog::during(fn() => $this->update($moved, ['reason' => 'Moved to Site B'], [$b])), 'update (access)');
+
+        [$gone] = $this->personWithGrant($a);
+        SessionStore::create($gone, $a);
+        $this->assertGrantsRevokedBeforeSessionsEnd(QueryLog::during(fn() => AccountService::deactivate($gone, 'Left', null, $this->actor)), 'deactivate');
+
+        [$reset] = $this->personWithGrant($a);
+        SessionStore::create($reset, $a);
+        $this->assertGrantsRevokedBeforeSessionsEnd(QueryLog::during(fn() => AccountService::sendReset($reset, $this->actor)), 'sendReset');
+
+        [$own] = $this->personWithGrant($a);
+        SessionStore::create($own, $a);
+        $this->assertGrantsRevokedBeforeSessionsEnd(QueryLog::during(fn() => Auth::setPassword($own, self::GOOD_PASSWORD, 'Password Reset')), 'Auth::setPassword');
+
+        [$leaving] = $this->personWithGrant($a);
+        AccountService::deactivate($leaving, 'Leaving', '2026-10-02', $this->actor);
+        Db::pdo()->prepare("UPDATE auth_token SET revoked_at = NULL, expires_at = '2026-12-01 00:00:00' WHERE user_id = ? AND purpose = 'Offline Grant'")
+            ->execute([$leaving]); // a grant still live on the date
+        SessionStore::create($leaving, $a);
+        Clock::advance('+1 day');
+        $this->assertGrantsRevokedBeforeSessionsEnd(QueryLog::during(fn() => (new DeactivateDueAccounts())->run()), 'the scheduled job');
+        $this->assertSame(Clock::db(), $this->scalar("SELECT revoked_at FROM auth_token WHERE user_id = ? AND purpose = 'Offline Grant'", [$leaving]));
     }
 }

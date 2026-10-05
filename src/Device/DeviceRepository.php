@@ -341,4 +341,20 @@ final class DeviceRepository
         $st->execute([$deviceId]);
         return array_map(fn($r) => ['user_id' => (int) $r['user_id'], 'name' => (string) $r['name'], 'last_signed_in' => (string) $r['last_signed_in']], $st->fetchAll());
     }
+
+    /** The tablet's row under a shared lock (the sign-in, PIN, acknowledgement and password transactions start here, D-16): a
+     *  Retire either committed first (in_service 0 here) or waits for this transaction. No join: no other row is locked. */
+    public static function lockShared(int $deviceId): ?array
+    {
+        $st = Db::pdo()->prepare('SELECT ' . self::COLUMNS . ', (' . self::IN_SERVICE_SQL . ') AS in_service FROM device d WHERE d.device_id = ? LOCK IN SHARE MODE');
+        $st->execute([$deviceId]);
+        return $st->fetch() ?: null;
+    }
+
+    /** End shift (D-24): the later of the stored time and $at (Clock::db text); it never moves backwards. */
+    public static function setShiftEnded(int $deviceId, string $at): void
+    {
+        Db::pdo()->prepare('UPDATE device SET shift_ended_at = GREATEST(COALESCE(shift_ended_at, CAST(? AS DATETIME)), CAST(? AS DATETIME)) WHERE device_id = ?')
+            ->execute([$at, $at, $deviceId]);
+    }
 }

@@ -60,12 +60,108 @@ export const COPY = Object.freeze({
   server_error: 'Something went wrong on the server. Try again in a minute.',
   incident: 'Problem number: {incident}',
 
-  // lock screen, S2 placeholder (views/login.js; S3 replaces the note with the real form)
+  // the person bar under the header (views/chrome.js)
+  switch_user: 'Switch user',
+  end_shift: 'End shift / Lock device',
+
+  // lock screen, picker and PIN pad (views/login.js)
   signin_title: 'Sign in',
   username_label: 'Username or email',
   password_label: 'Password',
   signin_button: 'Sign in',
-  signin_not_ready: 'Signing in is not ready in this version of the Station.',
+  signing_in: 'Signing in…',
+  picker_title: 'Who is using the tablet?',
+  someone_else: 'Someone else',
+  pin_title: 'Enter your PIN.',
+  pin_count: '{n} digits entered',
+  pin_count_one: '1 digit entered',
+  pin_delete: 'Delete',
+  pin_ok: 'OK',
+  pin_cancel: 'Cancel',
+  use_password: 'Use my password',
+
+  // the confidentiality agreement (views/ack.js)
+  ack_title: 'Confidentiality agreement',
+  ack_intro: 'Please read the agreement, then choose.',
+  ack_version: 'Version {version}',
+  ack_accept: 'I accept',
+  ack_decline: 'I do not accept',
+  ack_loading: 'Loading the agreement…',
+  sending: 'Sending…',
+
+  // the forced password change (views/password.js)
+  password_title: 'Choose a new password',
+  password_intro: 'You need to set a new password before you continue.',
+  current_password_label: 'Current password',
+  new_password_label: 'New password',
+  repeat_password_label: 'New password again',
+  password_save: 'Save the new password',
+  saving: 'Saving…',
+  cancel: 'Cancel',
+  password_mismatch: 'The new passwords do not match.',
+
+  // setting a PIN (views/pin_set.js)
+  pin_set_title: 'Set a PIN',
+  pin_set_intro: 'A PIN lets you switch quickly on this tablet.',
+  pin_set_password_label: 'Your password',
+  pin_new_label: 'New PIN',
+  pin_repeat_label: 'New PIN again',
+  pin_set_save: 'Save the PIN',
+  pin_set_ok: 'Your PIN is set. Use it to switch quickly on this tablet today.',
+
+  // home (views/home.js)
+  home_signed_in: 'Signed in as {name}',
+  home_online: 'Working online.',
+  home_set_pin_hint: 'Set a PIN to switch quickly on this tablet.',
+  set_pin_button: 'Set a PIN',
+  test_tablet: 'This is a test tablet without a vault key: people can sign in, but it cannot record.',
+  grant_unavailable: 'This tablet cannot record for you right now. Sign in again later.',
+  home_empty: 'There are no tasks on this tablet yet.',
+
+  // returned by session.js (its MESSAGE_KEYS; server_error is above). Where the server sends the same sentence, the
+  // words are the same (tests/js/copy_keys.test.js compares them).
+  signin_missing: 'Enter your username (or email) and password.',
+  login_failed: 'That username or password is not correct.',
+  account_locked: 'This account is locked. Please try again later or contact an Administrator.',
+  account_unusable: 'This account cannot be used at the moment. Please contact an Administrator.',
+  no_station_access_site: "You don't have access to {site}, where this tablet is used.",
+  no_station_access_role: 'Your role does not use the Station.',
+  rate_limited_wait: 'Too many attempts. Please wait a few minutes and try again.',
+  signin_no_answer: 'Could not reach the server. Check the Wi-Fi and try again.',
+  signin_clock: "This tablet's clock is too far from the server's. Try again.",
+  device_proof_invalid: 'This tablet needs to be registered again. Ask a Coordinator.',
+  device_site_inactive: "This tablet's site is not active. Ask a Coordinator.",
+  device_not_registered: 'This tablet is not registered for use.',
+  signin_failed: 'Something went wrong. Try again.',
+  pin_wrong_plain: 'That PIN is not correct.',
+  pin_wrong_one: 'Wrong PIN. 1 try left before a password is needed.',
+  pin_wrong_many: 'Wrong PIN. {n} tries left before a password is needed.',
+  pin_locked: 'Too many wrong PINs. Sign in with your password.',
+  pin_unavailable: 'Quick switching is not available for this person on this tablet now. Sign in with your password.',
+  pin_no_answer: 'Could not reach the server. Sign in with your password when the tablet is online.',
+  pin_rule_digits: 'Use {min} to {max} digits.',
+  pin_rule_digits_exact: 'Use {n} digits.',
+  pin_rule_guessable: 'Choose a PIN that is harder to guess than 1234 or 0000.',
+  pin_rule_mismatch: 'The two PINs are different.',
+  pin_set_wrong_password: 'That password is not correct.',
+  pin_set_password_missing: 'Enter your password.',
+  pin_set_offline: 'Setting a PIN needs a connection. Try again when the tablet is online.',
+  pin_not_allowed: 'Your role cannot use a PIN on this tablet.',
+  policy_changed: 'The agreement was updated while you were reading it. Please read the current version.',
+  ack_failed: 'The agreement could not be loaded. Check the Wi-Fi and try again.',
+  ack_send_failed: 'Your answer could not be sent. Check the Wi-Fi and try again.',
+  ack_declined: 'You need to accept the confidentiality agreement to use the Station. You have been signed out.',
+  gate_expired: 'That took too long. Sign in again.',
+  password_rule: 'Use at least {n} characters. A short sentence you can remember works well.',
+  current_password_wrong: 'The current password is not correct.',
+  password_offline: 'Changing your password needs a connection. Try again when the tablet is online.',
+  notice_idle: 'The tablet was locked because nobody used it for a while.',
+  notice_absolute: 'You have been signed in for a long time. Sign in with your password.',
+  notice_signed_out: 'You were signed out. Sign in again to go on.',
+  notice_timeout: 'You were signed out after a period of inactivity. Please sign in again.',
+  shift_ended: 'The shift has ended on this tablet.',
+  grant_expired: 'Your sign-in on this tablet has expired. Sign in with your password.',
+  grant_revoked: 'Your sign-in on this tablet was cancelled. Sign in with your password.',
 
   // about (views/about.js)
   about_title: 'About this tablet',
@@ -127,4 +223,37 @@ export function t(key, params = {}) {
   const s = COPY[key];
   if (s === undefined) return key;
   return s.replace(/\{([a-z_]+)\}/g, (m, name) => (Object.hasOwn(params, name) ? String(params[name]) : m));
+}
+
+/**
+ * The text of a session.js Message (S3 spec §3.1): `{text}` is the server's own sentence, shown as it is (as text);
+ * `{key, params}` goes through t(). Anything else is '' (nothing to show).
+ * @param {{key: string, params?: Object<string, string|number>}|{text: string}|null|undefined} message
+ * @returns {string}
+ */
+export function messageText(message) {
+  if (message === null || typeof message !== 'object') return '';
+  if (typeof message.text === 'string') return message.text;
+  if (typeof message.key === 'string') return t(message.key, message.params ?? {});
+  return '';
+}
+
+/**
+ * The problem-number line of a session.js Message (the server's incident for a server_error): t('incident', …) when
+ * params.incident is set, else ''.
+ * @param {{params?: {incident?: string|null}}|null|undefined} message
+ * @returns {string}
+ */
+export function incidentText(message) {
+  const incident = message?.params?.incident;
+  return incident === null || incident === undefined || incident === '' ? '' : t('incident', { incident });
+}
+
+/**
+ * How many PIN digits are entered, for the PIN pad's status line: "1 digit entered", "3 digits entered".
+ * @param {number} n
+ * @returns {string}
+ */
+export function pinCount(n) {
+  return n === 1 ? t('pin_count_one') : t('pin_count', { n });
 }

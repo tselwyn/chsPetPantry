@@ -1,34 +1,55 @@
-// The Station's composition root (docs/design/50-design-station.md §7.2, §7.5, X-2; S2 spec §3.17): the tablet
-// state machine, the primary-window lock, the start-up order, the timers, the chrome controller, the device screen,
-// and the dev-only hooks. boot.js imports this file once its first-start wait is over and calls start(); this file
-// never imports boot.js (that would evaluate a second copy of it and boot again).
+// The Station's composition root (docs/design/50-design-station.md §7.2, §7.5, X-2; S2 spec §3.17, S3 spec §3.7): the
+// tablet state machine, the primary-window lock, the start-up order, the timers, the chrome controller (with the
+// person bar), the device screen, the session (js/session.js) and its screens (js/views/screens.js), and the dev-only
+// hooks. boot.js imports this file once its first-start wait is over and calls start(); this file never imports
+// boot.js (that would evaluate a second copy of it and boot again).
 import { browserEnv } from './env.js';
 import { openDb, STORES } from './db.js';
 import { createClock } from './clock.js';
 import { createApi, ApiError } from './api.js';
 import { createDevice, codeCheck, outboxStats, RegistrationError, STARTUP_HEARTBEAT_MS, TRIGGER_GAP_MS } from './device.js';
 import { createUpdater } from './update.js';
-import { createRouter, allowedIn, homeOf } from './router.js';
-import { useDocument, mount, el } from './dom.js';
+import { createSession } from './session.js';
+import { createLoginScreen, createAckScreen, createPasswordScreen, createPinSetScreen, createHomeScreen } from './views/screens.js';
+import { createRouter, allowedIn, homeOf, sessionAllows, sessionHome } from './router.js';
+import { useDocument, mount, remount, keepFocus, el } from './dom.js';
 import { format, normalise } from './registration_code.js';
 import { parseDb } from './canonical.js';
 import * as chromeView from './views/chrome.js';
 import * as startingView from './views/starting.js';
 import * as deviceView from './views/device.js';
-import * as loginView from './views/login.js';
 import * as aboutView from './views/about.js';
 import * as wipeView from './views/wipe.js';
 import * as elsewhereView from './views/elsewhere.js';
 
-/** clock.tick() and the update check run this often (ms). */
+/** clock.tick(), session.tick() and the update check run this often (ms). */
 export const TICK_MS = 15000;
 /** A registered tablet's heartbeat runs this often (ms). */
 export const HEARTBEAT_MS = 300000;
 
-/** The S2 stand-in for S3's session.js: nobody is ever signed in. */
+/** session.config()'s defaults (S3 spec §3.1), for the stand-in. */
+const SESSION_CONFIG = Object.freeze({ session_idle_minutes: 30, session_absolute_hours: 12, pin_min_digits: 4, pin_max_digits: 6,
+  pin_max_failed: 3, pin_shift_hours: 12, offline_grant_hours: 72, password_min_length: 12 });
+const NOT_NOW = Object.freeze({ ok: false });
+
+/**
+ * The stand-in session: nobody is ever signed in. Every member of S3 spec §3.1, neutral; a made session is merged over
+ * it, so a stub with S2's members only (on() returning undefined) still works. app.js never uses on()'s return value.
+ */
 const LOCKED_SESSION = Object.freeze({
-  state: () => 'LOCKED', lock() {}, onRevokedGrants() {}, onOfflineDisabled() {}, tick() {}, touch() {}, hasVaultKey: () => false, on() {},
+  state: () => 'LOCKED', gate: () => null, gateUser: () => null, user: () => null, mode: () => null, capabilities: () => [],
+  hasVaultKey: () => false, canRecord: () => false, releaseUnavailable: () => null, config: () => ({ ...SESSION_CONFIG }), busy: () => false,
+  takeNotice: () => null, peopleForPicker: () => [],
+  signIn: async () => NOT_NOW, loadPolicy: async () => NOT_NOW, acceptPolicy: async () => NOT_NOW, declinePolicy: async () => NOT_NOW,
+  changePassword: async () => NOT_NOW, pinSwitch: async () => NOT_NOW, setPin: async () => NOT_NOW,
+  cancelGate: async () => {}, switchUser() {}, endShift: async () => {}, replayShiftEnd: async () => {},
+  lock() {}, touch() {}, tick() {}, onRevokedGrants() {}, onOfflineDisabled() {}, onConfig() {}, unlockDelaySeconds: () => 0,
+  on: () => () => {},
 });
+/** The person bar's buttons by session state: the name and both buttons while someone works, End shift while keys or a gate remain. */
+const CONTROLS = Object.freeze({ ACTIVE: 'both', PICKER: 'end', IDLE: 'end', GATE: 'end', LOCKED: 'none' });
+/** The views drawn by a screen controller of views/screens.js. */
+const SCREEN_VIEWS = Object.freeze(['login', 'ack', 'password', 'pin', 'home']);
 /** States in which the database closing under the page is expected (the wipe, or this window lost the lock). */
 const NO_RELOAD_STATES = Object.freeze(['REPLACED', 'WIPING', 'ERASED']);
 /** States in which this window never contacts the server: the header shows no connection chip at all. */
@@ -243,13 +264,16 @@ async function dumpDb(db) {
  *   registerWorker?: (() => Promise<ServiceWorkerRegistration>)|null}} boot what boot.js passes (start(bootInfo));
  *   registerWorker registers sw.php as boot.js does (its policy and options), null without a worker API
  * @param {{env?: import('./env.js').Env, createSession?: Function|null}} [deps] env defaults to browserEnv();
- *   createSession is S3's seam
+ *   createSession is the session seam: absent, js/session.js's createSession; null, the stand-in (nobody signs in); a
+ *   function, its result merged over the stand-in
  * @returns {Promise<{state: () => string}>} resolves once the start is done (an ELSEWHERE window: once that screen
  *   shows); state() is the tablet state from then on
  */
 export async function start(boot, deps = {}) {
   // ---- 1. started(), then Starting…: no network call happens before this ----
   const env = deps.env ?? browserEnv();
+  // The session seam: absent → js/session.js; null → the stand-in; a function → its session (merged over the stand-in).
+  const makeSession = Object.prototype.hasOwnProperty.call(deps, 'createSession') ? deps.createSession : createSession;
   let tabletState = 'STARTING';
   const handle = { state: () => tabletState };
   // false: the watchdog already showed the failure screen (this file arrived late). Stop without touching #app, so
@@ -266,6 +290,13 @@ export async function start(boot, deps = {}) {
   let device = null;
   let deviceScreen = null;
   let session = LOCKED_SESSION;
+  // The session's screens (views/screens.js), made with the session in step 5.
+  let loginScreen = null;
+  let ackScreen = null;
+  let passwordScreen = null;
+  let pinSetScreen = null;
+  let homeScreen = null;
+  let seenPair = { state: 'LOCKED', gate: null }; // the session state and gate the last 'changed' showed
   let currentView = null;
   let startingPhase = 'starting';
   let loginChecking = false;
@@ -283,9 +314,11 @@ export async function start(boot, deps = {}) {
   const offs = [];
   let heartbeatTimer = null;
 
-  // The chrome controller: the header model of §4.2, re-rendered in place.
+  // The chrome controller: the header model of §4.2 and the person bar (S3 §3.4), re-rendered in place.
   const chromeHost = el('div', { class: 'chrome' });
-  const chromeModel = { orgName: null, site: null, label: null, build: env.shellBuild(), connectivity: 'unknown', banners: new Set(), minimal: false };
+  const chromeModel = { orgName: null, site: null, label: null, build: env.shellBuild(), connectivity: 'unknown', banners: new Set(), minimal: false,
+    person: null, controls: 'none' };
+  const chromeActions = { onSwitchUser: () => session.switchUser(), onEndShift: () => { void session.endShift(); } };
   const chrome = {
     banner(kind, on) {
       if (chromeModel.banners.has(kind) === Boolean(on)) return;
@@ -296,6 +329,7 @@ export async function start(boot, deps = {}) {
       if (chromeModel.connectivity === state) return;
       chromeModel.connectivity = state;
       chrome.render();
+      if (currentView === 'home') homeScreen?.refresh(); // its "Working online." follows the chip; the focus stays
     },
     setOrg(name) {
       const v = typeof name === 'string' && name !== '' ? name : null;
@@ -308,31 +342,56 @@ export async function start(boot, deps = {}) {
       chromeModel.label = info?.label ?? null;
       chrome.render();
     },
-    render() { chromeHost.replaceChildren(...chromeView.render(chromeModel)); },
+    /** The person bar: the ACTIVE person's name (or null) and its buttons ('none', 'end' or 'both'). */
+    setPerson(name, controls) {
+      const person = typeof name === 'string' && name !== '' ? name : null;
+      const shown = controls === 'end' || controls === 'both' ? controls : 'none';
+      if (chromeModel.person === person && chromeModel.controls === shown) return;
+      chromeModel.person = person;
+      chromeModel.controls = shown;
+      chrome.render();
+    },
+    /** In place; a focused Switch user or End shift keeps the focus when it is still there (dom.js keepFocus()). */
+    render() { keepFocus(chromeHost, () => chromeHost.replaceChildren(...chromeView.render(chromeModel, chromeActions))); },
   };
 
-  /** The chrome, one view's section and the footer, mounted into #app. */
-  function drawScreen(view, section) {
+  /**
+   * The chrome, one view's section and the footer, mounted into #app: afresh (the focus to the view's autofocus or
+   * h1), or with keepFocus (the same view drawn again: the focused control, in the view or the header, keeps it).
+   */
+  function drawScreen(view, section, { keepFocus: keep = false } = {}) {
     chromeModel.minimal = view === 'wipe';
     chrome.render();
     const foot = view === 'wipe' ? null : chromeView.footer({ build: env.shellBuild(), aboutLink: view !== 'about' && allowedIn(tabletState, 'about') });
-    mount(root, chromeHost, section, foot);
+    (keep ? remount : mount)(root, chromeHost, section, foot);
   }
 
-  const loginModel = () => ({ orgName: chromeModel.orgName, site: device?.info()?.site_name ?? null, label: device?.info()?.label ?? null,
-    build: env.shellBuild(), checking: loginChecking });
+  /** What the lock screen and home show of the tablet. */
+  const tabletInfo = () => ({ orgName: chromeModel.orgName, site: device?.info()?.site_name ?? null, label: device?.info()?.label ?? null,
+    build: env.shellBuild() });
+  /**
+   * A screen's mount(section, {keepFocus}): drawn only while its view is the one shown (a late answer elsewhere draws
+   * nothing); keepFocus: the screen drawn again in place of itself (views/screens.js).
+   */
+  const mountFor = (view) => (section, options) => { if (currentView === view) drawScreen(view, section, options ?? {}); };
+  const screenOf = (name) => ({ login: loginScreen, ack: ackScreen, password: passwordScreen, pin: pinSetScreen, home: homeScreen })[name] ?? null;
 
-  /** The router's render(name): draws that view now (the device view through the device screen). */
+  /** The router's render(name): draws that view now (the device view and the session's views through their screens). */
   function render(name) {
     const previous = currentView;
     if (previous === 'device' && name !== 'device') deviceScreen?.stop();
+    if (previous !== name && SCREEN_VIEWS.includes(previous)) screenOf(previous)?.stop();
     currentView = name;
     switch (name) {
       case 'device':
         void deviceScreen?.show();
         break;
       case 'login':
-        drawScreen('login', loginView.render(loginModel(), {}));
+      case 'ack':
+      case 'password':
+      case 'pin':
+      case 'home':
+        void screenOf(name)?.show();
         break;
       case 'about':
         if (previous !== 'about' || aboutModel === null) aboutModel = freshAbout();
@@ -350,7 +409,12 @@ export async function start(boot, deps = {}) {
     if (primary && name !== previous) void updater.check();
   }
 
-  const router = createRouter({ env, render, allowed: (n) => allowedIn(tabletState, n), fallback: () => homeOf(tabletState) });
+  /** The home view: on a registered tablet the session's (its state and gate), else the tablet state's. */
+  const homeView = () => (tabletState === 'REGISTERED' ? sessionHome(session.state(), session.gate()) : homeOf(tabletState));
+  const router = createRouter({
+    env, render, fallback: homeView,
+    allowed: (n) => allowedIn(tabletState, n) && (tabletState !== 'REGISTERED' || sessionAllows(session.state(), session.gate(), n)),
+  });
 
   /** Moves to a tablet state and shows a view (the state's home view by default). A replaced window stays replaced. */
   function enter(state, view = homeOf(state)) {
@@ -367,7 +431,21 @@ export async function start(boot, deps = {}) {
       router.go(view);
     }
   }
-  const redraw = (view) => { if (currentView === view) render(view); };
+
+  /**
+   * The session's 'changed' (S3 §3.7 #7): the person bar always; then, on a registered tablet of this window, the
+   * session's home view when its state or gate moved or the view shown is no longer allowed. About stays, and so does
+   * a view that is still allowed (the PIN-set success screen until Continue).
+   */
+  function onSessionChanged() {
+    const state = session.state();
+    const gate = session.gate();
+    chrome.setPerson(session.user()?.display_name ?? null, CONTROLS[state] ?? 'none');
+    const moved = state !== seenPair.state || gate !== seenPair.gate;
+    seenPair = { state, gate };
+    if (lost() || device?.wiping() || tabletState !== 'REGISTERED' || currentView === 'about') return;
+    if (moved || !sessionAllows(state, gate, currentView)) router.go(sessionHome(state, gate));
+  }
 
   render('starting');
 
@@ -398,19 +476,27 @@ export async function start(boot, deps = {}) {
     onRevokedGrants: (ids) => session.onRevokedGrants(ids),
     onOfflineDisabled: () => session.onOfflineDisabled(),
     onUpdateNeeded: () => { void updater.update('build'); },
+    // A heartbeat's config (device.js), or a sign-in's (session.js): the session's settings and the header. A changed
+    // organisation, site or label redraws the lock screen in place (its PIN digits, notice and typed identifier stay).
     onConfig: (config) => {
+      session.onConfig(config);
       const shown = () => JSON.stringify([chromeModel.orgName, chromeModel.site, chromeModel.label]);
       const before = shown();
       if (typeof config?.organisation_name === 'string') chrome.setOrg(config.organisation_name);
       chrome.setTablet(device?.info() ?? null);
-      if (shown() !== before) redraw('login');
+      if (shown() === before) return;
+      if (currentView === 'login') loginScreen?.refresh();
+      else if (currentView === 'home') homeScreen?.refresh();
     },
     onConnectivity: (state, code) => {
       if (lost() || NO_CHIP_STATES.includes(tabletState)) return; // a late answer in a window that shows no chip
       if (state === 'offline') lastOfflineCode = code ?? null; else lastOfflineCode = null;
       chrome.connectivity(state);
     },
-    onHeartbeatOk: () => retryWorker(),
+    onHeartbeatOk: () => {
+      retryWorker();
+      if (!lost() && !device?.wiping()) void session.replayShiftEnd(); // an End shift kept offline goes now
+    },
     // The storage closed or was cleared under a stuck Retire wipe (no 410): the wipe cannot go on, and a fresh start
     // resumes meta.wipe or, when the storage is gone, shows Register this tablet. A replaced window never gets here.
     onStorageLost: () => env.reload(),
@@ -442,7 +528,7 @@ export async function start(boot, deps = {}) {
       if (result === 'offline' || result === 'pending') { aboutModel.repairState = result; redrawAbout(); }
     },
     async onUpdateNow() { await updater.updateNow(); },
-    onBack() { router.go(homeOf(tabletState)); },
+    onBack() { router.go(homeView()); },
   };
 
   // ---- 3. the primary window ----
@@ -542,7 +628,20 @@ export async function start(boot, deps = {}) {
       mountView: (model, actions) => { if (currentView === 'device') drawScreen('device', deviceView.render(model, actions)); },
       onContinue: () => afterRegistration(),
     });
-    if (deps.createSession) session = deps.createSession({ env, db, api, clock, device, updater, chrome });
+    // The session (js/session.js unless a test hands its own; null keeps the stand-in), merged over the stand-in so a
+    // made session lacking a member still answers, then the screens over it.
+    if (makeSession) {
+      session = { ...LOCKED_SESSION, ...makeSession({ env, db, api, clock, device, updater, chrome, onConnectivity: hooks.onConnectivity,
+        onConfig: hooks.onConfig }) };
+    }
+    loginScreen = createLoginScreen({ session, info: tabletInfo, mount: mountFor('login'), checking: () => loginChecking });
+    ackScreen = createAckScreen({ session, mount: mountFor('ack') });
+    passwordScreen = createPasswordScreen({ session, mount: mountFor('password') });
+    pinSetScreen = createPinSetScreen({ session, mount: mountFor('pin'), onDone: () => router.go('home') });
+    homeScreen = createHomeScreen({ session, info: tabletInfo, mount: mountFor('home'), connectivity: () => chromeModel.connectivity,
+      onSetPin: () => router.go('pin') });
+    session.on('changed', onSessionChanged); // its return value is never used (S2's stubs return undefined)
+    session.on('people', () => { if (currentView === 'login') loginScreen.refresh(); });
 
     // ---- 6. a wipe in progress owns the screen ----
     if (await device.resumeWipe()) {
@@ -573,7 +672,7 @@ export async function start(boot, deps = {}) {
     await device.heartbeat({ reason: 'startup', timeoutMs: STARTUP_HEARTBEAT_MS });
     if (lost() || device.wiping() || tabletState !== 'REGISTERED') return; // replaced, or a directive or a 410 took over
     loginChecking = false;
-    redraw('login');
+    if (currentView === 'login') loginScreen.refresh(); // in place: what was typed meanwhile stays
     if (!(await env.persisted())) void env.persist();
     if (lost()) return;
     startTimers();
@@ -581,7 +680,8 @@ export async function start(boot, deps = {}) {
 
   /**
    * api/session.php (single flight): the CSRF token, the organisation name (merged into meta.config, shown in the
-   * header) and dev_relax; any answer sets the chip.
+   * header) and dev_relax; any answer sets the chip. On a registered tablet its answer also sends an End shift kept
+   * offline (session.replayShiftEnd(), with the token this answer brought).
    * @returns {Promise<object|null>} its body, or null
    */
   function fetchSession() {
@@ -591,6 +691,7 @@ export async function start(boot, deps = {}) {
         info = await api.get('api/session.php', { session: true, timeoutMs: 5000 });
         hooks.onConnectivity('online');
         retryWorker();
+        if (!lost() && device?.registered() && !device.wiping()) void session.replayShiftEnd();
       } catch (e) {
         if (e instanceof ApiError) hooks.onConnectivity(e.offline ? 'offline' : 'online', e.code);
         else env.log('api/session.php failed: ' + (e?.message ?? e));
@@ -609,6 +710,7 @@ export async function start(boot, deps = {}) {
         globalThis.__pfpms = { debug: {
           dump: () => dumpDb(db),
           state: () => tabletState,
+          session: () => ({ state: session.state(), gate: session.gate(), user_id: session.user()?.user_id ?? null }),
           heartbeat: () => device.heartbeat({ reason: 'startup' }),
           skipDelay: () => { throw new Error('pfpms: skipDelay arrives in S4'); },
           record: () => { throw new Error('pfpms: record arrives in S5'); },
@@ -673,6 +775,7 @@ export async function start(boot, deps = {}) {
     if (lost()) return;
     every(TICK_MS, () => {
       clock.tick();
+      void session.tick(); // the gate, absolute, grant and idle limits before the update check reads the session state
       chrome.banner('update_ready', updater.waiting());
       if (!lost()) void updater.check();
     });
@@ -682,13 +785,14 @@ export async function start(boot, deps = {}) {
     listen('offline', () => hooks.onConnectivity('offline', 'network'));
     listen('visible', () => {
       clock.tick();
+      void session.tick(); // before the heartbeat: a woken tablet locks before anyone sees the last person's screen
       if (device.registered()) void device.heartbeat({ reason: 'visible' }); else refreshUnregistered('visible');
     });
     listen('hidden', () => {
       void clock.flush();
       if (currentView === 'device') deviceScreen?.pause(); else deviceScreen?.stop(); // the camera never runs in the background
     });
-    listen('input', () => updater.inputSeen());
+    listen('input', () => { updater.inputSeen(); void session.touch(); }); // real input only: the idle timer and the keep-alive
     chrome.banner('update_ready', updater.waiting());
     void updater.update('boot');
   }
