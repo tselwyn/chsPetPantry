@@ -1,0 +1,5 @@
+# The repository root is never a web root. Point the web server (or SiteGround's public_html)
+# at public/ only. If the whole repo ends up inside htdocs, this denies everything outside public/.
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>

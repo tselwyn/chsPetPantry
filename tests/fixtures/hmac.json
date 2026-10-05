@@ -1,0 +1,38 @@
+{
+  "_comment": "HMAC-SHA256 parity (50-design \u00a73.2): mac = b64url(HMAC(key, message)). message_utf8 is UTF-8 text; repeat builds the message from one character.",
+  "cases": [
+    {
+      "name": "empty message under the grant key",
+      "key_hex": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "message_utf8": "",
+      "mac": "9JJAt4qpDlP0YQbDSB43fhlpbndzKLHNbsYGGgvYaKk"
+    },
+    {
+      "name": "the \u00a73.9 item",
+      "key_hex": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "message_utf8": "{\"client_uuid\":\"123e4567-e89b-42d3-a456-426614174000\",\"clock_offset_ms\":-1520,\"depends_on\":null,\"device_id\":7,\"grant_id\":345,\"kind\":\"test_noop\",\"payload\":{\"n\":3,\"note\":\"Mu\u00f1oz / \u2028 test\"},\"recorded_at\":\"2026-10-01 11:59:30.250\",\"recorded_by\":12,\"seq\":41,\"session_id\":null,\"v\":1}",
+      "mac": "c76N-plOsFpBIWurwIvrMg5hXeo4tnXzK_MOQ1dnfRw"
+    },
+    {
+      "name": "1 MiB of a",
+      "key_hex": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "repeat": {
+        "char": "a",
+        "count": 1048576
+      },
+      "mac": "fmFtPDfE5yHQwPf1NcJn9ArhhetB8_kAaRuEAXQTLRY"
+    },
+    {
+      "name": "a key longer than the block (65 bytes)",
+      "key_hex": "4141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141",
+      "message_utf8": "pfpms",
+      "mac": "5c2I-9m0HYtGOkSGjFK9LraZmRkEMYr4d5xr7-Ujwqg"
+    },
+    {
+      "name": "binary message",
+      "key_hex": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "message_hex": "00ff10e280a8",
+      "mac": "MM9h5puHgbhSx7sYwneh0eLlMwjJMnmSYzJVNNXirpE"
+    }
+  ]
+}

@@ -1,17 +1,101 @@
-### Student Names
-Meredith Alty,
-Aiden Thompson,
-Robert Burton,
-Allison Consuegra,
-Eron Hardin,
-Ayoub Oulmi
+# CHS Pet Pantry: Pet Food Pantry Management System (PFPMS)
 
-# Catholic Charities Diocese of Arlington Food Pantry Management Web Application 
+A web application for running a pet food pantry. It keeps records of participants (pet-owning households) and their pets. It records food distributions against allotments and a frequency rule, keeps an inventory ledger, and manages spay/neuter referrals with partner clinics. It also covers auditing, imports and reports. Registered tablets can record distributions offline.
 
-## Purpose
-This project is the result of a semester's worth of collaboration among UMW students. The goal of the project was to create a web application that better suits the needs of CCDA Food Pantry, specifically as a system to manage their inventory. The system allows admins and inventory counters to view, update and modify inventory logs. For the CCDA staff the system allows them to keep track of changes of item category counts over time.
+**Status:** being rebuilt in phases from an inherited codebase. Where things stand, and what comes next:
 
-## Authors
+- The plan: [`docs/PFPMS_Implementation_Plan.md`](docs/PFPMS_Implementation_Plan.md).
+- The analysis behind it: [`docs/design/`](docs/design/).
+- The database design:
+  - [`docs/PFPMS_schema_v2.sql`](docs/PFPMS_schema_v2.sql) (v2.0.1);
+  - [`docs/PFPMS_schema_v2_notes.md`](docs/PFPMS_schema_v2_notes.md);
+  - [`docs/PFPMS_schema_v2_1_changes.md`](docs/PFPMS_schema_v2_1_changes.md).
+
+## Repository layout
+
+| Path | What it is |
+|---|---|
+| `public/` | The only web-reachable folder; SiteGround's `public_html`. One PHP file per page, plus `assets/` and the tablets' Station app in `station/`. |
+| `src/` | Application code (`Pfpms\` namespace): database, auth, security, audit, views. |
+| `templates/` | Page templates and layouts. |
+| `migrations/` | Versioned schema changes, applied by `bin/migrate.php`. |
+| `seeds/` | `reference/` holds client-reviewed data; `dev/` holds synthetic data for development only. |
+| `bin/` | Command-line tools: migrate, schema check, seed, create an admin, generate a key. |
+| `config/` | `config.example.php` and `config.test.example.php`. Your real `config.php` is never committed. |
+| `storage/` | Runtime files: sessions, logs, dev mail, encrypted uploads. Never web-reachable. |
+| `tests/` | PHPUnit tests (unit, integration, contract), the Station's JavaScript tests (`js/`) and the fixtures both share. |
+| `legacy/` | Reference-only code from the inherited app. Not runnable, never deployed, removed by Phase 7. |
+
+## Requirements
+
+- PHP 8.2 or later, with `pdo_mysql`, `openssl`, `mbstring` and `json`. Also `gd`, `zip` and `intl` (Composer needs these).
+- MariaDB 10.4 or later, or MySQL 8.0 or later. Production runs on SiteGround's MySQL 8.4. The schema is written to load unchanged on both engines.
+- Composer 2, for PHPMailer, PhpSpreadsheet and PHPUnit.
+
+## Local setup (XAMPP or any PHP + MySQL)
+
+1. **Create a database** (for example `pfpms_dev`) and an account that has all privileges on it.
+2. **Create your config:** `cp config/config.example.php config/config.php`. Fill in the database details, then generate an encryption key with `php bin/generate-key.php` and put it under `crypto.keys`.
+3. **Install dependencies:** `composer install`.
+4. **Create the schema:** `php bin/migrate.php`. Add `--with-optional` to install the development-only immutability triggers where the server allows them.
+5. **Load seeds:** `php bin/seed.php --dev` loads the reference data plus two development sites and a draft confidentiality agreement.
+6. **Create the first Administrator:** `php bin/create-admin.php --username=you --email=you@example.org --first=First --last=Last`. It prints a one-time temporary password, which you replace at first sign-in.
+7. **Serve `public/`:**
+   - Quickest: `php -S localhost:8088 -t public`, then open http://localhost:8088.
+   - With XAMPP Apache: add a virtual host whose DocumentRoot is `<repo>/public`.
+
+   A `*.localhost` host name counts as a secure context, which the offline Station needs later. Set `app.base_url` to match the address you use.
+8. **Check the schema:** `php bin/schema-check.php` checks table and key counts, collations and core behaviours on your engine.
+
+In `dev`, emailed links such as password resets are written to `storage/mail/*.eml` rather than sent.
+
+## Scheduled jobs
+
+`php bin/cron.php all` runs every job; `php bin/cron.php list` shows them. The jobs are:
+- retry queued email;
+- time out abandoned sessions;
+- purge old rate-limit counters.
+
+Schedule it every 30 minutes, the most often SiteGround's fair-use policy allows. Time-critical mail such as password resets is sent immediately, so cron only retries and tidies up.
+
+## Tests
+
+1. Copy `config/config.test.example.php` to `config/config.test.php` and point it at a database whose name ends in `_test`. The suite empties that database and rebuilds it on every run.
+2. Run the tests with `composer test` (PHPUnit). On a machine without Composer, `php tests/run.php [filter]` runs the same tests.
+3. Run static analysis with `composer stan` (PHPStan level 5), and the SQL guard with `composer guard`.
+4. Test on every engine: `docker compose -f tools/docker-compose.db.yml up -d` starts MariaDB 10.4, MySQL 8.4 and Percona 8.4 locally, on ports 3310, 3384 and 3385.
+
+CI (`.github/workflows/ci.yml`) runs on every push and pull request:
+- `bin/ci-guard.php`, the SQL portability, immutability and hygiene guard from plan §8;
+- PHP lint, PHPStan and a scan of the working tree for secrets;
+- then, for PHP 8.2 and 8.3 against each of MariaDB 10.4, MySQL 8.4 and Percona 8.4: migrate twice, check the schema, load the seeds twice, and run the suite;
+- and, on its own, the Station's JavaScript tests on Node 24 (`npm run test:js`, nothing to install).
+
+## Station development
+
+The Station is the offline app the pantry's tablets run, in `public/station/` (design: [`docs/design/50-design-station.md`](docs/design/50-design-station.md)).
+
+- **Dev server:** `php -S 127.0.0.1:8088 -t public` (or the `pfpms-dev` launch config), then open http://localhost:8088/station/. Always use `localhost`, never `127.0.0.1`: the browser treats them as different origins. `app.base_url` must be exactly `http://localhost:8088`.
+- **Trying it in a normal browser tab:** set `station.dev_relax_install = true` (dev and test only; the bootstrap refuses it elsewhere). A browser tab can then register, and the Station shows the red "Development mode: install checks relaxed." banner.
+- **JavaScript tests:** `node --test --test-timeout=30000 "tests/js/**/*.test.js"` or `npm run test:js`. They run on plain Node 24 with `node:test`; there is nothing to install. Keep the timeout: without it a test that never settles hangs the run instead of failing.
+- **After changing a Station file** nothing else is needed: the build name (`DeviceStatus::currentBuild()`) is a hash of the Station's files, its shell, headers and worker, so it changes, and tablets update at the next quiet lock screen.
+- **Icons:** `php bin/station-icons.php` draws the four PNGs in `public/station/icons/` from the colour tokens in `app.css`. Run it only when those tokens change, and commit the PNGs.
+- **Hosting checks:** `php bin/station-smoke.php <base URL>` against Apache (a local XAMPP alias, staging, production). `php -S` ignores `.htaccess`, so the caching and `nosniff` checks of its Station step fail or warn there by design.
+- **Service workers** do not run in the desktop app's browser pane. Installing, offline reloads, Repair, updates and the kill switch (`station.sw_kill`) are checked in a real Chrome profile (design §11.4, Part B).
+
+## Security notes
+
+- Never commit `config/config.php`, database dumps, logs or anything in `storage/`; the `.gitignore` covers these.
+- Every page starts with the bootstrap and then `Page::start()`, which checks the session, forced password change, policy acceptance, capability and site before any input is read. A contract test enforces this.
+- Roles and their capabilities are defined in one file, `src/Auth/capabilities.php`.
+- Report security problems privately to the project lead. Do not open a public issue.
+
+## History and authors
+
+The authorship history below comes from the inherited codebase and is kept as the GPL requires.
+
+In autumn 2026 the CCDA Food Pantry application was rebuilt, following the PFPMS design documents, into the Pet Food Pantry Management System. The dead volunteer, event and messaging features were removed. The CCDA food-inventory pages were quarantined as reference in `legacy/`. The application was then rebuilt on a new database schema with a new shared core.
+
 The ODHS Medicine Tracker is based on an old open source project named "Homebase". [Homebase](https://a.link.will.go.here/) was originally developed for the Ronald McDonald Houses in Maine and Rhode Island by Oliver Radwan, Maxwell Palmer, Nolan McNair, Taylor Talmage, and Allen Tucker.
 
 Modifications to the original Homebase code were made by the Fall 2022 semester's group of students. That team consisted of Jeremy Buechler, Rebecca Daniel, Luke Gentry, Christopher Herriott, Ryan Persinger, and Jennifer Wells.
@@ -26,132 +110,8 @@ In Spring 2025, the Step VA Volunteer Management code was adapted to develop the
 
 During the spring of 2026, the Whiskey Valor Event Management System served as the foundation for the new Catholic Charities Diocese of Arlington (CCDA) Food Pantry Inventory Management Web Application. The transition involved repurposing and renaming several original database tables while introducing new ones to meet specific inventory management requirements. While the development team integrated various core files and functions from the initial system, they also built custom features tailored specifically to the needs of the CCDA food pantry. The team who contributed to this consisted of Meredith Alty, Aiden Thompson, Robert Burton, Allison Consuegra, Eron Hardin, and Ayoub Oulmi.
 
-## User Types
-There are two types of users (also referred to as 'roles') within the food pantry.
-* Admins
-* Inventory Counters
-
-Admins can create, edit and view all inventory logs and users (active, inactive and deleted). They can also manage the consumption rates, food categories, and view generated/calculated analytical data on the changes of inventory over time. Admins can create a shopping list for multiple family sizes.
-
-Inventory Counters can create, edit and view inventory logs. They can also view generated/calculated analytical data on the changes of inventory over time. Inventory Counters can create a shopping list for multiple family sizes.
-
-There is also a root admin account with username 'vmsroot'. The default password for this account is 'vmsroot'. This account has hardcoded Admin privileges. It is crucial that this account be given a strong password and that the password be easily remembered, as it cannot easily be reset. This account should be used for system administration purposes only.
-
-## Features
-Below is a list of features that were implemented within the system
-* User registration (via admin account) and log in
-* Admin Dashboard
-* Inventory Management Dashboard
-* User Management
-  * Change own/non-admin user's password
-  * Modify profile
-  * Reset password
-  * User Search
-  * Deactivate, Delete, Reactivate Users
-* Manage Item Categories
-  * Add Item Categories
-  * Delete, Deactivate, Reactivate Item Categories
-  * View Item Categories
-  * Modify Item Categories
-* Consumption Rates
-* Shopping List
-  * Create shopping list basket
-  * Export shopping list
-* Inventory Management
-  * Update the inventory log
-  * View all inventory logs
-  * View at-risk items for all inventory logs
-  * Manage Pallets
-    * Add Pallets
-    * Delete, Deactivate, Reactivate Pallets
-    * View Pallets
-    * Modify Pallets
-* Reports (print-friendly)
-  * Inventory log
-  * Trends
-  * Graphs
-  * Monthly summaries
-* Notification system, with notifications generated when
-  * 'Forgot password' email
-
-## Design Documentation
-Several types of diagrams describing the design of the CCDA Food Pantry Inventory Management Software, including sequence diagrams and use case diagrams, are available. Please contact Dr. Polack for access.
-
-## "localhost" Installation
-Below are the steps required to run the project on your local machine for development and/or testing purposes.
-1. [Download and install XAMPP](https://www.apachefriends.org/download.html)
-2. Open a terminal/command prompt and change directory to your XAMPP install's htdocs folder
-  * For Mac, the htdocs path is `/Applications/XAMPP/xamppfiles/htdocs`
-  * For Ubuntu, the htdocs path is `/opt/lampp/htdocs/`
-  * For Windows, the htdocs path is `C:\xampp\htdocs`
-3. Clone the Food Pantry repo by running the following command: 'https://github.com/r-brt/FoodPantry.git'
-4. Start the XAMPP MySQL server and Apache server
-5. Open the PHPMyAdmin console by navigating to [http://localhost/phpmyadmin/](http://localhost/phpmyadmin/)
-6. Create a new database named `foodpantrydb`. With the database created, navigate to it by clicking on it in the lefthand pane
-7. Import the `foodpantrydb.sql` file located in `FoodPantry/sql` into this new database
-8. Create a new user by navigating to `Privileges -> New -> Add user account`
-9. Enter the following credentials for the new user:
-  * Name: `foodpantrydb`
-  * Hostname: `localhost`
-  * Password: `foodpantrydb`
-  * Leave everything else untouched
-10. Navigate to [http://localhost/foodpantry/](http://localhost/foodpantry/) 
-11. Log into the root user account using the username `vmsroot` with password `vmsroot`
-
-Installation is now complete.
-
-## Reset root user credentials
-In the event of being locked out of the root user, the following steps will allow resetting the root user's login credentials:
-1. Using the PHPMyAdmin console, delete the `vmsroot` user row from the `dbPersons` table
-2. Clear the SiteGround dynamic cache [using the steps outlined below](#clearing-the-siteground-cache)
-3. Navigate to `foodpantry/insertAdmin.php`. You should see a message that says `ROOT USER CREATION SUCCESS`
-4. You may now log in with the username and password `vmsroot`
-
-## Platform
-Dr. Polack chose SiteGrounds as the platform on which to host the project. Below are some guides on how to manage the live project.
-
-### SiteGround Dashboard
-Access to the SiteGround Dashboard requires a SiteGround account with access. Access is managed by Dr. Polack.
-
-### Localhost to Siteground
-Follow these steps to transfter your localhost version of the CCDA Food Pantry code to Siteground. For a video tutorial on how to complete these steps, contact Dr. Polack.
-1. Create an FTP Account on Siteground, giving you the necessary FTP credentials. (Hostname, Username, Password, Port)
-2. Use FTP File Transfer Software (Filezilla, etc.) to transfer the files from your localhost folders to your siteground folders using the FTP credentials from step 1.
-3. Create the following database-related credentials on Siteground under the MySQL tab:
-  - Database - Create the database for the siteground version under the Databases tab in the MySQL Manager by selecting the 'Create Database' button. Database name is auto-generated and can be changed if you like.
-  - User - Create a user for the database by either selecting the 'Create User' button under the Users tab, or by selecting the 'Add New User' button from the newly created database under the Databases tab. User name is auto-generated and can be changed  if you like.
-  - Password - Created when user is created. Password is auto generated and can be changed if you like.
-4. Access the newly created database by navigating to the PHPMyAdmin tab and selecting the 'Access PHPMyAdmin' button. This will redirect you to the PHPMyAdmin page for the database you just created. Navigate to the new database by selecting it from the database list on the left side of the page.
-5. Select the 'Import' option from the database options at the top of the page. Select the 'Choose File' button and import the "vms.sql" file from your software files.
-  - Ensure that you're keeping your .sql file up to date in order to reduce errors in your Siteground code. Keep in mind that Siteground is case-sensitive, and your database names in the Siteground files must be identical to the database names in the database.
-6. Navigate to the 'dbInfo.php' page in your Siteground files. Inside the connect() function, you will see a series of PHP variables. ($host, $database, $user, $pass) Change the server name in the 'if' statement to the name of your server, and change the $database, $user, and $pass variables to the database name, user name, and password that you created in step 3. 
-
-### Clearing the SiteGround cache
-#### Chrome
-1. Open Chrome and click on the three-dot menu icon in the top-right corner.
-2. Navigate to **More Tools** > **Clear Browsing Data**.
-3. In the pop-up window:
-   - Select the **Time Range** (e.g., "Last 24 hours" or "All time").
-   - Check the box for **Cached images and files**.
-4. Click **Clear Data**.
-
-#### Safari
-1. Open Safari and click on **Safari** in the menu bar at the top of the screen.
-2. Select **Preferences** > **Privacy**.
-3. Click the **Manage Website Data** button.
-4. In the pop-up window, click **Remove All**, then confirm by selecting **Remove Now**.
-
-Clearing your cache will help ensure that you're seeing the latest updates to the application. If you continue experiencing issues, consider reaching out for further support.
-
-## External Libraries and APIs
-The only outside library utilized by the CCDA Food Pantry is the jQuery library. The version of jQuery used by the system is stored locally within the repo, within the lib folder. jQuery was used to implement form validation and the hiding/showing of certain page elements. Additionally, the Font Awesome library was used for some of the icon pictures. This library is linked in the headers of some files "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css".
-
-## Potential Improvements
-Below is a list of improvements that could be made to the system in subsequent semesters.
-* Increase password security
+Spring 2026 CCDA Food Pantry team: Meredith Alty, Aiden Thompson, Robert Burton, Allison Consuegra, Eron Hardin, Ayoub Oulmi.
 
 ## License
-The project remains under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl.txt).
 
-## Acknowledgements
-Thank you to Dr. Polack and Catholic Charities Diocese of Arlington for the opportunity to work on this project.
+GPL-3.0; see [`LICENSE.txt`](LICENSE.txt). The Homebase copyright notices in source files are kept.

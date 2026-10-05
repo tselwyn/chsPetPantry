@@ -1,0 +1,272 @@
+/* PFPMS Station (docs/design/50-design-station.md §7.8, D-13). Tokens copied from public/assets/css/app.css; every
+   text pair is at least 7:1 (measured): --muted is darker than app.css's (#5b6663 is 5.96:1). One column, 18 px
+   base text, every control at least 48 px tall. No web font, no image and no import: nothing to download. */
+
+:root {
+  --brand: #1f5f5b;          /* top bar; white on it 7.38:1 */
+  --brand-dark: #154541;     /* links and headings on --bg 9.98:1 */
+  --brand-contrast: #ffffff;
+  --accent: #f2a93b;         /* the Offline chip; --text on it 8.02:1 */
+  --bg: #f6f7f6;             /* --text on it 14.91:1 */
+  --surface: #ffffff;        /* --text on it 16.01:1 */
+  --text: #1c2321;
+  --muted: #3f4845;          /* hints; 8.79:1 on --bg */
+  --border: #5b6663;         /* input borders (non-text, at least 3:1) */
+  --focus: #1a73e8;
+  --ok-bg: #e6f4ea;
+  --ok-text: #1e5b2e;        /* 7.14:1 */
+  --info-bg: #e8f0fe;
+  --info-text: #1f3f73;      /* 9.09:1 */
+  --warn-bg: #fdf0d8;
+  --warn-text: #5c2400;      /* 10.91:1 */
+  --error-bg: #fdecea;
+  --error-text: #8a1c14;     /* 8.14:1 */
+  --danger: #8a1c14;         /* the dev-relax banner; white on it 9.30:1 */
+  --touch: 48px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 112.5%; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+}
+
+[hidden] { display: none !important; }
+
+/* read out, not shown (the PIN pad's count) */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+img, video { max-width: 100%; }
+
+h1 {
+  margin: 0.5rem 0 1rem;
+  font-size: 1.5rem;
+  line-height: 1.25;
+  color: var(--brand-dark);
+}
+
+h1:focus { outline: none; }
+
+h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* the shell's own "Starting…" before any script ran */
+.app > .starting { max-width: 40rem; margin: 0 auto; padding: 1rem; }
+
+/* ---- chrome: header, banners, footer ---- */
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: var(--brand);
+  color: var(--brand-contrast);
+}
+
+.brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; }
+
+.brand-icon { display: block; width: 40px; height: 40px; border-radius: 6px; }
+
+.topbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.org, .tablet { overflow-wrap: anywhere; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.chip-online { background: var(--surface); color: var(--brand-dark); }
+
+.chip-offline { background: var(--accent); color: var(--text); }
+
+.chip-unknown { background: var(--surface); color: var(--muted); }
+
+.banner { padding: 0.75rem 1rem; font-weight: 600; }
+
+.banner-danger { background: var(--danger); color: var(--brand-contrast); }
+
+.banner-warning { background: var(--warn-bg); color: var(--warn-text); }
+
+.banner-info { background: var(--info-bg); color: var(--info-text); }
+
+.footer { text-align: center; padding: 1rem; color: var(--muted); }
+
+.link {
+  display: inline-flex;
+  min-height: var(--touch);
+  align-items: center;
+  color: var(--brand-dark);
+}
+
+/* ---- views ---- */
+
+.view { max-width: 40rem; margin: 0 auto; padding: 1rem; }
+
+.lead { font-size: 1.1rem; }
+
+.status { font-weight: 600; }
+
+.hint { color: var(--muted); }
+
+.view .tablet { font-weight: 600; }
+
+.form { display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0; }
+
+.label { font-weight: 600; }
+
+.actions { display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; margin: 1rem 0; }
+
+.actions .hint { margin: 0; }
+
+.button, .input { min-height: var(--touch); font: inherit; }
+
+.button {
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  border: 2px solid var(--brand);
+  background: var(--surface);
+  color: var(--brand-dark);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button-primary { background: var(--brand); color: var(--brand-contrast); }
+
+.button-secondary { border-color: var(--brand-dark); }
+
+/* aria-disabled: unavailable while an answer is out, but still holding the focus the person put there */
+.button[disabled], .button[aria-disabled="true"] {
+  opacity: 1;
+  background: #e3e6e4;       /* #3f4845 on it 7.51:1 */
+  color: #3f4845;
+  border-color: #8a948f;
+  cursor: not-allowed;
+}
+
+.view .button { align-self: flex-start; }
+
+.form .button { margin-top: 0.5rem; }
+
+.input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.input[disabled] { background: #e3e6e4; color: #3f4845; }
+
+.input-code { letter-spacing: 0.08em; text-transform: uppercase; }
+
+.message { padding: 0.75rem; border-radius: 6px; }
+
+.message-ok { background: var(--ok-bg); color: var(--ok-text); }
+
+.message-warning { background: var(--warn-bg); color: var(--warn-text); }
+
+.message-error { background: var(--error-bg); color: var(--error-text); }
+
+.scanner { display: block; width: 100%; max-height: 50vh; background: #000; }
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(8rem, 40%) 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.facts dt { font-weight: 600; }
+
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+
+@media (max-width: 30rem) {
+  .facts { grid-template-columns: 1fr; gap: 0 1rem; }
+  .facts dd { margin-bottom: 0.5rem; }
+}
+
+/* ---- S3: the person bar, the picker, the PIN pad, the agreement, the lock notice ---- */
+
+.session-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+/* a long name never widens the page */
+.person { font-weight: 600; margin-right: auto; overflow-wrap: anywhere; }
+
+.view-picker .tiles { list-style: none; padding: 0; display: grid; gap: 0.75rem; }
+
+.tile { width: 100%; min-height: 64px; text-align: left; }
+
+.tile-other { border-style: dashed; }
+
+/* two people with the same name: the username on a second line */
+.tile-name, .tile-detail { display: block; overflow-wrap: anywhere; }
+
+.tile-detail { font-weight: 400; color: var(--muted); } /* 9.44:1 on --surface, 7.51:1 on a disabled tile */
+
+.pin-dots { font-size: 2rem; letter-spacing: 0.5rem; margin: 0.5rem 0; }
+
+.pinpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; max-width: 22rem; }
+
+.key { min-height: 64px; font-size: 1.5rem; }
+
+/* the three columns stay equal at 375 px: Delete and OK fit a third of the pad */
+.pinpad .key { padding: 0.5rem; }
+
+.pinpad .key[data-key="back"], .pinpad .key[data-key="ok"] { font-size: 1.125rem; }
+
+.policy-text { background: var(--surface); border: 1px solid var(--border); padding: 1rem; }
+
+/* line breaks inside a paragraph are kept; a long URL in the agreement never widens the page */
+.policy-text p { white-space: pre-line; overflow-wrap: anywhere; }
+
+.notice { background: var(--info-bg); color: var(--info-text); padding: 0.5rem 0.75rem; } /* 9.09:1 */
+
+/* boot.js's failure screen (built without this app's views) */
+.boot-failed { max-width: 40rem; margin: 0 auto; padding: 1rem; }
+
+.boot-failed .actions { flex-direction: row; flex-wrap: wrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

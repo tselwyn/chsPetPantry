@@ -1,0 +1,25 @@
+# Gitleaks configuration for the working-tree scan in CI (.github/workflows/ci.yml).
+# Uses the default rules and allows only known non-secrets.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known non-secrets"
+paths = [
+  # Fixed test keys ("aaaa...", "bbbb...") in the crypto round-trip tests.
+  '''tests/Unit/CryptoTest\.php''',
+  # Word list of weak passwords that the policy refuses.
+  '''src/Auth/data/common-passwords\.txt''',
+  # Published Station test vectors: fixed keys 00..1f, 20..3f, 40..5f and 60..7f (docs/design/50-design-station.md §3.9).
+  '''tests/fixtures/station_crypto\.json''',
+  '''tests/fixtures/hmac\.json''',
+  # Station JS tests and fakes: fixed keys, fixture values and pfd1_ test credentials only.
+  '''tests/js/''',
+]
+regexes = [
+  # Placeholders in example configs.
+  '''REPLACE_WITH_OUTPUT_OF_bin/generate-key\.php''',
+  # Fixed dummy password hashes used for equal-time login failures (hashes of random strings).
+  '''\$argon2id\$v=19\$m=65536,t=4,p=1\$cjdHUElGTklKdjJqdHplag\$''',
+  '''\$2y\$12\$A9ThSsW3oPT9lTxLwVOi\.\.''',
+]

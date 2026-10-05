@@ -2,9 +2,9 @@
 
 This version replaces the first-draft ERD (15 tables). It covers the 16 use cases in *PFPMS Use Case Specifications v1.0* and the 41 stories in *PFPMS User Stories Backlog v1.0*.
 
-- **Files:** `PFPMS_ERD_v2.drawio` (one table-map page plus one page per subject area), `PFPMS_schema_v2.sql` (MySQL 8 DDL and seed settings).
+- **Files:** `PFPMS_ERD_v2.drawio` (one table-map page plus one page per subject area), `PFPMS_schema_v2.sql` (DDL and seed settings; now v2.0.1, which loads on MariaDB 10.4 and MySQL 8). Additive v2.1 changes are in `migrations/` and listed in `PFPMS_schema_v2_1_changes.md`.
 - **Size:** 59 tables and 143 foreign keys.
-- **Tested:** the SQL was loaded into MySQL 8.0 with no errors. Accent-insensitive search and the active-microchip unique key were both tested.
+- **Tested:** v2 was loaded into MySQL 8.0 with no errors. v2.0.1 plus the v2.1 migrations load and pass `bin/schema-check.php` on MariaDB 10.4, MySQL 8.0 and MySQL 9.4. That covers accent-insensitive search, the active-microchip unique key, gapless codes, nullable voucher numbers and one reversal per distribution.
 
 ## 1. What changed from v1, and why
 
@@ -110,7 +110,9 @@ These can't be expressed as plain constraints, so they belong in the PHP data-ac
 - Record the distribution and decrement stock in **one transaction** (`distribution` + `distribution_line` + `inventory_transaction` + `site_stock`).
 - Optimistic locking: `UPDATE … WHERE row_version = ?`, then increment `row_version` (participant, pet).
 - Participants are deleted by setting `status = 'Deleted'` (soft delete). Hard purge happens only through an approved `erasure_request`.
-- Never allow UPDATE or DELETE on `distribution`, `audit_log`, `audit_field_change` or `snv_referral_status_log`. Enforce this with MySQL grants for the app user.
+- Never allow UPDATE or DELETE on `distribution`, `distribution_line`, `distribution_pet`, `audit_log`, `audit_field_change`, `snv_referral_status_log` or `inventory_transaction`, except through the allowlisted services (import rollback, erasure, retention purge).
+  - Shared hosting (SiteGround) does not offer table-level grants or trigger creation (error 1419), so the control is the app layer plus a CI grep.
+  - `migrations/optional/9001` adds triggers where the host allows them.
 - Duplicate-distribution check: same participant, event and day, unless `second_issue_reason` is set.
 - The frequency rule, household pet limit and allotment come from `system_setting` / `allotment_rule`, never hard-coded.
 
