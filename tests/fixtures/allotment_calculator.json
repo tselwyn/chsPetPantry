@@ -1,0 +1,1212 @@
+{
+    "_comment": "Cases for AllotmentCalculator. The offline Station JavaScript port must give exactly the same answers (plan P2B: PHP/JS parity fixtures). Plain data only: pounds are strings with 2 decimals, ids are numbers, every pet is listed.",
+    "version_on": [
+        {
+            "name": "nothing published",
+            "published": [],
+            "date": "2026-10-01",
+            "expected": null
+        },
+        {
+            "name": "before the first start",
+            "published": [
+                {
+                    "rule_version": 1,
+                    "effective_from": "2026-01-01"
+                }
+            ],
+            "date": "2025-12-31",
+            "expected": null
+        },
+        {
+            "name": "on the first start",
+            "published": [
+                {
+                    "rule_version": 1,
+                    "effective_from": "2026-01-01"
+                }
+            ],
+            "date": "2026-01-01",
+            "expected": 1
+        },
+        {
+            "name": "the day before a change",
+            "published": [
+                {
+                    "rule_version": 1,
+                    "effective_from": "2026-01-01"
+                },
+                {
+                    "rule_version": 2,
+                    "effective_from": "2026-10-02"
+                }
+            ],
+            "date": "2026-10-01",
+            "expected": 1
+        },
+        {
+            "name": "on the day of a change",
+            "published": [
+                {
+                    "rule_version": 1,
+                    "effective_from": "2026-01-01"
+                },
+                {
+                    "rule_version": 2,
+                    "effective_from": "2026-10-02"
+                }
+            ],
+            "date": "2026-10-02",
+            "expected": 2
+        },
+        {
+            "name": "long after, with a withdrawn number skipped",
+            "published": [
+                {
+                    "rule_version": 1,
+                    "effective_from": "2026-01-01"
+                },
+                {
+                    "rule_version": 3,
+                    "effective_from": "2026-11-01"
+                }
+            ],
+            "date": "2027-06-30",
+            "expected": 3
+        },
+        {
+            "name": "version 0 is reserved for legacy rows and never in force",
+            "published": [
+                {
+                    "rule_version": 0,
+                    "effective_from": "2020-01-01"
+                }
+            ],
+            "date": "2026-10-01",
+            "expected": null
+        },
+        {
+            "name": "two versions on the same start date: the higher number wins",
+            "published": [
+                {
+                    "rule_version": 4,
+                    "effective_from": "2026-11-01"
+                },
+                {
+                    "rule_version": 5,
+                    "effective_from": "2026-11-01"
+                }
+            ],
+            "date": "2026-11-01",
+            "expected": 5
+        }
+    ],
+    "entitlement": [
+        {
+            "name": "no active pets",
+            "rules": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "4.50"
+                }
+            ],
+            "pets": [],
+            "expected": {
+                "total": "0.00",
+                "buckets": [],
+                "per_pet": []
+            }
+        },
+        {
+            "name": "one figure per band, two species",
+            "rules": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "4.50"
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 11,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "10.00"
+                },
+                {
+                    "species_id": 2,
+                    "size_band_id": 20,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "3.25"
+                }
+            ],
+            "pets": [
+                {
+                    "species_id": 2,
+                    "size_band_id": 20
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 11
+                }
+            ],
+            "expected": {
+                "total": "17.75",
+                "buckets": [
+                    {
+                        "species_id": 1,
+                        "food_form": "Any",
+                        "lbs": "14.50"
+                    },
+                    {
+                        "species_id": 2,
+                        "food_form": "Any",
+                        "lbs": "3.25"
+                    }
+                ],
+                "per_pet": [
+                    {
+                        "lbs": "3.25",
+                        "forms": {
+                            "Any": "3.25"
+                        }
+                    },
+                    {
+                        "lbs": "4.50",
+                        "forms": {
+                            "Any": "4.50"
+                        }
+                    },
+                    {
+                        "lbs": "10.00",
+                        "forms": {
+                            "Any": "10.00"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "dry and wet separately",
+            "rules": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10,
+                    "food_form": "Wet",
+                    "lbs_per_distribution": "1.50"
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10,
+                    "food_form": "Dry",
+                    "lbs_per_distribution": "4.00"
+                }
+            ],
+            "pets": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                }
+            ],
+            "expected": {
+                "total": "11.00",
+                "buckets": [
+                    {
+                        "species_id": 1,
+                        "food_form": "Dry",
+                        "lbs": "8.00"
+                    },
+                    {
+                        "species_id": 1,
+                        "food_form": "Wet",
+                        "lbs": "3.00"
+                    }
+                ],
+                "per_pet": [
+                    {
+                        "lbs": "5.50",
+                        "forms": {
+                            "Dry": "4.00",
+                            "Wet": "1.50"
+                        }
+                    },
+                    {
+                        "lbs": "5.50",
+                        "forms": {
+                            "Dry": "4.00",
+                            "Wet": "1.50"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "a deliberate zero still gives a bucket",
+            "rules": [
+                {
+                    "species_id": 2,
+                    "size_band_id": 21,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "0.00"
+                }
+            ],
+            "pets": [
+                {
+                    "species_id": 2,
+                    "size_band_id": 21
+                }
+            ],
+            "expected": {
+                "total": "0.00",
+                "buckets": [
+                    {
+                        "species_id": 2,
+                        "food_form": "Any",
+                        "lbs": "0.00"
+                    }
+                ],
+                "per_pet": [
+                    {
+                        "lbs": "0.00",
+                        "forms": {
+                            "Any": "0.00"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "hundredths add up exactly (no float drift)",
+            "rules": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "0.10"
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 11,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "0.20"
+                }
+            ],
+            "pets": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 11
+                }
+            ],
+            "expected": {
+                "total": "0.30",
+                "buckets": [
+                    {
+                        "species_id": 1,
+                        "food_form": "Any",
+                        "lbs": "0.30"
+                    }
+                ],
+                "per_pet": [
+                    {
+                        "lbs": "0.10",
+                        "forms": {
+                            "Any": "0.10"
+                        }
+                    },
+                    {
+                        "lbs": "0.20",
+                        "forms": {
+                            "Any": "0.20"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "a band with no rule is an error, not zero",
+            "rules": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "4.50"
+                }
+            ],
+            "pets": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 12
+                }
+            ],
+            "error": "missing_rule",
+            "species_id": 1,
+            "size_band_id": 12
+        },
+        {
+            "name": "an empty draft cell is not a rule",
+            "rules": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10,
+                    "food_form": "Any",
+                    "lbs_per_distribution": null
+                }
+            ],
+            "pets": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                }
+            ],
+            "error": "missing_rule",
+            "species_id": 1,
+            "size_band_id": 10
+        },
+        {
+            "name": "a pet whose species does not match the band's rule",
+            "rules": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "4.50"
+                }
+            ],
+            "pets": [
+                {
+                    "species_id": 2,
+                    "size_band_id": 10
+                }
+            ],
+            "error": "missing_rule",
+            "species_id": 2,
+            "size_band_id": 10
+        },
+        {
+            "name": "more than the stamp can hold",
+            "rules": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "200.00"
+                }
+            ],
+            "pets": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                }
+            ],
+            "error": "overflow"
+        },
+        {
+            "name": "exactly the most a distribution can record is allowed",
+            "rules": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "200.00"
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 11,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "199.99"
+                }
+            ],
+            "pets": [
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 10
+                },
+                {
+                    "species_id": 1,
+                    "size_band_id": 11
+                }
+            ],
+            "expected": {
+                "total": "9999.99",
+                "buckets": [
+                    {
+                        "species_id": 1,
+                        "food_form": "Any",
+                        "lbs": "9999.99"
+                    }
+                ],
+                "per_pet": [
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "200.00",
+                        "forms": {
+                            "Any": "200.00"
+                        }
+                    },
+                    {
+                        "lbs": "199.99",
+                        "forms": {
+                            "Any": "199.99"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "buckets are ordered by species id as numbers (2 before 10), then Any, Dry, Wet",
+            "rules": [
+                {
+                    "species_id": 10,
+                    "size_band_id": 100,
+                    "food_form": "Wet",
+                    "lbs_per_distribution": "1.00"
+                },
+                {
+                    "species_id": 10,
+                    "size_band_id": 100,
+                    "food_form": "Dry",
+                    "lbs_per_distribution": "2.00"
+                },
+                {
+                    "species_id": 2,
+                    "size_band_id": 20,
+                    "food_form": "Any",
+                    "lbs_per_distribution": "3.00"
+                }
+            ],
+            "pets": [
+                {
+                    "species_id": 10,
+                    "size_band_id": 100
+                },
+                {
+                    "species_id": 2,
+                    "size_band_id": 20
+                }
+            ],
+            "expected": {
+                "total": "6.00",
+                "buckets": [
+                    {
+                        "species_id": 2,
+                        "food_form": "Any",
+                        "lbs": "3.00"
+                    },
+                    {
+                        "species_id": 10,
+                        "food_form": "Dry",
+                        "lbs": "2.00"
+                    },
+                    {
+                        "species_id": 10,
+                        "food_form": "Wet",
+                        "lbs": "1.00"
+                    }
+                ],
+                "per_pet": [
+                    {
+                        "lbs": "3.00",
+                        "forms": {
+                            "Dry": "2.00",
+                            "Wet": "1.00"
+                        }
+                    },
+                    {
+                        "lbs": "3.00",
+                        "forms": {
+                            "Any": "3.00"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

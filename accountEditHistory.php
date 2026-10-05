@@ -1,4 +1,0 @@
-<?php
-
-//Viewing edit logs.
-?>
