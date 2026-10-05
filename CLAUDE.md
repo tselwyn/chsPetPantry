@@ -14,11 +14,11 @@
 - All old branches built on the starter app were deleted. Don't use anything from them.
 
 ## Local setup
-Follow README.md "Local setup". Notes for this machine:
-- XAMPP doesn't ship with Composer. Install it if `composer` isn't found.
-- Enable `gd`, `zip`, and `intl` in C:\xampp\php\php.ini if they're off.
+Follow README.md "XAMPP quick start". Notes for this machine:
+- Clone into C:\xampp\htdocs, start Apache and MySQL, then run `C:\xampp\php\php.exe bin/setup.php` from the repo folder. It installs Composer packages (downloading composer.phar if needed), writes config/config.php, creates `pfpms_dev`, runs migrations and dev seeds, and creates an admin. Safe to re-run.
+- Open http://localhost/<folder>/. The root .htaccess rewrites into public/; don't hard-code the folder name anywhere.
+- Enable `gd`, `zip`, and `intl` in C:\xampp\php\php.ini if they're off (setup.php names any that are missing).
 - Dev database: `pfpms_dev`. Test database must be a separate one whose name ends in `_test` (config/config.test.php); the test run wipes and rebuilds it.
-- Serve with `php -S localhost:8088 -t public`.
 
 ## Tyler's task: Sprint 1, participant search (UC-02)
 - Sprint 1 (two weeks) covers participant management: search, register, view/update. Tyler owns **search**.
