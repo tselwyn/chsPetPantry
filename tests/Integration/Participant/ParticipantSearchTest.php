@@ -128,6 +128,64 @@ final class ParticipantSearchTest extends TestCase
         $this->assertSame('Dot', ParticipantRepository::search($this->north, 'dot', 100)['rows'][0]['preferred_name'], 'returned for display');
     }
 
+    public function testAccentsDoNotMatterInEitherDirection(): void
+    {
+        $this->participant($this->north, ['participant_code' => 'P1', 'legal_first_name' => 'José', 'legal_last_name' => 'Muñoz']);
+        $this->participant($this->north, ['participant_code' => 'P2', 'legal_first_name' => 'Jose', 'legal_last_name' => 'Munoz']);
+        $this->participant($this->north, ['participant_code' => 'P3', 'legal_first_name' => 'Thanh', 'legal_last_name' => 'Nguyễn', 'preferred_name' => 'Tôm']);
+        $this->participant($this->north, ['participant_code' => 'P4', 'legal_first_name' => 'Ángel', 'legal_last_name' => 'Hernández']);
+        foreach (['jose munoz', 'José Muñoz', 'JOSE MUÑOZ', 'muñoz', 'Munoz, José'] as $term) {
+            $this->assertSame(['P1', 'P2'], $this->codes($term), "$term finds both spellings (equal names, so by id)");
+        }
+        $this->assertSame(['P3'], $this->codes('nguyen'));
+        $this->assertSame(['P3'], $this->codes('tom'), 'preferred names too');
+        $this->assertSame(['P4'], $this->codes('angel hernandez'));
+        $this->assertSame(['P4'], $this->codes('ÁNGEL'));
+        $this->assertSame(ParticipantRepository::RANK_EXACT, (int) ParticipantRepository::search($this->north, 'Hernandez', 100)['rows'][0]['match_rank'],
+            'an unaccented exact name is still exact');
+    }
+
+    public function testSoundAlikeSurnamesRankBetweenPrefixAndPartial(): void
+    {
+        $this->participant($this->north, ['participant_code' => 'P1', 'legal_first_name' => 'Michael', 'legal_last_name' => 'Smyth']);
+        $this->participant($this->north, ['participant_code' => 'P2', 'legal_first_name' => 'Robert', 'legal_last_name' => 'Smith']);
+        $this->participant($this->north, ['participant_code' => 'P3', 'legal_first_name' => 'Ann', 'legal_last_name' => 'Goldsmith']);
+        $this->participant($this->north, ['participant_code' => 'P4', 'legal_first_name' => 'Sarah', 'legal_last_name' => 'Johnson']);
+        $rows = ParticipantRepository::search($this->north, 'smith', 100)['rows'];
+        $this->assertSame(['P2', 'P1', 'P3'], array_column($rows, 'participant_code'), 'exact, then sounds alike, then partial');
+        $this->assertSame([ParticipantRepository::RANK_EXACT, ParticipantRepository::RANK_PHONETIC, ParticipantRepository::RANK_PARTIAL],
+            array_map('intval', array_column($rows, 'match_rank')));
+        $this->assertSame(['P4'], $this->codes('jonson'), 'a misspelt surname');
+        $this->assertSame(['P4'], $this->codes('sarah jonsen'), 'with the first name');
+        $this->assertSame([], $this->codes('mary jonson'), 'the other words must still match');
+        $this->assertSame(['P2', 'P1', 'P3'], $this->codes('smit'), 'a prefix of Smith, then Smyth (sounds alike, S530), then Goldsmith (partial)');
+    }
+
+    public function testSurnamePhoneticIsTheFoldKeyAndOnlyRead(): void
+    {
+        $id = $this->participant($this->north, ['participant_code' => 'P1', 'legal_last_name' => 'Peña-Ruiz', 'surname_phonetic' => Fold::phonetic('Peña-Ruiz')]);
+        $this->assertSame('P500 R200', $this->scalar('SELECT surname_phonetic FROM participant WHERE participant_id = ?', [$id]));
+        $this->assertSame(['P500', 'R200'], ParticipantRepository::phoneticKeys('Peña-Ruiz'));
+        $this->assertSame(['P1'], $this->codes('rice'), 'either part of a double surname (Ruiz ~ Rice)');
+        $this->assertSame(['P1'], $this->codes('Pena'));
+        $this->assertSame('P500 R200', $this->scalar('SELECT surname_phonetic FROM participant WHERE participant_id = ?', [$id]), 'search never writes it');
+
+        $this->participant($this->north, ['participant_code' => 'P2', 'legal_last_name' => 'Joy']);
+        $this->assertSame([], $this->codes('ja'), 'too short to key: J000 would match Joy');
+        $this->participant($this->north, ['participant_code' => 'P3', 'legal_last_name' => 'Legacy', 'surname_phonetic' => null]);
+        $this->assertSame(['P3'], $this->codes('legacy'), 'a record without a key is still found by name');
+    }
+
+    public function testAccentsDoNotDisturbTheSortOrder(): void
+    {
+        foreach (['Zúñiga', 'Baker', 'Álvarez', 'Adams', 'Ávila', 'Zimmer'] as $i => $last) {
+            $this->participant($this->north, ['participant_code' => 'P' . ($i + 1), 'legal_first_name' => 'Kim', 'legal_last_name' => $last]);
+        }
+        $rows = ParticipantRepository::search($this->north, 'kim', 100)['rows'];
+        $this->assertSame(['Adams', 'Álvarez', 'Ávila', 'Baker', 'Zimmer', 'Zúñiga'], array_column($rows, 'legal_last_name'),
+            'Á sorts with A and Ú with U, not after Z');
+    }
+
     public function testPhonesMatchByAnyRunOfDigits(): void
     {
         $this->participant($this->north, ['participant_code' => 'P1', 'phone' => '5405550101']);

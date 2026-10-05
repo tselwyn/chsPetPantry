@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Pfpms\Participant;
 
 use Pfpms\Db;
+use Pfpms\Text\Fold;
 
 /** SQL for participant search (UC-02). Prepared statements only; returns plain arrays. */
 final class ParticipantRepository
@@ -11,10 +12,11 @@ final class ParticipantRepository
     /** Longest search text accepted (Validator::text). */
     public const MAX_TERM = 100;
 
-    /** Match tiers, best first (plan P3: code > exact name > prefix > phonetic > partial). */
+    /** Match tiers, best first (plan P3: code > exact legal or preferred name > prefix > phonetic surname > partial). */
     public const RANK_CODE = 1;
     public const RANK_EXACT = 2;
     public const RANK_PREFIX = 3;
+    public const RANK_PHONETIC = 4;
     public const RANK_PARTIAL = 5;
 
     /** Minimal fields for a result row: no address, phone, date of birth or notes (UC-02). */
@@ -80,6 +82,10 @@ final class ParticipantRepository
                 OR CONCAT(p.preferred_name, \' \', p.legal_last_name) = ? OR CONCAT(p.legal_last_name, \' \', p.preferred_name) = ?)',
                 array_fill(0, 7, $name)];
             $tiers[] = self::everyWord(self::RANK_PREFIX, $words, fn(string $w): string => self::like($w) . '%');
+            $phonetic = self::phonetic($words);
+            if ($phonetic !== null) {
+                $tiers[] = $phonetic;
+            }
             $partial = self::everyWord(self::RANK_PARTIAL, $words, fn(string $w): string => '%' . self::like($w) . '%');
         }
         $phone = self::phoneDigits($term);
@@ -107,6 +113,49 @@ final class ParticipantRepository
             array_push($args, $like, $like, $like);
         }
         return [$rank, '(' . implode(' AND ', $parts) . ')', $args];
+    }
+
+    /**
+     * The sound-alike tier (US-06; UC-02 phonetic surname match): each word starts a name, as in the prefix tier, or sounds
+     * like a word of the surname. surname_phonetic holds Fold::phonetic(legal_last_name), the Station's key (50-design
+     * §11.3), so "Smyth" finds "Smith" and "Jonson" finds "Johnson" here and offline alike. A search with no word long
+     * enough to key (phoneticKeys) has no phonetic tier. The column is only read here, never written.
+     * @param list<string> $words
+     * @return ?array{0: int, 1: string, 2: list<string>}
+     */
+    private static function phonetic(array $words): ?array
+    {
+        $parts = [];
+        $args = [];
+        $keyed = false;
+        foreach ($words as $word) {
+            $like = self::like($word) . '%';
+            $sql = 'p.legal_first_name LIKE ? OR p.legal_last_name LIKE ? OR p.preferred_name LIKE ?';
+            array_push($args, $like, $like, $like);
+            foreach (self::phoneticKeys($word) as $key) {
+                $sql .= ' OR CONCAT(\' \', p.surname_phonetic, \' \') LIKE ?';
+                $args[] = '% ' . $key . ' %';
+                $keyed = true;
+            }
+            $parts[] = "($sql)";
+        }
+        return $keyed ? [self::RANK_PHONETIC, '(' . implode(' AND ', $parts) . ')', $args] : null;
+    }
+
+    /**
+     * The phonetic keys of a search word, as Fold::phonetic() gives them: one per folded word in it ("Peña-Ruiz" gives
+     * P500 and R200), skipping folded words of fewer than 3 letters ("Jo", or the "l" and "e" of "L_e"), which match too much.
+     * @return list<string>
+     */
+    public static function phoneticKeys(string $word): array
+    {
+        $keys = [];
+        foreach (explode(' ', Fold::fold($word)) as $part) {
+            if (strlen((string) preg_replace('/[^a-z]/', '', $part)) >= 3) {
+                $keys[] = Fold::phonetic($part);
+            }
+        }
+        return $keys;
     }
 
     /** "P12", "p 12", "P-12" or a bare number of up to 9 digits → "P12"; else null. */
