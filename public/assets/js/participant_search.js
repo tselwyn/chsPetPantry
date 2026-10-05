@@ -1,7 +1,8 @@
-// Find a participant (participant_search.php), US-04. With nothing typed the page lists today's check-ins first; this
-// keeps that list current by polling api/participant/checkins.php (which never extends the idle timer), and hides
-// the lists as soon as something is typed so the volunteer is back in a normal search. Without script the page still
-// works: the lists are as of loading, and the form searches on submit. Rows are built with textContent only.
+// Find a participant (participant_search.php). Puts the cursor in the search box, ready to type. US-04: with nothing
+// typed the page lists today's check-ins first; this keeps that list current by polling api/participant/checkins.php
+// (which never extends the idle timer), and hides the lists as soon as something is typed so the volunteer is back
+// in a normal search. Without script the page still works: the lists are as of loading, and the form searches on
+// submit. Rows are built with textContent only.
 'use strict';
 
 (function () {
@@ -9,6 +10,15 @@
   var lists = document.getElementById('empty-search');
   var typed = function () { return input !== null && input.value.trim() !== ''; };
 
+  if (input !== null) {
+    // Ready to type on arrival: focused (autofocus can be skipped, e.g. after a redirect), with the cursor after any
+    // search already there so more letters narrow it rather than land in front of it.
+    if (document.activeElement !== input) {
+      input.focus();
+    }
+    var end = input.value.length;
+    input.setSelectionRange(end, end);
+  }
   if (input !== null && lists !== null) {
     input.addEventListener('input', function () { lists.hidden = typed(); });
   }
