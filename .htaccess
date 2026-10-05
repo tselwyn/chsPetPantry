@@ -1,5 +1,21 @@
-# The repository root is never a web root. Point the web server (or SiteGround's public_html)
-# at public/ only. If the whole repo ends up inside htdocs, this denies everything outside public/.
-<IfModule mod_authz_core.c>
-  Require all denied
+# The repository root is never a web root. On SiteGround the web root is public/ (public_html), and this file is
+# never read. When the whole repo sits inside a web root (XAMPP: C:\xampp\htdocs\<folder>), every request is
+# rewritten into public/, so http://localhost/<folder>/ opens the site and nothing outside public/ (config/, .git/,
+# storage/, src/, vendor/) can be reached. The folder may have any name; nothing here depends on it.
+
+# Without mod_rewrite nothing can be kept out of reach, so everything is refused.
+<IfModule !mod_rewrite.c>
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # %1 is the URL prefix of this folder (e.g. /chsPetPantry/): REQUEST_URI ends with the path relative to here ($1),
+  # so what comes before it is the prefix. PHP reads it as PFPMS_BASE (Request::basePath()), so links, redirects and
+  # cookies use /<folder>/ rather than /<folder>/public/.
+  RewriteCond %{REQUEST_URI}::$1 ^(.*?/)(.*)::\2$
+  RewriteRule ^(?!public/)(.*)$ public/$1 [E=PFPMS_BASE:%1,L]
 </IfModule>
