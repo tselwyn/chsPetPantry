@@ -55,9 +55,73 @@ final class ParticipantRepository
               LIMIT ' . ($limit + 1)
         );
         $st->execute(array_merge($rankArgs, [$siteId], $whereArgs));
-        $rows = $st->fetchAll();
-        $truncated = count($rows) > $limit;
-        return ['rows' => array_slice($rows, 0, $limit), 'truncated' => $truncated];
+        return self::capped($st->fetchAll(), $limit);
+    }
+
+    /** The site's Open distribution event on $today (its site-local date), or null; there is at most one (plan P3). */
+    public static function openEvent(int $siteId, string $today): ?array
+    {
+        $st = Db::pdo()->prepare("SELECT event_id, event_date, starts_at, ends_at FROM distribution_event
+                                   WHERE site_id = ? AND status = 'Open' AND event_date = ? ORDER BY event_id DESC LIMIT 1");
+        $st->execute([$siteId, $today]);
+        return $st->fetch() ?: null;
+    }
+
+    /**
+     * Households checked in to $eventId (US-04), in queue order, with checked_in_at (UTC) and the check-in outcome.
+     * @return array{rows: list<array>, truncated: bool}
+     */
+    public static function checkIns(int $siteId, int $eventId, int $limit): array
+    {
+        $limit = max(1, min(1000, $limit));
+        $st = Db::pdo()->prepare(
+            'SELECT ' . self::COLUMNS . ', c.checked_in_at, c.outcome
+               FROM event_check_in c
+               JOIN participant p ON p.participant_id = c.participant_id
+               JOIN participant_site ps ON ps.participant_id = p.participant_id AND ps.site_id = ?
+              WHERE c.event_id = ? AND p.status IN (\'Active\', \'Inactive\')
+              ORDER BY c.checked_in_at, c.check_in_id
+              LIMIT ' . ($limit + 1)
+        );
+        $st->execute([$siteId, $eventId]);
+        return self::capped($st->fetchAll(), $limit);
+    }
+
+    /**
+     * Households served at one of $siteId's events on or after $since (a site-local date), most recently served first,
+     * with served_here, their latest such date. Reversed distributions do not count. Households checked in to
+     * $exceptEventId are left out (they are listed above, US-04).
+     * @return array{rows: list<array>, truncated: bool}
+     */
+    public static function recentlyServed(int $siteId, string $since, int $limit, ?int $exceptEventId = null): array
+    {
+        $limit = max(1, min(1000, $limit));
+        $st = Db::pdo()->prepare(
+            'SELECT ' . self::COLUMNS . ', s.served_here
+               FROM (SELECT d.participant_id, MAX(d.local_date) AS served_here
+                       FROM distribution d
+                       JOIN distribution_event e ON e.event_id = d.event_id AND e.site_id = ?
+                      WHERE d.local_date >= ? AND d.reverses_distribution_id IS NULL
+                        AND NOT EXISTS (SELECT 1 FROM distribution r WHERE r.reverses_distribution_id = d.distribution_id)
+                      GROUP BY d.participant_id) s
+               JOIN participant p ON p.participant_id = s.participant_id
+               JOIN participant_site ps ON ps.participant_id = p.participant_id AND ps.site_id = ?
+              WHERE p.status IN (\'Active\', \'Inactive\')
+                AND NOT EXISTS (SELECT 1 FROM event_check_in c WHERE c.event_id = ? AND c.participant_id = p.participant_id)
+              ORDER BY s.served_here DESC, p.legal_last_name, p.legal_first_name, p.participant_id
+              LIMIT ' . ($limit + 1)
+        );
+        $st->execute([$siteId, $since, $siteId, $exceptEventId ?? 0]);
+        return self::capped($st->fetchAll(), $limit);
+    }
+
+    /**
+     * @param list<array> $rows up to $limit + 1 rows
+     * @return array{rows: list<array>, truncated: bool}
+     */
+    private static function capped(array $rows, int $limit): array
+    {
+        return ['rows' => array_slice($rows, 0, $limit), 'truncated' => count($rows) > $limit];
     }
 
     /**
