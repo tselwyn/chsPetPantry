@@ -28,6 +28,7 @@ return [
         'base_url' => 'http://pfpms.localhost',
         // URL path of public/, e.g. '/' or '/chsPetPantry/public/'. Worked out automatically when public/ (or public_html/, the
         // SiteGround layout) sits beside src/; otherwise set it, or the site refuses to run outside dev/test. On SiteGround: '/'.
+        // Leave it unset in XAMPP's htdocs: the root .htaccess then serves the site at /<folder>/ and the app follows.
         // 'base_path' => '/',
         // Direct peers whose X-Forwarded-For header is trusted (e.g. a front-end proxy). Empty: trust none.
         'trusted_proxies' => [],
