@@ -11,6 +11,22 @@ A web application for running a pet food pantry. It keeps records of participant
   - [`docs/PFPMS_schema_v2_notes.md`](docs/PFPMS_schema_v2_notes.md);
   - [`docs/PFPMS_schema_v2_1_changes.md`](docs/PFPMS_schema_v2_1_changes.md).
 
+## XAMPP quick start (Windows)
+
+1. **Clone into htdocs:** `cd C:\xampp\htdocs` then `git clone https://github.com/tselwyn/chsPetPantry.git`. Any folder name works; use one without spaces.
+2. **Start Apache and MySQL** in the XAMPP Control Panel.
+3. **Enable the PHP extensions:** in `C:\xampp\php\php.ini`, remove the `;` from `extension=gd`, `extension=intl` and `extension=zip`, then restart Apache. The setup script names any line still missing.
+4. **Run the setup** from the repo folder: `C:\xampp\php\php.exe bin/setup.php`. It:
+   - installs Composer's packages;
+   - writes `config/config.php` (MySQL user `root`, no password) with a new encryption key;
+   - creates the `pfpms_dev` database, runs the migrations and loads the development seeds;
+   - creates an Administrator `admin` and prints a one-time temporary password.
+
+   It is safe to run again; finished steps are skipped.
+5. **Open http://localhost/&lt;folder-name&gt;/** (e.g. http://localhost/chsPetPantry/) and sign in as `admin` with the temporary password. You then choose your own.
+
+The root `.htaccess` sends every request into `public/`, so nothing else in the repo (config, `.git`, `storage`, `src`, `vendor`) can be opened from the browser. If Apache's `mod_rewrite` is off, the whole folder answers 403. "Local setup" below is the manual equivalent, and covers other setups.
+
 ## Repository layout
 
 | Path | What it is |
@@ -42,7 +58,7 @@ A web application for running a pet food pantry. It keeps records of participant
 6. **Create the first Administrator:** `php bin/create-admin.php --username=you --email=you@example.org --first=First --last=Last`. It prints a one-time temporary password, which you replace at first sign-in.
 7. **Serve `public/`:**
    - Quickest: `php -S localhost:8088 -t public`, then open http://localhost:8088.
-   - With XAMPP Apache: add a virtual host whose DocumentRoot is `<repo>/public`.
+   - With XAMPP Apache: clone into `htdocs` and open http://localhost/<folder>/. The root `.htaccess` rewrites into `public/`. A virtual host whose DocumentRoot is `<repo>/public` also works.
 
    A `*.localhost` host name counts as a secure context, which the offline Station needs later. Set `app.base_url` to match the address you use.
 8. **Check the schema:** `php bin/schema-check.php` checks table and key counts, collations and core behaviours on your engine.

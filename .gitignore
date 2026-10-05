@@ -44,3 +44,6 @@ desktop.ini
 
 # --- Local tooling ---
 /.claude/
+
+# --- Downloaded by bin/setup.php ---
+/bin/composer.phar

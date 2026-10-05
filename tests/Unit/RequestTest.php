@@ -218,6 +218,42 @@ final class RequestTest extends TestCase
         $this->assertSame('/chsPetPantry/public/api/device/', Request::basePath(), 'basePath() then only guesses the script\'s own directory');
     }
 
+    public function testRewrittenBasePathTakesTheFolderOnlyWhenPublicIsBelowIt(): void
+    {
+        $this->assertSame('/chsPetPantry/', Request::rewrittenBasePath('/chsPetPantry/public/', '/chsPetPantry/'));
+        $this->assertSame('/cpsc430/team-pantry/', Request::rewrittenBasePath('/cpsc430/team-pantry/public/', '/cpsc430/team-pantry/'), 'any folder');
+        $this->assertSame('/', Request::rewrittenBasePath('/public/', '/'), 'the repo at the web root itself');
+        $this->assertNull(Request::rewrittenBasePath('/', '/'), 'SiteGround: public/ is the web root');
+        $this->assertNull(Request::rewrittenBasePath('/chsPetPantry/public/', '/elsewhere/'), 'a prefix that does not lead to public/');
+        $this->assertNull(Request::rewrittenBasePath('/chsPetPantry/public/', 'chsPetPantry/'), 'not an absolute path');
+        $this->assertNull(Request::rewrittenBasePath('/chsPetPantry/public/', '/chsPetPantry'), 'no trailing slash');
+        $this->assertNull(Request::rewrittenBasePath(null, '/chsPetPantry/'), 'public/ not found');
+        $this->assertNull(Request::rewrittenBasePath('/chsPetPantry/public/', null), 'no rewrite');
+    }
+
+    public function testTheHtdocsRewriteServesLinksFromTheFolderButSignsPathsUnderPublic(): void
+    {
+        // http://localhost/chsPetPantry/api/device/heartbeat.php, rewritten by the root .htaccess into public/.
+        $this->useBasePath('');
+        $_SERVER['SCRIPT_NAME'] = '/chsPetPantry/public/api/device/heartbeat.php';
+        $_SERVER['SCRIPT_FILENAME'] = APP_ROOT . '/public/api/device/heartbeat.php';
+        $_SERVER['REQUEST_URI'] = '/chsPetPantry/participant_view.php?id=3';
+        $_SERVER['REDIRECT_PFPMS_BASE'] = '/chsPetPantry/';
+        $this->assertSame('/chsPetPantry/', Request::basePath(), 'links, redirects and cookies use the folder');
+        $this->assertSame('api/device/heartbeat.php', Request::scriptPath(), 'what the tablet signs');
+        $this->assertSame('participant_view.php?id=3', Request::appPath());
+
+        $_SERVER['REDIRECT_PFPMS_BASE'] = '/somewhere-else/';
+        $this->assertSame('/chsPetPantry/public/', Request::basePath(), 'a value that does not match where public/ is served is ignored');
+
+        unset($_SERVER['REDIRECT_PFPMS_BASE']);
+        $_SERVER['REDIRECT_REDIRECT_PFPMS_BASE'] = '/chsPetPantry/';
+        $this->assertSame('/chsPetPantry/', Request::basePath(), 'after DirectoryIndex too');
+
+        $this->useBasePath('/');
+        $this->assertSame('/', Request::basePath(), 'a configured base path wins');
+    }
+
     // Body ------------------------------------------------------------------------------------
 
     public function testParseJsonRefusesAnotherMediaType(): void
