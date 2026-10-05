@@ -10,11 +10,17 @@ namespace Pfpms\Participant;
  */
 final class ParticipantName
 {
-    /** The name to show first: the preferred name, else "First Last". */
+    /**
+     * The name to show first: a one-word preferred name with the legal surname ("Bobby" → "Bobby Smith"); a preferred
+     * name of more than one word as it is, since it already carries a surname ("Alex Rivera"); else "First Last".
+     */
     public static function display(array $p): string
     {
-        $preferred = trim((string) ($p['preferred_name'] ?? ''));
-        return $preferred !== '' ? $preferred : self::legal($p);
+        $preferred = trim((string) preg_replace('/\s+/u', ' ', (string) ($p['preferred_name'] ?? '')));
+        if ($preferred === '') {
+            return self::legal($p);
+        }
+        return str_contains($preferred, ' ') ? $preferred : trim($preferred . ' ' . $p['legal_last_name']);
     }
 
     /** "First Last" from the legal names. */
