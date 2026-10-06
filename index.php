@@ -529,6 +529,14 @@
         <div class="large-text-sub" style="color:white;">Participant Search</div>
         <div class="graph-text" style="color:white;">Find a participant by name, address, or phone.</div>
         </div>
+        <div class="content-box-test" onclick="window.location.href='participantRegister.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/add-person.svg" alt="Register Participant Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Register Participant</div>
+        <div class="graph-text" style="color:white;">Register a new Pet Pantry participant.</div>
+        </div>
             </div>
 <!--
         <div class="nav-buttons">

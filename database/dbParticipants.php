@@ -34,6 +34,50 @@ function make_a_participant($result_row) {
 }
 
 /*
+ * Add a Participant to dbparticipants. Its id is ignored; the table assigns one.
+ * Returns the new participant's id, or false if the insert failed.
+ */
+function add_participant($participant) {
+    $query = 'INSERT INTO dbparticipants (first_name, last_name, street_address, city, state, zip, '
+        . 'phone, email, preferred_language, location, registration_date, status, alert, notes, consent) '
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    $args = [
+        $participant->get_first_name(),
+        $participant->get_last_name(),
+        $participant->get_street_address(),
+        $participant->get_city(),
+        $participant->get_state(),
+        $participant->get_zip(),
+        $participant->get_phone(),
+        $participant->get_email(),
+        $participant->get_preferred_language(),
+        $participant->get_location(),
+        $participant->get_registration_date(),
+        $participant->get_status(),
+        $participant->get_alert(),
+        $participant->get_notes(),
+        $participant->get_consent()
+    ];
+
+    $con = connect();
+    $id = false;
+    try {
+        $stmt = mysqli_prepare($con, $query);
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'ssssssssssssisi', ...$args);
+            if (mysqli_stmt_execute($stmt)) {
+                $id = mysqli_insert_id($con);
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $id = false;
+    }
+    mysqli_close($con);
+    return $id;
+}
+
+/*
  * Find participants by name, address, or phone number with one search term.
  *   - name: every word of the term must appear in the first or last name
  *   - address: every word must appear in the street address, city, state, or zip

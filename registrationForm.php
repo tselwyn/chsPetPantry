@@ -33,7 +33,6 @@
             </label>
             <input
             type="text"
-            type="text"
             id="first_name"
             name="first_name"
             required
@@ -83,7 +82,6 @@
         <label for="zip">ZIP Code</label>
         <input
             type="text"
-            type="text"
             id="zip"
             name="zip"
             pattern="[0-9]{5}"
@@ -122,7 +120,7 @@
             required
             placeholder="Enter e-mail address"
         >
-        <label for="preffered language">
+        <label for="preferred_language">
             <em>* </em>Preferred Language
         </label>
         <select id="preferred_language" name="preferred_language" required>
@@ -144,8 +142,6 @@
                 <input type="radio" id="phone-type-work" name="phone_type" value="work" required><label for="phone-type-work">Work</label>
 	      </div>
             </div>-->
-
-        </fieldset>
 
         <!--<fieldset class="section-box mb-4">
             <h3>Emergency Contact</h3>
@@ -243,7 +239,7 @@
             <h3>Pet Pantry Information</h3>
             <p class="mb-2">Please enter the participant's Pet Pantry registration information.</p>
             <div class="blue-div"></div>
-            <label for="participant location">
+            <label for="participant_location">
                 <em>* </em>Participant Location
             </label>
             <select id="participant_location" name="participant_location" required>
@@ -259,7 +255,7 @@
             <input 
             type="date" 
             id="registration_date" 
-            name="registration_date" required
+            name="registration_date"
             value="<?php echo date('Y-m-d'); ?>"
             required>
 
@@ -291,7 +287,6 @@
               <!-- Required by backend -->
         <!--<input type="hidden" name="is_new_volunteer" value="1">
         <input type="hidden" name="total_hours_volunteered" value="0"> -->
-        </fieldset>
         
         <fieldset class="section-box mb-4">
              <h3>Participant Agreement</h3>
