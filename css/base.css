@@ -69,7 +69,7 @@ table, td, tr, th, form, fieldset, em, button, a {
 
     --main-color: #2A435A; 
 
-    --accent-color: #ffc20e;
+    --accent-color: #50bfd3;
  
     --secondary-accent-color: #00395E;
 
@@ -399,7 +399,7 @@ h1 {
     font-weight: 500;
     margin-bottom: 2rem;
 
-    background-color: var(#4d98f3);
+    background-color: var(#1f5968);
     color: var(--secondary-accent-color);
     width: 100%;
     text-align: center;

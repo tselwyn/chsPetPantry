@@ -404,7 +404,7 @@
                 
                     .content-box-test {
                         position: relative;
-                        background-color: #4d98f3;   /* tan background */
+                        background-color: #1f5968;   /* CHS dark teal */
                         border-radius: 12px;
                         padding: 20px;
                         color: white;                 /* default text color */
@@ -481,7 +481,7 @@
     <h2><b>Admin Dashboard</b></h2>
     </div>
     <div class="full-width-bar-sub">
-        <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'">
             <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
             </div>
@@ -489,7 +489,7 @@
             <div class="large-text-sub" style="color:white;">Audit Users</div>
         <div class="graph-text" style="color:white;">Add, edit, and remove user accounts and permissions.</div>
         </div>
-        <div class="content-box-test" onclick="window.location.href='createUser.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        <div class="content-box-test" onclick="window.location.href='createUser.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
         </div>
@@ -497,7 +497,7 @@
         <div class="large-text-sub" style="color:white;">Add User</div>
         <div class="graph-text" style="color:white;">Add user and set permissions.</div>
         </div>
-        <div class="content-box-test" onclick="window.location.href='deletePet.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        <div class="content-box-test" onclick="window.location.href='deletePet.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="Delete Pet Icon">
         </div>
@@ -505,7 +505,7 @@
         <div class="large-text-sub" style="color:white;">Delete Pet</div>
         <div class="graph-text" style="color:white;">Remove a pet record from the system.</div>
         </div>
-        <div class="content-box-test" onclick="window.location.href='viewItemCategories.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        <div class="content-box-test" onclick="window.location.href='viewItemCategories.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/list-solid.svg" alt="Categories Icon">
         </div>
@@ -513,7 +513,7 @@
         <div class="large-text-sub" style="color:white;">Manage Item Categories</div>
         <div class="graph-text" style="color:white;">Add, edit, and delete item categories.</div>
         </div>
-        <div class="content-box-test" onclick="window.location.href='viewConsumptionRates.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        <div class="content-box-test" onclick="window.location.href='viewConsumptionRates.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-list-alt.svg" alt="Consumption Rates Icon">
         </div>
@@ -521,7 +521,7 @@
         <div class="large-text-sub" style="color:white;">Consumption Rates</div>
         <div class="graph-text" style="color:white;">Record and calculate item consumption rates.</div>
         </div>
-        <div class="content-box-test" onclick="window.location.href='participantSearch.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        <div class="content-box-test" onclick="window.location.href='participantSearch.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/person-search.svg" alt="Participant Search Icon">
         </div>
@@ -529,7 +529,7 @@
         <div class="large-text-sub" style="color:white;">Participant Search</div>
         <div class="graph-text" style="color:white;">Find a participant by name, address, or phone.</div>
         </div>
-        <div class="content-box-test" onclick="window.location.href='participantRegister.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        <div class="content-box-test" onclick="window.location.href='participantRegister.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/add-person.svg" alt="Register Participant Icon">
         </div>
@@ -600,7 +600,7 @@
     ?>
 
     <!-- Calendar
-    <div class="content-box-test" onclick="window.location.href='calendar.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+    <div class="content-box-test" onclick="window.location.href='calendar.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/view-calendar.svg" alt="Calendar Icon">
         </div>
@@ -622,7 +622,7 @@
     </div> -->
 
     <!-- System Notifications -->
-    <!-- <div class="content-box-test" onclick="window.location.href='inbox.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+    <!-- <div class="content-box-test" onclick="window.location.href='inbox.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/<?php echo $inboxIcon ?>" alt="Notification Icon">
         </div>
@@ -642,7 +642,7 @@
    
 
     <!-- View Drafts -->
-    <!-- <div class="content-box-test" onclick="window.location.href='viewDrafts.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+    <!-- <div class="content-box-test" onclick="window.location.href='viewDrafts.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/search.svg" alt="Drafts Icon">
         </div>
@@ -653,7 +653,7 @@
     </div>
 
     Generate Email List -->
-    <!-- <div class="content-box-test" onclick="window.location.href='generateEmailList.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+    <!-- <div class="content-box-test" onclick="window.location.href='generateEmailList.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/send.png" alt="Email List Icon">
         </div>
@@ -664,7 +664,7 @@
     </div>
 
      Discussions -->
-    <!-- <div class="content-box-test" onclick="window.location.href='viewSuggestions.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+    <!-- <div class="content-box-test" onclick="window.location.href='viewSuggestions.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-regular.svg" alt="Discussions Icon">
         </div>
@@ -745,7 +745,7 @@
     <div class="full-width-bar-sub">
 
     <!-- Update Inventory -->
-    <div class="content-box-test" onclick="window.location.href='viewUpdateInventory.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+    <div class="content-box-test" onclick="window.location.href='viewUpdateInventory.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-checklist.svg" alt="Inventory Icon">
         </div>
@@ -755,7 +755,7 @@
     </div>
 
     <!-- View Inventory -->
-    <div class="content-box-test" onclick="window.location.href='inventory.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+    <div class="content-box-test" onclick="window.location.href='inventory.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-list-alt.svg" alt="Inventory Icon">
         </div>
@@ -765,7 +765,7 @@
     </div>
 
     <!-- Weekly Inventory Report -->
-    <div class="content-box-test" onclick="window.location.href='viewWeeklyReport.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+    <div class="content-box-test" onclick="window.location.href='viewWeeklyReport.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-arrow-down.svg" alt="Report Icon">
         </div>
@@ -774,7 +774,7 @@
     </div>
     
     <!-- Shopping List -->
-    <div class="content-box-test" onclick="window.location.href='viewShoppingList.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+    <div class="content-box-test" onclick="window.location.href='viewShoppingList.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-list-alt.svg" alt="Shopping List Icon">
         </div>
@@ -783,7 +783,7 @@
     </div>
 
     <!-- Inventory Analytics -->
-    <div class="content-box-test" onclick="window.location.href='generateReport.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+    <div class="content-box-test" onclick="window.location.href='generateReport.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/document-report.svg" alt="Report Icon">
         </div>
@@ -804,7 +804,7 @@
     <footer class="footer" style="margin-top: 100px;">
         <!-- Left Side: Logo & Socials -->
         <div class="footer-left">
-            <img src="images/ccda-logo-white.svg" alt="Logo" class="footer-logo">
+            <img src="images/chs-animal-logo.svg" alt="Culpeper Humane Society" class="footer-logo">
             <div class="social-icons">
                 <a href="#"><i class="fab fa-facebook"></i></a>
                 <a href="#"><i class="fab fa-twitter"></i></a>
