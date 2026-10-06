@@ -1,13 +1,6 @@
 {
-  "name": "pfpms-dev-tools",
-  "private": true,
-  "description": "Development-only JavaScript tooling for PFPMS. Nothing here is deployed. The Station's unit tests run on plain Node (node:test), with no dependencies.",
-  "license": "GPL-3.0-or-later",
-  "type": "module",
-  "engines": {
-    "node": ">=24"
-  },
-  "scripts": {
-    "test:js": "node --test --test-timeout=30000 \"tests/js/**/*.test.js\""
+  "dependencies": {
+    "@tailwindcss/cli": "^4.1.4",
+    "tailwindcss": "^4.1.4"
   }
 }
