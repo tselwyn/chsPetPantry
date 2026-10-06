@@ -72,7 +72,7 @@ if (date("H:i:s") > "18:19:59") {
 
         .full-width-bar {
             width: 100%;
-            background: #4d98f3;
+            background: #1f5968;
             padding: 17px 5%;
             display: flex;
             flex-wrap: wrap;
@@ -188,8 +188,12 @@ if (date("H:i:s") > "18:19:59") {
 
         /* seperate nav background from nav link to allow for header text to  
          * scroll onto nav bar without the text being covered by the background */
+        .navbar {
+            background-color: #1f5968 !important;
+        }
+        
         .navbar-background{
-            background: #4d98f3;
+            background: #1f5968;
             z-index: 5;
         }
 
@@ -202,15 +206,15 @@ if (date("H:i:s") > "18:19:59") {
 
         /* Logo */
         .logo-container {
-            background: #4d98f3;
-            padding: 10px 20px;
-            border-radius: 50px;
-            box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25) inset;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            box-shadow: none;
         }
 
         .logo-container img {
-            width: 52px;
-            height: 60px;
+            width: 210px;
+            height: auto;
             display: block;
         }
 
@@ -373,7 +377,7 @@ if (date("H:i:s") > "18:19:59") {
         /* Footer */
         .footer {
             width: 100%;
-            background: #4d98f3;
+            background: #1f5968;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
@@ -389,8 +393,12 @@ if (date("H:i:s") > "18:19:59") {
         }
 
         .footer-logo {
-            width: 150px; /* Adjust logo size */
+            width: 90px; /* Adjust logo size */
             margin-bottom: 15px;
+            height: auto;
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
         }
 
         /* Social Media Icons */
@@ -455,7 +463,7 @@ if (date("H:i:s") > "18:19:59") {
             top: 40px; /* Adjust as needed */
             left: 50%;
             transform: translateX(-50%);
-            background: #4d98f3; /* Optional background for better visibility */
+            background: #50bfd3; /* Optional background for better visibility */
             padding: 10px;
             border-radius: 50%;
             display: flex;
@@ -651,7 +659,7 @@ if (date("H:i:s") > "18:19:59") {
         <!-- Left Section: Logo & Nav Links -->
         <div class="left-section">
             <div class="logo-container">
-                <a href="index.php"><img src="images/ccda-logo-white.svg" alt="Logo"></a>
+                <a href="index.php"><img src="chs-logo.svg" alt="Culpeper Humane SocietyLogo"></a>
             </div>
             <div class="nav-links">
                 <div class="nav-item">
@@ -845,7 +853,7 @@ if (date("H:i:s") > "18:19:59") {
         <!-- Left Section: Logo & Nav Links -->
         <div class="left-section">
             <div class="logo-container">
-                <a href="index.php"><img src="images/ccda-logo-white.svg" alt="Logo"></a>
+                <a href="index.php"><img src="images/chs-logo.svg" alt="Culpeper Humane Society Logo"></a>
             </div>
                 <!--<a href="viewCheckInOut.php" style="color: white; text-decoration: none;"><div class="date-box">Check In/Out</div></a>-->
             <div class="nav-links">
