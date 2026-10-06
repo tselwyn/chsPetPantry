@@ -4120,6 +4120,57 @@ INSERT INTO `dbpalletevent` (`id`, `name`, `personId`, `date`, `notes`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `dbparticipants`
+--
+-- Pet Pantry participants (households). Ported from Andrew's `participant` table
+-- (pfpms/phase-0 migrations 0001 and 0006), cut down to what Sprint 1 needs, with
+-- columns for every field on registrationForm.php:
+--   first_name, last_name, street_address, city, state, zip, phone (phone1), email,
+--   preferred_language, location (participant_location), registration_date,
+--   status (participant_status), alert (participant_alert), notes,
+--   consent (participant_consent)
+-- phone holds digits only, like dbpersons.
+--
+
+CREATE TABLE `dbparticipants` (
+  `id` int NOT NULL,
+  `first_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `last_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `street_address` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `city` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `state` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `zip` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(15) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `preferred_language` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'English',
+  `location` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `registration_date` date NOT NULL,
+  `status` enum('Active','Inactive','Expired','No Service') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Active',
+  `alert` tinyint(1) NOT NULL DEFAULT '0',
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `consent` tinyint(1) NOT NULL DEFAULT '0'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `dbparticipants`
+--
+-- Fake participants for testing participant search. All names, addresses,
+-- 555 phone numbers and example.com emails are made up.
+--
+
+INSERT INTO `dbparticipants` (`id`, `first_name`, `last_name`, `street_address`, `city`, `state`, `zip`, `phone`, `email`, `preferred_language`, `location`, `registration_date`, `status`, `alert`, `notes`, `consent`) VALUES
+(1, 'Maria', 'Gonzalez', '412 Princess Anne St', 'Fredericksburg', 'VA', '22401', '5405550101', 'maria.gonzalez@example.com', 'Spanish', 'Empower', '2026-08-04', 'Active', 0, NULL, 1),
+(2, 'James', 'Whitaker', '1820 Lafayette Blvd', 'Fredericksburg', 'VA', '22401', '5405550142', 'jwhitaker@example.com', 'English', 'Senior Center', '2026-08-11', 'Active', 0, NULL, 1),
+(3, 'Dorothy', 'Banks', '75 Cowan Blvd Apt 3B', 'Fredericksburg', 'VA', '22401', '5405550178', 'dbanks@example.com', 'English', 'Home Delivery', '2026-08-18', 'Active', 1, 'Uses a walker. Leave the food on the front porch.', 1),
+(4, 'Luis', 'Hernandez', '908 Lafayette Blvd', 'Fredericksburg', 'VA', '22401', '5405550199', 'luis.hernandez@example.com', 'Spanish', 'Empower', '2026-08-25', 'Active', 0, NULL, 1),
+(5, 'Angela', 'Smith', '15 Kings Hwy', 'Fredericksburg', 'VA', '22405', '5405550223', 'angela.smith@example.com', 'English', 'Senior Center', '2026-06-02', 'Inactive', 0, 'Moved in with family, may come back in the spring.', 1),
+(6, 'Robert', 'Smith', '3302 Plank Rd', 'Fredericksburg', 'VA', '22407', '5405550256', 'rsmith@example.com', 'English', 'Empower', '2026-03-10', 'Expired', 0, NULL, 1),
+(7, 'Keisha', 'Thompson', '601 Caroline St', 'Fredericksburg', 'VA', '22401', '5405550290', 'keisha.t@example.com', 'English', 'Empower', '2026-09-01', 'Active', 0, NULL, 1),
+(8, 'Walter', 'O\'Neil', '44 William St', 'Fredericksburg', 'VA', '22401', '5405550311', 'woneil@example.com', 'English', 'Senior Center', '2026-09-15', 'No Service', 0, 'Outside the service area.', 1);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `dbpendingsignups`
 --
 
@@ -4209,6 +4260,47 @@ INSERT INTO `dbpersons` (`personId`, `id`, `first_name`, `last_name`, `email`, `
 (11, 'aconsuegra', 'Allison', 'Consuegra', 'allisonconsuegra0@gmail.com', 'Superadmin', 'Active', '$2y$10$3tWO/ffX7TlUX.qnzAW8vO4rq0ALGXOdsDnbNVq54bByQ.pS1ZIQm', 0),
 (12, 'dev', 'eron', 'hardin', 'eronhardin2002@gmail.com', 'admin', 'Deleted', '$2y$10$Jkl5e1MIk3bnfBEFXfxEC.w0.qBYH7AKzYlyLghvsnLmv9moMSMeq', 0),
 (13, 'jazmyne.bartlett@ccda.net', 'Jazmyne', 'Bartlett', 'Jazmyne.bartlett@ccda.net', 'Admin', 'Active', '$2y$10$udcW6zeb/C1MRGNGRXiy/.Ia4noOL0ZvHL33TiuJ2ociuaSVPrLzC', 0);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `dbpets`
+--
+-- Pets owned by a participant. Ported from Andrew's `pet` table (pfpms/phase-0
+-- migrations 0001 and 0006), cut down to what Sprint 1 needs. Species and breed
+-- are plain text because the starter has no species or breed tables.
+--
+
+CREATE TABLE `dbpets` (
+  `id` int NOT NULL,
+  `participant_id` int NOT NULL,
+  `name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `species` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `breed` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sex` enum('Male','Female','Unknown') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Unknown',
+  `date_of_birth` date DEFAULT NULL,
+  `dob_is_estimate` tinyint(1) NOT NULL DEFAULT '1',
+  `weight_lbs` decimal(5,1) DEFAULT NULL,
+  `is_altered` tinyint(1) NOT NULL DEFAULT '0',
+  `status` enum('Active','Inactive','Deleted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Active',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `dbpets`
+--
+
+INSERT INTO `dbpets` (`id`, `participant_id`, `name`, `species`, `breed`, `sex`, `date_of_birth`, `dob_is_estimate`, `weight_lbs`, `is_altered`, `status`, `created_at`) VALUES
+(1, 1, 'Canela', 'Dog', 'Chihuahua mix', 'Female', '2020-05-01', 1, 9.5, 1, 'Active', '2026-08-04 10:15:00'),
+(2, 2, 'Duke', 'Dog', 'Labrador Retriever', 'Male', '2018-03-01', 1, 72.0, 1, 'Active', '2026-08-11 11:02:00'),
+(3, 3, 'Mittens', 'Cat', 'Domestic Shorthair', 'Female', '2016-01-01', 1, 10.0, 1, 'Active', '2026-08-18 13:40:00'),
+(4, 3, 'Socks', 'Cat', 'Domestic Shorthair', 'Male', '2017-06-01', 1, 12.5, 1, 'Active', '2026-08-18 13:41:00'),
+(5, 4, 'Rocky', 'Dog', 'Pit Bull mix', 'Male', '2022-09-01', 1, 55.0, 0, 'Active', '2026-08-25 09:30:00'),
+(6, 4, 'Luna', 'Cat', NULL, 'Female', NULL, 1, 8.0, 0, 'Active', '2026-08-25 09:31:00'),
+(7, 5, 'Biscuit', 'Dog', 'Beagle', 'Male', '2019-04-01', 1, 24.0, 1, 'Inactive', '2026-06-02 14:20:00'),
+(8, 6, 'Shadow', 'Cat', NULL, 'Male', NULL, 1, NULL, 1, 'Active', '2026-03-10 10:05:00'),
+(9, 7, 'Peanut', 'Dog', 'Dachshund', 'Female', '2021-11-01', 0, 11.0, 1, 'Active', '2026-09-01 15:45:00'),
+(10, 7, 'Oreo', 'Cat', 'Domestic Longhair', 'Male', '2023-02-01', 1, 9.0, 0, 'Active', '2026-09-01 15:46:00');
 
 -- --------------------------------------------------------
 
@@ -4821,6 +4913,15 @@ ALTER TABLE `dbpalletevent`
   ADD UNIQUE KEY `name` (`name`);
 
 --
+-- Indexes for table `dbparticipants`
+--
+ALTER TABLE `dbparticipants`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `name` (`last_name`,`first_name`),
+  ADD KEY `phone` (`phone`),
+  ADD KEY `zip` (`zip`);
+
+--
 -- Indexes for table `dbpersonhours`
 --
 ALTER TABLE `dbpersonhours`
@@ -4833,6 +4934,13 @@ ALTER TABLE `dbpersonhours`
 ALTER TABLE `dbpersons`
   ADD PRIMARY KEY (`personId`),
   ADD UNIQUE KEY `id` (`id`);
+
+--
+-- Indexes for table `dbpets`
+--
+ALTER TABLE `dbpets`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `participant_id` (`participant_id`,`status`);
 
 --
 -- Indexes for table `dbscheduledemails`
@@ -4990,10 +5098,22 @@ ALTER TABLE `dbpalletevent`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
+-- AUTO_INCREMENT for table `dbparticipants`
+--
+ALTER TABLE `dbparticipants`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
 -- AUTO_INCREMENT for table `dbpersons`
 --
 ALTER TABLE `dbpersons`
   MODIFY `personId` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+--
+-- AUTO_INCREMENT for table `dbpets`
+--
+ALTER TABLE `dbpets`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `dbscheduledemails`
@@ -5048,6 +5168,16 @@ ALTER TABLE `monthly_hours_snapshot`
 --
 ALTER TABLE `user_verified_ids`
   MODIFY `record_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `dbpets`
+--
+ALTER TABLE `dbpets`
+  ADD CONSTRAINT `fk_dbpets_participant_id` FOREIGN KEY (`participant_id`) REFERENCES `dbparticipants` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

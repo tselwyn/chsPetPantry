@@ -521,6 +521,14 @@
         <div class="large-text-sub" style="color:white;">Consumption Rates</div>
         <div class="graph-text" style="color:white;">Record and calculate item consumption rates.</div>
         </div>
+        <div class="content-box-test" onclick="window.location.href='participantSearch.php'" style="background-color: #4d98f3; border-radius: 12px; padding: 20px; color: white;">
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/person-search.svg" alt="Participant Search Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Participant Search</div>
+        <div class="graph-text" style="color:white;">Find a participant by name, address, or phone.</div>
+        </div>
             </div>
 <!--
         <div class="nav-buttons">
