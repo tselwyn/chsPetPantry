@@ -1,13 +1,5 @@
 # PFPMS – Reusable Functions from chsPetPantry
 
-> **Corrections (Sept 2026, after code review; see `docs/design/04-analysis-data-layer.md`).** The legacy files now live in `legacy/` (reference only). Port logic from them into `src/`; never include them.
-> - **Do not reuse `sanitize`, `_sanitize`, `sql_safe_input` or `sql_safe_associative_array`.** They store HTML entities in the data and do not protect against SQL injection. Use prepared statements, and escape on output with `e()`.
-> - **Do not reuse `emailEncryption.php`.** It is AES-CBC with no MAC and its key was committed to the repo. It was deleted in Phase 0. Use `Security/Crypto` (AES-256-GCM).
-> - `database/dbinfo.php` was deleted (it held production credentials); `src/Db.php` replaces it. `dbLog.php` and `dbEditLog.php` are broken, and `audit_log` replaces them.
-> - `export_data` does not use PhpSpreadsheet: it writes a fixed CSV into the web root and calls an undefined function. `calculate_age` parses 2-digit years. Replace both.
-> - Several validators need fixes before porting. The list is in `docs/PFPMS_Implementation_Plan.md` §7.
-> - The consumption table is spelled `dbcomsumption` in the legacy DB. The "Templates" rows below target the v1 draft tables (`distribution_visit`, `alert`, `participant_status_log`), which v2 replaced.
-
 Functions in the existing chsPetPantry code that are worth keeping or adapting for PFPMS, grouped by the ERD entity they serve. "Adapt" means the pattern carries over but the table or columns change.
 
 ## Users / Authentication (`dbpersons`) — `database/dbPersons.php`
