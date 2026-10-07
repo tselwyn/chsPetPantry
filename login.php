@@ -79,116 +79,71 @@
     //Had this line under login button, took user to register page
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
+        <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<script src="https://cdn.tailwindcss.com"></script>
-    	<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;700&display=swap" rel="stylesheet">
-	<style>
-/* Found this on codepen :D */
-.wave {
-  animation-name: wave-animation;  /* Refers to the name of your @keyframes element below */
-  animation-duration: 2.5s;        /* Change to speed up or slow down */
-  animation-iteration-count: infinite;  /* Never stop waving :) */
-  transform-origin: 70% 70%;       /* Pivot around the bottom-left palm */
-  display: inline-block;
-}
-
-@keyframes wave-animation {
-    0% { transform: rotate( 0.0deg) }
-   10% { transform: rotate(14.0deg) }  /* The following five values can be played with to make the waving more or less extreme */
-   20% { transform: rotate(-8.0deg) }
-   30% { transform: rotate(14.0deg) }
-   40% { transform: rotate(-4.0deg) }
-   50% { transform: rotate(10.0deg) }
-   60% { transform: rotate( 0.0deg) }  /* Reset for the last half to pause */
-  100% { transform: rotate( 0.0deg) }
-}
-* { font-family: Quicksand, sans-serif; }
-	</style>
-        <title>CCDA | Log In</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;700&display=swap" rel="stylesheet">
+        <style>
+            /* Same font as the dashboard (index.php) */
+            * { font-family: Quicksand, sans-serif; }
+        </style>
+        <title>CHS Pet Pantry | Log In</title>
     </head>
-    <body>
-<div class="h-screen flex">
+    <!-- CHS dark teal background, matching the dashboard navbar and footer -->
+    <body class="min-h-screen bg-[#1f5968] flex flex-col items-center justify-center px-4 py-10">
 
-  <!-- Left: Image Section (Hidden on small screens) -->
-  <div class="hidden md:block md:w-1/2 bg-center rounded-r-[50px] bg-[#00395E]">
-      <img src="images/ccda-logo-white.svg"
-            alt="Tanya Time"
-            style="position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); height: 35%"
-            >
-  </div>
+        <!-- Login card -->
+        <main class="w-full max-w-md bg-white rounded-xl shadow-xl px-8 py-10 sm:px-10">
 
-  <!-- Right: Form Section -->
+            <!-- CHS logo -->
+            <div class="flex justify-center mb-6">
+                <img src="images/chs-logo.svg"
+                     alt="Culpeper Humane Society"
+                     class="w-56 h-auto">
+            </div>
 
-  <div class="w-full md:w-1/2 flex flex-col justify-center items-center bg-white relative ">
+            <h1 class="text-2xl font-bold text-[#1f5968] text-center">Pet Pantry Log In</h1>
+            <p class="mt-1 mb-6 text-gray-600 text-center">Keeping pets fed and families together.</p>
 
-
-    <div class="w-2/3 max-w-md flex flex-col items-center">
-
-      <!-- Logo Placeholder (Now the same width as inputs and centered) -->
-      <div class="w-full flex justify-center mb-6">
-        <img src="images/CCDA-Logo-scaled.jpg"
-             alt="Logo"
-             class="w-full max-w-xs">
-      </div>
-
-          <h2 class="text-3xl font-bold mb-2 text-gray-800 text-center">
-	<span class="wave">👋</span> Welcome to the CHS Pet Pantry
-      </h2>
-
-      <p class="text-lg text-[#22654D] font-medium mb-2 text-center">
-        Keeping pets fed and families together.
-      </p>
-
-      <p class="text-sm text-gray-600 mb-6 text-center">
-        Enter your username and password below. Contact a Pet Pantry volunteer if you need an account.
-      </p>
-
-      <form class="w-full" method="post">
+            <form method="post">
                 <?php
                     if ($badLogin) {
-                        echo '<span class="text-white bg-red-700 text-center block p-2 rounded-lg mb-2">No login with that username and password combination currently exists.</span>';
+                        echo '<div role="alert" class="mb-4 p-3 rounded-lg border-l-4 border-red-600 bg-red-50 text-red-800 text-sm font-medium">No login with that username and password combination currently exists.</div>';
                     }
                     if ($archivedAccount) {
-                        echo '<span class="text-white bg-red-700 block p-2 rounded-lg mb-2">This account has either been archived or not yet approved by managment. For help, notify your administrator.</a>.</span>';
+                        echo '<div role="alert" class="mb-4 p-3 rounded-lg border-l-4 border-red-600 bg-red-50 text-red-800 text-sm font-medium">This account has either been archived or not yet approved by management. For help, notify your administrator.</div>';
                     }
-		    if (isset($_GET['registerSuccess'])) {
-                        echo '<span class="text-white text-center bg-green-700 block p-2 rounded-lg mb-2">Registration Successful! Please login below.</span>';
-		    } 
+                    if (isset($_GET['registerSuccess'])) {
+                        echo '<div role="status" class="mb-4 p-3 rounded-lg border-l-4 border-green-600 bg-green-50 text-green-800 text-sm font-medium">Registration Successful! Please login below.</div>';
+                    }
                 ?>
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2" for="username">Login</label>
-          <input class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400" type="text" name="username" placeholder="Enter your username" required>
-        </div>
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2" for="password">Password</label>
-          <input class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400" type="password" name="password" placeholder="Enter your password" required>
-        </div>
-        <div class="flex justify-between items-center mb-4">
-          <a href="forgotPassword.php" class="text-[#22654D] text-sm hover:underline">Forgot password?</a>
-          <!--<a href="https://whiskeyvalor.org" class="text-[#22654D] text-sm hover:underline">Whiskey Valor Website</a> -->
-        </div>
-        <button class="cursor-pointer w-full bg-[#ffc20e] hover:bg-[#4d98f3] text-white font-semibold py-3 rounded-lg transition duration-300" style="background-color: --accent-color;">Login</button>
-      </form>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-1" for="username">Username</label>
+                    <input class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:border-[#50bfd3] focus:ring-2 focus:ring-[#50bfd3]" type="text" id="username" name="username" placeholder="Enter your username" autocomplete="username" required>
+                </div>
+                <div class="mb-2">
+                    <label class="block text-gray-700 font-semibold mb-1" for="password">Password</label>
+                    <input class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:border-[#50bfd3] focus:ring-2 focus:ring-[#50bfd3]" type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+                </div>
+                <div class="flex justify-end mb-6">
+                    <a href="forgotPassword.php" class="text-[#1f5968] text-sm font-medium hover:underline">Forgot password?</a>
+                </div>
+                <button class="cursor-pointer w-full bg-[#1f5968] hover:bg-[#17444f] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#50bfd3] text-white font-semibold py-3 rounded-lg transition duration-300">Log In</button>
+            </form>
 
-      <!-- Divider -->
-   <!--   <div class="flex items-center my-6 w-full">
-        <div class="flex-grow border-t border-gray-300"></div>
-        <span class="mx-4 text-gray-500">or</span>
-        <div class="flex-grow border-t border-gray-300"></div>
-      </div> -->
+            <!-- Sign Up Section -->
+            <!--   <p class="mt-6 text-center text-gray-700">
+                Don’t have an account?
+                <a href="VolunteerRegister.php" class="text-[#1f5968] font-semibold hover:underline">Sign Up Now</a>
+            </p>-->
 
-      <!-- Sign Up Section -->
-   <!--   <p class="text-center text-gray-700">
-        Don’t have an account?
-        <a href="VolunteerRegister.php" class="text-[#22654D] font-semibold hover:underline">Sign Up Now</a>
-      </p>-->
+        </main>
 
-    </div>
-  </div>
-
-</div>
+        <p class="mt-6 max-w-md text-center text-sm text-[#cdeef4]">
+            Need an account? Contact a Pet Pantry volunteer.
+        </p>
 
     </body>
 </html>
