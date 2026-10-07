@@ -1,0 +1,258 @@
+<?php
+declare(strict_types=1);
+
+namespace Pfpms\Participant;
+
+use Pfpms\Db;
+use Pfpms\Text\Fold;
+
+/** SQL for participant search (UC-02). Prepared statements only; returns plain arrays. */
+final class ParticipantRepository
+{
+    /** Longest search text accepted (Validator::text). */
+    public const MAX_TERM = 100;
+
+    /** Match tiers, best first (plan P3: code > exact legal or preferred name > prefix > phonetic surname > partial). */
+    public const RANK_CODE = 1;
+    public const RANK_EXACT = 2;
+    public const RANK_PREFIX = 3;
+    public const RANK_PHONETIC = 4;
+    public const RANK_PARTIAL = 5;
+
+    /** Minimal fields for a result row: no address, phone, date of birth or notes (UC-02). */
+    private const COLUMNS = 'p.participant_id, p.participant_code, p.legal_first_name, p.legal_last_name, p.preferred_name, p.status,
+        p.last_distribution_date, (SELECT COUNT(*) FROM pet pt WHERE pt.participant_id = p.participant_id AND pt.status = \'Active\') AS pet_count';
+
+    /**
+     * Participants registered at $siteId matching $term over legal and preferred names, phone and participant code, best match first.
+     * Merged records never show; Deleted ones only with $includeDeleted (Administrators).
+     * @return array{rows: list<array>, truncated: bool} at most $limit rows; truncated when more matched
+     */
+    public static function search(int $siteId, string $term, int $limit, bool $includeDeleted = false): array
+    {
+        $limit = max(1, min(1000, $limit));
+        $tiers = self::tiers($term);
+        if ($tiers === []) {
+            return ['rows' => [], 'truncated' => false];
+        }
+        $case = [];
+        $rankArgs = [];
+        $where = [];
+        $whereArgs = [];
+        foreach ($tiers as [$rank, $sql, $args]) {
+            $case[] = "WHEN $sql THEN $rank";
+            $where[] = $sql;
+            array_push($rankArgs, ...$args);
+            array_push($whereArgs, ...$args);
+        }
+        $statuses = $includeDeleted ? "'Active', 'Inactive', 'Deleted'" : "'Active', 'Inactive'";
+        $st = Db::pdo()->prepare(
+            'SELECT ' . self::COLUMNS . ', CASE ' . implode(' ', $case) . ' END AS match_rank
+               FROM participant p
+               JOIN participant_site ps ON ps.participant_id = p.participant_id AND ps.site_id = ?
+              WHERE p.status IN (' . $statuses . ') AND (' . implode(' OR ', $where) . ')
+              ORDER BY match_rank, p.legal_last_name, p.legal_first_name, p.participant_id
+              LIMIT ' . ($limit + 1)
+        );
+        $st->execute(array_merge($rankArgs, [$siteId], $whereArgs));
+        return self::capped($st->fetchAll(), $limit);
+    }
+
+    /** The site's Open distribution event on $today (its site-local date), or null; there is at most one (plan P3). */
+    public static function openEvent(int $siteId, string $today): ?array
+    {
+        $st = Db::pdo()->prepare("SELECT event_id, event_date, starts_at, ends_at FROM distribution_event
+                                   WHERE site_id = ? AND status = 'Open' AND event_date = ? ORDER BY event_id DESC LIMIT 1");
+        $st->execute([$siteId, $today]);
+        return $st->fetch() ?: null;
+    }
+
+    /**
+     * Households checked in to $eventId (US-04), in queue order, with checked_in_at (UTC) and the check-in outcome.
+     * @return array{rows: list<array>, truncated: bool}
+     */
+    public static function checkIns(int $siteId, int $eventId, int $limit): array
+    {
+        $limit = max(1, min(1000, $limit));
+        $st = Db::pdo()->prepare(
+            'SELECT ' . self::COLUMNS . ', c.checked_in_at, c.outcome
+               FROM event_check_in c
+               JOIN participant p ON p.participant_id = c.participant_id
+               JOIN participant_site ps ON ps.participant_id = p.participant_id AND ps.site_id = ?
+              WHERE c.event_id = ? AND p.status IN (\'Active\', \'Inactive\')
+              ORDER BY c.checked_in_at, c.check_in_id
+              LIMIT ' . ($limit + 1)
+        );
+        $st->execute([$siteId, $eventId]);
+        return self::capped($st->fetchAll(), $limit);
+    }
+
+    /**
+     * Households served at one of $siteId's events on or after $since (a site-local date), most recently served first,
+     * with served_here, their latest such date. Reversed distributions do not count. Households checked in to
+     * $exceptEventId are left out (they are listed above, US-04).
+     * @return array{rows: list<array>, truncated: bool}
+     */
+    public static function recentlyServed(int $siteId, string $since, int $limit, ?int $exceptEventId = null): array
+    {
+        $limit = max(1, min(1000, $limit));
+        $st = Db::pdo()->prepare(
+            'SELECT ' . self::COLUMNS . ', s.served_here
+               FROM (SELECT d.participant_id, MAX(d.local_date) AS served_here
+                       FROM distribution d
+                       JOIN distribution_event e ON e.event_id = d.event_id AND e.site_id = ?
+                      WHERE d.local_date >= ? AND d.reverses_distribution_id IS NULL
+                        AND NOT EXISTS (SELECT 1 FROM distribution r WHERE r.reverses_distribution_id = d.distribution_id)
+                      GROUP BY d.participant_id) s
+               JOIN participant p ON p.participant_id = s.participant_id
+               JOIN participant_site ps ON ps.participant_id = p.participant_id AND ps.site_id = ?
+              WHERE p.status IN (\'Active\', \'Inactive\')
+                AND NOT EXISTS (SELECT 1 FROM event_check_in c WHERE c.event_id = ? AND c.participant_id = p.participant_id)
+              ORDER BY s.served_here DESC, p.legal_last_name, p.legal_first_name, p.participant_id
+              LIMIT ' . ($limit + 1)
+        );
+        $st->execute([$siteId, $since, $siteId, $exceptEventId ?? 0]);
+        return self::capped($st->fetchAll(), $limit);
+    }
+
+    /**
+     * @param list<array> $rows up to $limit + 1 rows
+     * @return array{rows: list<array>, truncated: bool}
+     */
+    private static function capped(array $rows, int $limit): array
+    {
+        return ['rows' => array_slice($rows, 0, $limit), 'truncated' => count($rows) > $limit];
+    }
+
+    /**
+     * The match tiers for $term as [rank, SQL condition, args], in rank order. Names compare under the column collation
+     * (utf8mb4_unicode_520_ci), so case and accents do not matter.
+     * @return list<array{0: int, 1: string, 2: list<string>}>
+     */
+    private static function tiers(string $term): array
+    {
+        $tiers = [];
+        $partial = null;
+        $code = self::codeOf($term);
+        if ($code !== null) {
+            $tiers[] = [self::RANK_CODE, 'p.participant_code = ?', [$code]];
+        }
+        $words = self::words($term);
+        if ($words !== []) {
+            $name = implode(' ', $words);
+            // Exact legal or preferred name (US-05): either name alone, or with the surname in either order.
+            $tiers[] = [self::RANK_EXACT, '(p.legal_first_name = ? OR p.legal_last_name = ? OR p.preferred_name = ?
+                OR CONCAT(p.legal_first_name, \' \', p.legal_last_name) = ? OR CONCAT(p.legal_last_name, \' \', p.legal_first_name) = ?
+                OR CONCAT(p.preferred_name, \' \', p.legal_last_name) = ? OR CONCAT(p.legal_last_name, \' \', p.preferred_name) = ?)',
+                array_fill(0, 7, $name)];
+            $tiers[] = self::everyWord(self::RANK_PREFIX, $words, fn(string $w): string => self::like($w) . '%');
+            $phonetic = self::phonetic($words);
+            if ($phonetic !== null) {
+                $tiers[] = $phonetic;
+            }
+            $partial = self::everyWord(self::RANK_PARTIAL, $words, fn(string $w): string => '%' . self::like($w) . '%');
+        }
+        $phone = self::phoneDigits($term);
+        if ($phone !== null) {
+            $tiers[] = [self::RANK_PARTIAL, 'p.phone LIKE ?', ['%' . $phone . '%']];
+        }
+        if ($partial !== null) {
+            $tiers[] = $partial; // after the phone tier: both rank as partial
+        }
+        return $tiers;
+    }
+
+    /**
+     * Each word must match the legal first or last name, or the preferred name (US-05), with $pattern.
+     * @param list<string> $words
+     * @return array{0: int, 1: string, 2: list<string>}
+     */
+    private static function everyWord(int $rank, array $words, callable $pattern): array
+    {
+        $parts = [];
+        $args = [];
+        foreach ($words as $word) {
+            $parts[] = '(p.legal_first_name LIKE ? OR p.legal_last_name LIKE ? OR p.preferred_name LIKE ?)';
+            $like = $pattern($word);
+            array_push($args, $like, $like, $like);
+        }
+        return [$rank, '(' . implode(' AND ', $parts) . ')', $args];
+    }
+
+    /**
+     * The sound-alike tier (US-06; UC-02 phonetic surname match): each word starts a name, as in the prefix tier, or sounds
+     * like a word of the surname. surname_phonetic holds Fold::phonetic(legal_last_name), the Station's key (50-design
+     * §11.3), so "Smyth" finds "Smith" and "Jonson" finds "Johnson" here and offline alike. A search with no word long
+     * enough to key (phoneticKeys) has no phonetic tier. The column is only read here, never written.
+     * @param list<string> $words
+     * @return ?array{0: int, 1: string, 2: list<string>}
+     */
+    private static function phonetic(array $words): ?array
+    {
+        $parts = [];
+        $args = [];
+        $keyed = false;
+        foreach ($words as $word) {
+            $like = self::like($word) . '%';
+            $sql = 'p.legal_first_name LIKE ? OR p.legal_last_name LIKE ? OR p.preferred_name LIKE ?';
+            array_push($args, $like, $like, $like);
+            foreach (self::phoneticKeys($word) as $key) {
+                $sql .= ' OR CONCAT(\' \', p.surname_phonetic, \' \') LIKE ?';
+                $args[] = '% ' . $key . ' %';
+                $keyed = true;
+            }
+            $parts[] = "($sql)";
+        }
+        return $keyed ? [self::RANK_PHONETIC, '(' . implode(' AND ', $parts) . ')', $args] : null;
+    }
+
+    /**
+     * The phonetic keys of a search word, as Fold::phonetic() gives them: one per folded word in it ("Peña-Ruiz" gives
+     * P500 and R200), skipping folded words of fewer than 3 letters ("Jo", or the "l" and "e" of "L_e"), which match too much.
+     * @return list<string>
+     */
+    public static function phoneticKeys(string $word): array
+    {
+        $keys = [];
+        foreach (explode(' ', Fold::fold($word)) as $part) {
+            if (strlen((string) preg_replace('/[^a-z]/', '', $part)) >= 3) {
+                $keys[] = Fold::phonetic($part);
+            }
+        }
+        return $keys;
+    }
+
+    /** "P12", "p 12", "P-12" or a bare number of up to 9 digits → "P12"; else null. */
+    public static function codeOf(string $term): ?string
+    {
+        return preg_match('/^\s*[Pp]?\s*-?\s*0*(\d{1,9})\s*$/', $term, $m) ? 'P' . $m[1] : null;
+    }
+
+    /** The digits of a phone-like term (digits, spaces, ( ) . - +), at least 4 of them, without a leading US "1"; else null. */
+    public static function phoneDigits(string $term): ?string
+    {
+        if (!preg_match('/^[\d\s().+-]+$/', $term)) {
+            return null;
+        }
+        $digits = (string) preg_replace('/\D/', '', $term);
+        if (strlen($digits) === 11 && $digits[0] === '1') {
+            $digits = substr($digits, 1);
+        }
+        return strlen($digits) >= 4 ? $digits : null;
+    }
+
+    /**
+     * The name words of $term: split on spaces and commas ("Munoz, Jose"), keeping words with a letter in them.
+     * @return list<string>
+     */
+    public static function words(string $term): array
+    {
+        $words = preg_split('/[\s,]+/u', trim($term), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        return array_values(array_filter($words, fn(string $w): bool => (bool) preg_match('/\p{L}/u', $w)));
+    }
+
+    private static function like(string $value): string
+    {
+        return addcslashes($value, '%_\\');
+    }
+}
