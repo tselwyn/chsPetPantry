@@ -78,11 +78,73 @@ function add_participant($participant) {
 }
 
 /*
- * Find participants by name, address, or phone number with one search term.
+ * The Participant with the given id, or null if there is none
+ */
+function retrieve_participant($id) {
+    $con = connect();
+    $participant = null;
+    $stmt = mysqli_prepare($con, 'SELECT * FROM dbparticipants WHERE id = ?');
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, 'i', $id);
+        mysqli_stmt_execute($stmt);
+        $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        if ($row) {
+            $participant = make_a_participant($row);
+        }
+        mysqli_stmt_close($stmt);
+    }
+    mysqli_close($con);
+    return $participant;
+}
+
+/*
+ * Save a Participant's editable fields to its dbparticipants row. The id,
+ * registration date and consent are never changed. Returns true if the update ran.
+ */
+function update_participant($participant) {
+    $query = 'UPDATE dbparticipants SET first_name = ?, last_name = ?, street_address = ?, city = ?, '
+        . 'state = ?, zip = ?, phone = ?, email = ?, preferred_language = ?, location = ?, status = ?, '
+        . 'alert = ?, notes = ? WHERE id = ?';
+    $args = [
+        $participant->get_first_name(),
+        $participant->get_last_name(),
+        $participant->get_street_address(),
+        $participant->get_city(),
+        $participant->get_state(),
+        $participant->get_zip(),
+        $participant->get_phone(),
+        $participant->get_email(),
+        $participant->get_preferred_language(),
+        $participant->get_location(),
+        $participant->get_status(),
+        $participant->get_alert(),
+        $participant->get_notes(),
+        $participant->get_id()
+    ];
+
+    $con = connect();
+    $updated = false;
+    try {
+        $stmt = mysqli_prepare($con, $query);
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'sssssssssssisi', ...$args);
+            $updated = mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $updated = false;
+    }
+    mysqli_close($con);
+    return $updated;
+}
+
+/*
+ * Find participants by ID, name, address, or phone number with one search term.
+ *   - ID: a term of only digits (or # and digits) matches that participant ID
  *   - name: every word of the term must appear in the first or last name
  *   - address: every word must appear in the street address, city, state, or zip
  *   - phone: a term of only phone characters with 4+ digits matches the phone digits
- * Best matches come first: exact name, then name starts with the words, then phone,
+ * Best matches come first: ID, then exact name, then name starts with the words, then phone,
  * then partial name, then address. Returns up to $limit + 1 Participants so the
  * caller can tell when more than $limit matched.
  */
@@ -90,7 +152,8 @@ function find_participants($term, $limit = 100) {
     $term = trim($term);
     $words = participant_search_words($term);
     $phone = participant_phone_digits($term);
-    if (count($words) == 0 && $phone === null) {
+    $id = preg_match('/^#?(\d{1,9})$/', $term, $idMatch) ? (int) $idMatch[1] : null;
+    if (count($words) == 0 && $phone === null && $id === null) {
         return [];
     }
 
@@ -116,6 +179,9 @@ function find_participants($term, $limit = 100) {
 
     // Each entry: [rank, SQL condition, arguments]
     $tiers = [];
+    if ($id !== null) {
+        $tiers[] = [0, 'p.id = ?', [$id]];
+    }
     if (count($words) > 0) {
         $tiers[] = [1, $exactCondition, $exactArgs];
         $tiers[] = [2, '(' . implode(' AND ', $prefixParts) . ')', $prefixArgs];

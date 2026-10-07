@@ -81,6 +81,17 @@ require_once('header.php');
         .main-content-box table thead.bg-blue-400 th {
             background-color: #1F1F21 !important;
         }
+
+        .main-content-box table a.participant-edit-link {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            background-color: #C9AB81;
+            color: #1F1F21 !important;
+            font-weight: bold;
+            white-space: nowrap;
+            text-decoration: none;
+        }
 </style>
 <!-- BANDAID END, REMOVE ONCE SOME GENIUS FIXES -->
 </head>
@@ -97,7 +108,7 @@ require_once('header.php');
 
         <div class="text-center mb-8">
             <h2>Find a Participant</h2>
-            <p class="sub-text">Search Pet Pantry participants by name, address, or phone number.</p>
+            <p class="sub-text">Search Pet Pantry participants by ID, name, address, or phone number. Select View / Update beside a participant to see or change their information.</p>
         </div>
 
         <form id="participant-search" class="space-y-6" method="get">
@@ -105,7 +116,7 @@ require_once('header.php');
         <?php
             if ($term !== null) {
                 if ($term === '') {
-                    echo '<div class="error-block">Enter a name, address, or phone number to search.</div>';
+                    echo '<div class="error-block">Enter an ID, name, address, or phone number to search.</div>';
                 } else if (mb_strlen($term) > PARTICIPANT_SEARCH_MAX_LENGTH) {
                     echo '<div class="error-block">Use at most ' . PARTICIPANT_SEARCH_MAX_LENGTH . ' characters.</div>';
                 } else {
@@ -123,6 +134,7 @@ require_once('header.php');
                             <table>
                                 <thead class="bg-blue-400">
                                     <tr>
+                                        <th>ID</th>
                                         <th>First</th>
                                         <th>Last</th>
                                         <th>Address</th>
@@ -131,6 +143,7 @@ require_once('header.php');
                                         <th>Status</th>
                                         <th>Pets</th>
                                         <th>Registered</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>';
@@ -139,6 +152,7 @@ require_once('header.php');
                             $registered = date('M j, Y', strtotime($participant->get_registration_date()));
                             echo '
                                     <tr>
+                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="text-blue-700 underline">' . (int) $participant->get_id() . '</a></td>
                                         <td>' . hsc($participant->get_first_name()) . $alert . '</td>
                                         <td>' . hsc($participant->get_last_name()) . '</td>
                                         <td>' . hsc($participant->get_full_address()) . '</td>
@@ -147,6 +161,7 @@ require_once('header.php');
                                         <td>' . hsc($participant->get_status()) . '</td>
                                         <td>' . $participant->get_pet_count() . '</td>
                                         <td>' . hsc($registered) . '</td>
+                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">View / Update</a></td>
                                     </tr>';
                         }
                         echo '
@@ -162,8 +177,8 @@ require_once('header.php');
         ?>
 
             <div>
-                <label for="q">Name, Address, or Phone Number</label>
-                <input type="text" id="q" name="q" class="w-full" maxlength="<?php echo PARTICIPANT_SEARCH_MAX_LENGTH; ?>" value="<?php if ($term !== null) echo hsc($term); ?>" placeholder="Ex. Maria Gonzalez, 412 Princess Anne St, or 540-555-0101" autofocus>
+                <label for="q">ID, Name, Address, or Phone Number</label>
+                <input type="text" id="q" name="q" class="w-full" maxlength="<?php echo PARTICIPANT_SEARCH_MAX_LENGTH; ?>" value="<?php if ($term !== null) echo hsc($term); ?>" placeholder="Ex. 12, Maria Gonzalez, 412 Princess Anne St, or 540-555-0101" autofocus>
             </div>
 
             <div class="text-center pt-4">
@@ -180,7 +195,7 @@ require_once('header.php');
     <div class="info-section">
         <div class="blue-div"></div>
         <p class="info-text">
-            Use this tool to look up a Pet Pantry participant by first or last name, street address, city, zip code, or phone number.
+            Use this tool to look up a Pet Pantry participant by ID, first or last name, street address, city, zip code, or phone number.
         </p>
     </div>
 </main>
