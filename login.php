@@ -106,17 +106,17 @@
 }
 * { font-family: Quicksand, sans-serif; }
 	</style>
-        <title>CCDA | Log In</title>
+        <title>CHS Pet Pantry | Log In</title>
     </head>
     <body>
 <div class="h-screen flex">
 
   <!-- Left: Image Section (Hidden on small screens) -->
-  <div class="hidden md:block md:w-1/2 bg-center rounded-r-[50px] bg-[#00395E]">
-      <img src="images/ccda-logo-white.svg"
-            alt="Tanya Time"
-            style="position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); height: 35%"
-            >
+  <div class="hidden md:flex md:w-1/2 flex-col justify-center items-center rounded-r-[50px] bg-[#1f5968]">
+      <img src="images/chs-animal-logo.svg"
+            alt="Culpeper Humane Society"
+            style="height: 35%">
+      <p class="mt-6 text-3xl font-bold text-[#50bfd3] text-center">Pet Pantry</p>
   </div>
 
   <!-- Right: Form Section -->
@@ -128,8 +128,8 @@
 
       <!-- Logo Placeholder (Now the same width as inputs and centered) -->
       <div class="w-full flex justify-center mb-6">
-        <img src="images/CCDA-Logo-scaled.jpg"
-             alt="Logo"
+        <img src="images/chs-logo.svg"
+             alt="Culpeper Humane Society Logo"
              class="w-full max-w-xs">
       </div>
 
@@ -137,7 +137,7 @@
 	<span class="wave">👋</span> Welcome to the CHS Pet Pantry
       </h2>
 
-      <p class="text-lg text-[#22654D] font-medium mb-2 text-center">
+      <p class="text-lg text-[#1f5968] font-medium mb-2 text-center">
         Keeping pets fed and families together.
       </p>
 
@@ -159,17 +159,17 @@
                 ?>
         <div class="mb-4">
           <label class="block text-gray-700 font-medium mb-2" for="username">Login</label>
-          <input class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400" type="text" name="username" placeholder="Enter your username" required>
+          <input class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#50bfd3]" type="text" name="username" placeholder="Enter your username" required>
         </div>
         <div class="mb-4">
           <label class="block text-gray-700 font-medium mb-2" for="password">Password</label>
-          <input class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400" type="password" name="password" placeholder="Enter your password" required>
+          <input class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#50bfd3]" type="password" name="password" placeholder="Enter your password" required>
         </div>
         <div class="flex justify-between items-center mb-4">
-          <a href="forgotPassword.php" class="text-[#22654D] text-sm hover:underline">Forgot password?</a>
-          <!--<a href="https://whiskeyvalor.org" class="text-[#22654D] text-sm hover:underline">Whiskey Valor Website</a> -->
+          <a href="forgotPassword.php" class="text-[#1f5968] text-sm hover:underline">Forgot password?</a>
+          <!--<a href="https://whiskeyvalor.org" class="text-[#1f5968] text-sm hover:underline">Whiskey Valor Website</a> -->
         </div>
-        <button class="cursor-pointer w-full bg-[#ffc20e] hover:bg-[#4d98f3] text-white font-semibold py-3 rounded-lg transition duration-300" style="background-color: --accent-color;">Login</button>
+        <button class="cursor-pointer w-full bg-[#1f5968] hover:bg-[#17444f] focus:outline-none focus:ring-2 focus:ring-[#50bfd3] text-white font-semibold py-3 rounded-lg transition duration-300">Login</button>
       </form>
 
       <!-- Divider -->
@@ -182,7 +182,7 @@
       <!-- Sign Up Section -->
    <!--   <p class="text-center text-gray-700">
         Don’t have an account?
-        <a href="VolunteerRegister.php" class="text-[#22654D] font-semibold hover:underline">Sign Up Now</a>
+        <a href="VolunteerRegister.php" class="text-[#1f5968] font-semibold hover:underline">Sign Up Now</a>
       </p>-->
 
     </div>
