@@ -562,7 +562,7 @@
         </div>
 
         <div class="large-text-sub" style="color:white;">Participant Search</div>
-        <div class="graph-text" style="color:white;">Find a participant by name, address, or phone.</div>
+        <div class="graph-text" style="color:white;">Find a participant by ID, name, address, or phone.</div>
         </div>
         <div class="content-box-test" onclick="window.location.href='participantRegister.php'" >
         <div class="icon-overlay">
@@ -581,6 +581,13 @@
 
         <div class="large-text-sub" style="color:white;">Register Pet</div>
         <div class="graph-text" style="color:white;">Add a pet to an existing participant.</div>
+        <div class="content-box-test" onclick="window.location.href='participantEdit.php'" >
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/user-square.svg" alt="View / Update Participant Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">View / Update Participant</div>
+        <div class="graph-text" style="color:white;">Look up a participant and update their information.</div>
         </div>
             </div>
 <!--
