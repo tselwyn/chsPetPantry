@@ -134,9 +134,14 @@
                 $args['notes'] === '' ? null : $args['notes'],
                 1
             );
-            if (add_participant($participant)) {
-                // Redirect so refreshing the confirmation doesn't register them again
-                $_SESSION['registered_participant'] = $args['first_name'] . ' ' . $args['last_name'];
+            $participant_id = add_participant($participant);
+
+            if ($participant_id) {
+                $_SESSION['registered_participant'] =
+                    $args['first_name'] . ' ' . $args['last_name'];
+
+                $_SESSION['registered_participant_id'] = $participant_id;
+
                 header('Location: participantRegister.php?registered');
                 die();
             }
@@ -146,9 +151,18 @@
 
     // Name shown on the confirmation, once
     $registeredName = null;
+    $registeredParticipantId = null;
+
     if (isset($_GET['registered']) && isset($_SESSION['registered_participant'])) {
+
         $registeredName = $_SESSION['registered_participant'];
-        unset($_SESSION['registered_participant']);
+
+    if (isset($_SESSION['registered_participant_id'])) {
+        $registeredParticipantId = $_SESSION['registered_participant_id'];
+    }
+
+    unset($_SESSION['registered_participant']);
+    unset($_SESSION['registered_participant_id']);
     }
 ?>
 
@@ -177,9 +191,23 @@ require_once('header.php');
     <div class="main-content-box">
         <div class="happy-toast"><?php echo hsc($registeredName) ?> has been registered as a Pet Pantry participant.</div>
         <div class="text-center">
-            <a href="participantRegister.php" class="button">Register Another Participant</a>
-            <a href="index.php" class="button">Return to Dashboard</a>
-        </div>
+
+    <?php if ($registeredParticipantId !== null): ?>
+        <a href="registerPet.php?participant_id=<?php echo $registeredParticipantId; ?>"
+           class="button">
+            Add Pet
+        </a>
+    <?php endif; ?>
+
+    <a href="participantRegister.php" class="button">
+        Register Another Participant
+    </a>
+
+    <a href="index.php" class="button">
+        Return to Dashboard
+    </a>
+
+    </div>
     </div>
 </main>
 <?php else: ?>

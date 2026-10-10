@@ -269,4 +269,25 @@ function participant_like_escape($value) {
     return addcslashes($value, '%_\\');
 }
 
+/*
+ * Get all participants for the pet registration dropdown.
+ */
+function get_all_participants() {
+    $con = connect();
+
+    $query = 'SELECT * FROM dbparticipants ORDER BY last_name, first_name';
+
+    $result = mysqli_query($con, $query);
+
+    $participants = [];
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $participants[] = make_a_participant($row);
+    }
+
+    mysqli_close($con);
+
+    return $participants;
+}
+
 ?>
