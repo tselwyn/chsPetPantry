@@ -513,7 +513,7 @@
             <?php endif ?> -->
 
     <div style="margin-top: 50px; padding: 0px 80px;">
-    <h2><b>Admin Dashboard</b></h2>
+    <h2><b>Pet Pantry Dashboard</b></h2>
     </div>
     <div class="full-width-bar-sub">
         <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'">
@@ -572,25 +572,20 @@
         <div class="large-text-sub" style="color:white;">Register Participant</div>
         <div class="graph-text" style="color:white;">Register a new Pet Pantry participant.</div>
         </div>
+        
         <!-- Register Pet -->
         <div class="content-box-test" onclick="window.location.href='registerPet.php'">
         <div class="icon-overlay pet-icon">
-            <span class="paw-icon">🐾</span>
-            <span class="pet-plus">+</span>
+        <span class="paw-icon">🐾</span>
+        <span class="pet-plus">+</span>
         </div>
 
         <div class="large-text-sub" style="color:white;">Register Pet</div>
-        <div class="graph-text" style="color:white;">Add a pet to an existing participant.</div>
-        <div class="content-box-test" onclick="window.location.href='participantEdit.php'" >
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/user-square.svg" alt="View / Update Participant Icon">
+        <div class="graph-text" style="color:white;">
+        Add a pet to an existing participant.
         </div>
-
-        <div class="large-text-sub" style="color:white;">View / Update Participant</div>
-        <div class="graph-text" style="color:white;">Look up a participant and update their information.</div>
         </div>
-            </div>
-<!--
+        <!--
         <div class="nav-buttons">
             <button class="nav-button" onclick="window.location.href='personSearch.php'">
                 <span>Find</span>
