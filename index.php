@@ -513,7 +513,7 @@
             <?php endif ?> -->
 
     <div style="margin-top: 50px; padding: 0px 80px;">
-    <h2><b>Admin Dashboard</b></h2>
+    <h2><b>Pet Pantry Dashboard</b></h2>
     </div>
     <div class="full-width-bar-sub">
         <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'">
@@ -586,10 +586,8 @@
             <img style="border-radius: 5px;" src="images/user-square.svg" alt="View / Update Participant Icon">
         </div>
 
-        <div class="large-text-sub" style="color:white;">View / Update Participant</div>
-        <div class="graph-text" style="color:white;">Look up a participant and update their information.</div>
+
         </div>
-            </div>
 <!--
         <div class="nav-buttons">
             <button class="nav-button" onclick="window.location.href='personSearch.php'">
