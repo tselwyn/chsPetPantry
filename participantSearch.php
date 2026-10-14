@@ -29,7 +29,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>CCDA | Participant Search</title>
+    <title>CHS Pet Pantry | Participant Search</title>
     <link href="css/normal_tw.css" rel="stylesheet">
 <!-- BANDAID FIX FOR HEADER BEING WEIRD -->
 <?php
@@ -37,60 +37,158 @@ $tailwind_mode = true;
 require_once('header.php');
 ?>
 <style>
+        /* CHS colors, matching the dashboard and login page. normal_tw.css
+           still has the old CCDA blue, so this page overrides it. */
+        :root {
+            --chs-teal: #1f5968;
+            --chs-teal-dark: #17444f;
+            --chs-accent: #50bfd3;
+            --chs-tint: #eef7f9;
+            --chs-border: #d3e4e8;
+        }
+
         body, main {
-        background-color: #1F1F21;
+            background-color: white;
         }
 
-        .text-blue-700,
-        .text-blue-700:visited {
-        color: black !important;
+        .hero-header {
+            background-color: var(--chs-teal);
         }
 
-        .info-section .info-text {
-         color: #C9AB81 !important;
+        /* Not .main-content-box: normal_tw.css makes that blue with a layered
+           !important, which no rule on this page can override */
+        .search-card {
+            background-color: white;
+            border: 1px solid var(--chs-border);
+            border-radius: 0.75rem;
+            color: #374151;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
         }
 
-        .blue-div {
-        background-color: #C9AB81 !important;
-        }
-
-        .main-content-box label {
-        color: #000000 !important;
+        .search-card h2,
+        .search-card h3,
+        .search-card label {
+            color: var(--chs-teal);
         }
 
         .sub-text {
-        color: black !important;
+            color: #4b5563;
         }
 
-        .main-content-box table,
-        .main-content-box table thead,
-        .main-content-box table tbody,
-        .main-content-box table tr,
-        .main-content-box table th,
-        .main-content-box table td {
-            background-color: #1F1F21 !important;
-            color: #C9AB81 !important;
-            border: 1px solid #C9AB81 !important;
+        .search-card input[type="text"]:focus {
+            outline: none;
+            border-color: var(--chs-accent);
+            box-shadow: 0 0 0 2px var(--chs-accent);
         }
 
-        .main-content-box table a.text-blue-700,
-        .main-content-box table a.text-blue-700:visited {
-            color: #C9AB81 !important;
+        .blue-button {
+            background-color: var(--chs-teal);
+            font-weight: 600;
+            transition: background-color .3s;
         }
 
-        .main-content-box table thead.bg-blue-400 th {
-            background-color: #1F1F21 !important;
+        .blue-button:hover,
+        .blue-button:focus-visible {
+            background-color: var(--chs-teal-dark);
         }
 
-        .main-content-box table a.participant-edit-link {
+        .blue-button:focus-visible,
+        .return-button:focus-visible,
+        .participant-results a:focus-visible {
+            outline: 2px solid var(--chs-accent);
+            outline-offset: 2px;
+        }
+
+        .return-button {
             display: inline-block;
-            padding: 4px 12px;
-            border-radius: 6px;
-            background-color: #C9AB81;
-            color: #1F1F21 !important;
-            font-weight: bold;
+            background-color: white;
+            border: 2px solid var(--chs-teal);
+            color: var(--chs-teal);
+            font-weight: 600;
+        }
+
+        .return-button:hover {
+            background-color: var(--chs-tint);
+        }
+
+        .error-block {
+            border-left: 4px solid #dc2626;
+            background-color: #fef2f2;
+            color: #991b1b;
+            text-align: left;
+            font-weight: 500;
+        }
+
+        .participant-results {
+            border: 1px solid var(--chs-border);
+            border-radius: 0.5rem;
+        }
+
+        .participant-results table {
+            border: none;
+            font-size: 1rem;
+            color: #374151;
+        }
+
+        .participant-results th {
+            background-color: var(--chs-teal);
+            color: white;
+            padding: 0.75rem 1rem;
+            white-space: nowrap;
+        }
+
+        .participant-results td {
+            padding: 0.75rem 1rem;
+        }
+
+        .participant-results tbody tr {
+            border-bottom: 1px solid var(--chs-border);
+        }
+
+        .participant-results tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .participant-results tbody tr:hover {
+            background-color: var(--chs-tint);
+        }
+
+        .participant-results a.participant-link {
+            color: var(--chs-teal);
+            font-weight: 600;
+            text-decoration: underline;
+            white-space: nowrap;
+        }
+
+        .participant-results .alert-flag {
+            display: inline-block;
+            margin-left: 0.25rem;
+            padding: 0 0.5rem;
+            border-radius: 9999px;
+            background-color: #fef2f2;
+            color: #991b1b;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .participant-results a.participant-edit-link {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.5rem;
+            background-color: var(--chs-teal);
+            color: white;
+            font-weight: 600;
             white-space: nowrap;
             text-decoration: none;
+            transition: background-color .3s;
+        }
+
+        .participant-results a.participant-edit-link:hover {
+            background-color: var(--chs-teal-dark);
+        }
+
+        .info-section .blue-div {
+            background-color: var(--chs-accent);
         }
 </style>
 <!-- BANDAID END, REMOVE ONCE SOME GENIUS FIXES -->
@@ -104,7 +202,7 @@ require_once('header.php');
 </header>
 
 <main>
-    <div class="main-content-box w-[80%] p-8">
+    <div class="search-card w-[80%] p-8">
 
         <div class="text-center mb-8">
             <h2>Find a Participant</h2>
@@ -130,9 +228,9 @@ require_once('header.php');
 
                     if (count($participants) > 0) {
                         echo '
-                        <div class="overflow-x-auto">
+                        <div class="participant-results overflow-x-auto">
                             <table>
-                                <thead class="bg-blue-400">
+                                <thead>
                                     <tr>
                                         <th>ID</th>
                                         <th>First</th>
@@ -148,15 +246,15 @@ require_once('header.php');
                                 </thead>
                                 <tbody>';
                         foreach ($participants as $participant) {
-                            $alert = $participant->get_alert() ? ' <strong>(Alert)</strong>' : '';
+                            $alert = $participant->get_alert() ? ' <span class="alert-flag">Alert</span>' : '';
                             $registered = date('M j, Y', strtotime($participant->get_registration_date()));
                             echo '
                                     <tr>
-                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="text-blue-700 underline">' . (int) $participant->get_id() . '</a></td>
+                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-link">' . (int) $participant->get_id() . '</a></td>
                                         <td>' . hsc($participant->get_first_name()) . $alert . '</td>
                                         <td>' . hsc($participant->get_last_name()) . '</td>
                                         <td>' . hsc($participant->get_full_address()) . '</td>
-                                        <td><a href="tel:' . hsc($participant->get_phone()) . '" class="text-blue-700 underline">' . formatPhoneNumber($participant->get_phone()) . '</a></td>
+                                        <td><a href="tel:' . hsc($participant->get_phone()) . '" class="participant-link">' . formatPhoneNumber($participant->get_phone()) . '</a></td>
                                         <td>' . hsc($participant->get_location()) . '</td>
                                         <td>' . hsc($participant->get_status()) . '</td>
                                         <td>' . $participant->get_pet_count() . '</td>
