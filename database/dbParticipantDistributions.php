@@ -1,0 +1,109 @@
+<?php
+
+include_once('dbinfo.php');
+include_once(dirname(__FILE__).'/../domain/ParticipantDistribution.php');
+
+/*
+ * Build a ParticipantDistribution from a dbparticipantdistributions row
+ */
+function make_a_participant_distribution($result_row) {
+    return new ParticipantDistribution(
+        $result_row['id'],
+        $result_row['participant_id'],
+        $result_row['distribution_date'],
+        $result_row['location'],
+        $result_row['pets_served'],
+        $result_row['dog_food_lbs'],
+        $result_row['cat_food_lbs'],
+        $result_row['processed_by'],
+        $result_row['notes'],
+        $result_row['created_at']
+    );
+}
+
+/*
+ * Add a ParticipantDistribution to dbparticipantdistributions. Its id and
+ * created_at are ignored; the table assigns them.
+ * Returns the new distribution's id, or false if the insert failed.
+ */
+function add_participant_distribution($distribution) {
+    $query = 'INSERT INTO dbparticipantdistributions (participant_id, distribution_date, location, '
+        . 'pets_served, dog_food_lbs, cat_food_lbs, processed_by, notes) '
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+    $args = [
+        $distribution->get_participant_id(),
+        $distribution->get_distribution_date(),
+        $distribution->get_location(),
+        $distribution->get_pets_served(),
+        $distribution->get_dog_food_lbs(),
+        $distribution->get_cat_food_lbs(),
+        $distribution->get_processed_by(),
+        $distribution->get_notes()
+    ];
+
+    $con = connect();
+    $id = false;
+    try {
+        $stmt = mysqli_prepare($con, $query);
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'issiddss', ...$args);
+            if (mysqli_stmt_execute($stmt)) {
+                $id = mysqli_insert_id($con);
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $id = false;
+    }
+    mysqli_close($con);
+    return $id;
+}
+
+/*
+ * A participant's distribution history, newest first
+ */
+function get_participant_distributions($participant_id) {
+    $con = connect();
+    $distributions = array();
+    try {
+        $stmt = mysqli_prepare($con, 'SELECT * FROM dbparticipantdistributions WHERE participant_id = ? '
+            . 'ORDER BY distribution_date DESC, id DESC');
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'i', $participant_id);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            while ($row = mysqli_fetch_assoc($result)) {
+                $distributions[] = make_a_participant_distribution($row);
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $distributions = array();
+    }
+    mysqli_close($con);
+    return $distributions;
+}
+
+/*
+ * How many active pets a participant has, used to pre-fill the pets served field
+ */
+function count_active_pets($participant_id) {
+    $con = connect();
+    $count = 0;
+    try {
+        $stmt = mysqli_prepare($con, "SELECT COUNT(*) AS pet_count FROM dbpets WHERE participant_id = ? AND status = 'Active'");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'i', $participant_id);
+            mysqli_stmt_execute($stmt);
+            $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+            if ($row) {
+                $count = (int) $row['pet_count'];
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $count = 0;
+    }
+    mysqli_close($con);
+    return $count;
+}

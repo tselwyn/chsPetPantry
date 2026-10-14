@@ -545,6 +545,14 @@
         <div class="large-text-sub" style="color:white;">View / Update Participant</div>
         <div class="graph-text" style="color:white;">Look up a participant and update their information.</div>
         </div>
+        <div class="content-box-test" onclick="window.location.href='distributionRecord.php'" >
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/clipboard-checklist.svg" alt="Record Food Distribution Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Record Food Distribution</div>
+        <div class="graph-text" style="color:white;">Record pet food given to a participant.</div>
+        </div>
             </div>
 <!--
         <div class="nav-buttons">

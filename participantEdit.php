@@ -22,6 +22,7 @@
     require_once('include/input-validation.php');
     require_once('include/output.php');
     require_once('database/dbParticipants.php');
+    require_once('database/dbParticipantDistributions.php');
 
     // Choices offered on the form, same as registrationForm.php
     $states = array('VA' => 'Virginia', 'MD' => 'Maryland', 'WV' => 'West Virginia',
@@ -232,6 +233,10 @@ require_once('header.php');
         <div class="happy-toast">The participant's information has been saved.</div>
         <?php endif ?>
 
+        <?php if (isset($_GET['distributed']) && count($errors) == 0): ?>
+        <div class="happy-toast">The food distribution has been recorded.</div>
+        <?php endif ?>
+
         <?php if (count($errors) > 0): ?>
         <div class="error-toast">
             <p>The participant was not saved:</p>
@@ -320,7 +325,50 @@ require_once('header.php');
         <input type="submit" value="Save Changes">
     </form>
 
+    <?php $distributions = get_participant_distributions($participant->get_id()) ?>
+    <div class="signup-form" id="distribution-history">
+        <fieldset class="section-box mb-4">
+            <h3>Distribution History</h3>
+            <p class="mb-2">Food distributions recorded for this participant, newest first.</p>
+            <div class="blue-div"></div>
+
+            <?php if (count($distributions) == 0): ?>
+            <p>No distributions have been recorded for this participant.</p>
+            <?php else: ?>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Location</th>
+                            <th>Pets</th>
+                            <th>Dog Food (lbs)</th>
+                            <th>Cat Food (lbs)</th>
+                            <th>Processed By</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($distributions as $distribution): ?>
+                        <tr>
+                            <td><?php echo hsc(date('M j, Y', strtotime($distribution->get_distribution_date()))) ?></td>
+                            <td><?php echo hsc($distribution->get_location()) ?></td>
+                            <td><?php echo (int) $distribution->get_pets_served() ?></td>
+                            <td><?php echo hsc($distribution->get_dog_food_lbs()) ?></td>
+                            <td><?php echo hsc($distribution->get_cat_food_lbs()) ?></td>
+                            <td><?php echo hsc($distribution->get_processed_by()) ?></td>
+                            <td><?php echo nl2br(hsc($distribution->get_notes())) ?></td>
+                        </tr>
+                        <?php endforeach ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php endif ?>
+        </fieldset>
+    </div>
+
     <div class="text-center">
+        <a href="distributionRecord.php?id=<?php echo (int) $participant->get_id() ?>" class="button">Record Distribution</a>
         <a href="participantSearch.php" class="button">Back to Participant Search</a>
         <a href="index.php" class="button">Return to Dashboard</a>
     </div>

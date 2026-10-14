@@ -4120,6 +4120,29 @@ INSERT INTO `dbpalletevent` (`id`, `name`, `personId`, `date`, `notes`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `dbparticipantdistributions`
+--
+-- One row per food distribution given to a participant (UC-06), recorded
+-- through distributionRecord.php. `processed_by` is the dbpersons id of the
+-- user who recorded it.
+--
+
+CREATE TABLE `dbparticipantdistributions` (
+  `id` int NOT NULL,
+  `participant_id` int NOT NULL,
+  `distribution_date` date NOT NULL,
+  `location` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `pets_served` int NOT NULL,
+  `dog_food_lbs` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `cat_food_lbs` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `processed_by` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `dbparticipants`
 --
 -- Pet Pantry participants (households). Ported from Andrew's `participant` table
@@ -4913,6 +4936,14 @@ ALTER TABLE `dbpalletevent`
   ADD UNIQUE KEY `name` (`name`);
 
 --
+-- Indexes for table `dbparticipantdistributions`
+--
+ALTER TABLE `dbparticipantdistributions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `participant_id` (`participant_id`,`distribution_date`),
+  ADD KEY `distribution_date` (`distribution_date`);
+
+--
 -- Indexes for table `dbparticipants`
 --
 ALTER TABLE `dbparticipants`
@@ -5098,6 +5129,12 @@ ALTER TABLE `dbpalletevent`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
+-- AUTO_INCREMENT for table `dbparticipantdistributions`
+--
+ALTER TABLE `dbparticipantdistributions`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `dbparticipants`
 --
 ALTER TABLE `dbparticipants`
@@ -5172,6 +5209,12 @@ ALTER TABLE `user_verified_ids`
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `dbparticipantdistributions`
+--
+ALTER TABLE `dbparticipantdistributions`
+  ADD CONSTRAINT `fk_dbparticipantdistributions_participant_id` FOREIGN KEY (`participant_id`) REFERENCES `dbparticipants` (`id`);
 
 --
 -- Constraints for table `dbpets`
