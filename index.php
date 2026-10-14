@@ -429,6 +429,41 @@
                         background-color:rgb(255, 255, 255) !important;
                         }
 
+                    .pet-icon {
+                    position: relative;
+                    width: 60px;
+                    height: 60px;
+                    min-width: 60px;
+                    min-height: 60px;
+                    border-radius: 50%;
+                    font-size: 22px;
+
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    }
+
+                    .paw-icon {
+                    filter: grayscale(1) brightness(0) invert(1);
+                    line-height: 1;
+                    }
+
+                    .pet-plus {
+                    position: absolute;
+                    right: 3px;
+                    bottom: 1px;
+                    width: 14px;
+                    height: 14px;
+                    background-color: #4fc3d7;
+                    color: white;
+                    border: 1px solid white;
+                    border-radius: 50%;
+                    font-size: 13px;
+                    font-weight: bold;
+                    line-height: 12px;
+                    text-align: center;
+                    }    
+
 
         /* Responsive Design */
    </style>
@@ -537,6 +572,15 @@
         <div class="large-text-sub" style="color:white;">Register Participant</div>
         <div class="graph-text" style="color:white;">Register a new Pet Pantry participant.</div>
         </div>
+        <!-- Register Pet -->
+        <div class="content-box-test" onclick="window.location.href='registerPet.php'">
+        <div class="icon-overlay pet-icon">
+            <span class="paw-icon">🐾</span>
+            <span class="pet-plus">+</span>
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Register Pet</div>
+        <div class="graph-text" style="color:white;">Add a pet to an existing participant.</div>
         <div class="content-box-test" onclick="window.location.href='participantEdit.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user-square.svg" alt="View / Update Participant Icon">
