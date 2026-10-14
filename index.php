@@ -430,6 +430,7 @@
                         }
 
                     .pet-icon {
+                    position: relative;
                     width: 60px;
                     height: 60px;
                     min-width: 60px;
@@ -580,7 +581,6 @@
 
         <div class="large-text-sub" style="color:white;">Register Pet</div>
         <div class="graph-text" style="color:white;">Add a pet to an existing participant.</div>
-        </div>
         <div class="content-box-test" onclick="window.location.href='participantEdit.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user-square.svg" alt="View / Update Participant Icon">
