@@ -148,7 +148,7 @@ function update_participant($participant) {
  * then partial name, then address. Returns up to $limit + 1 Participants so the
  * caller can tell when more than $limit matched.
  */
-function find_participants($term, $limit = 100) {
+function find_participants($term, $limit = 100, $includeDeleted = false) {
     $term = trim($term);
     $words = participant_search_words($term);
     $phone = participant_phone_digits($term);
@@ -207,12 +207,19 @@ function find_participants($term, $limit = 100) {
     }
 
     $limit = max(1, min(1000, (int) $limit));
-    $query = 'SELECT p.*, (SELECT COUNT(*) FROM dbpets pt WHERE pt.participant_id = p.id AND pt.status = \'Active\') AS pet_count, '
-        . 'CASE ' . implode(' ', $case) . ' END AS match_rank '
-        . 'FROM dbparticipants p '
-        . 'WHERE ' . implode(' OR ', $where) . ' '
-        . 'ORDER BY match_rank, last_name, first_name, id '
-        . 'LIMIT ' . ($limit + 1);
+
+// Normal searches should not show Deleted participants.
+// The admin removal page can choose to include them.
+$statusCondition = $includeDeleted
+    ? ''
+    : "p.status != 'Deleted' AND ";
+
+$query = 'SELECT p.*, (SELECT COUNT(*) FROM dbpets pt WHERE pt.participant_id = p.id AND pt.status = \'Active\') AS pet_count, '
+    . 'CASE ' . implode(' ', $case) . ' END AS match_rank '
+    . 'FROM dbparticipants p '
+    . 'WHERE ' . $statusCondition . '(' . implode(' OR ', $where) . ') '
+    . 'ORDER BY match_rank, last_name, first_name, id '
+    . 'LIMIT ' . ($limit + 1);
 
     $con = connect();
     $stmt = mysqli_prepare($con, $query);
@@ -275,7 +282,7 @@ function participant_like_escape($value) {
 function get_all_participants() {
     $con = connect();
 
-    $query = 'SELECT * FROM dbparticipants ORDER BY last_name, first_name';
+    $query = 'SELECT * FROM dbparticipants WHERE status = \'Active\' ORDER BY last_name, first_name';
 
     $result = mysqli_query($con, $query);
 
@@ -288,6 +295,93 @@ function get_all_participants() {
     mysqli_close($con);
 
     return $participants;
+}
+
+/*
+ * Mark a participant as Inactive.
+ */
+function deactivate_participant($participant_id) {
+
+    $query = "UPDATE dbparticipants
+              SET status = 'Inactive'
+              WHERE id = ?";
+
+    $con = connect();
+
+    $stmt = mysqli_prepare($con, $query);
+
+    if (!$stmt) {
+        mysqli_close($con);
+        return false;
+    }
+
+    mysqli_stmt_bind_param($stmt, 'i', $participant_id);
+
+    $success = mysqli_stmt_execute($stmt);
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($con);
+
+    return $success;
+}
+
+
+/*
+ * Mark an inactive participant as Active again.
+ */
+function activate_participant($participant_id) {
+
+    $query = "UPDATE dbparticipants
+              SET status = 'Active'
+              WHERE id = ?";
+
+    $con = connect();
+
+    $stmt = mysqli_prepare($con, $query);
+
+    if (!$stmt) {
+        mysqli_close($con);
+        return false;
+    }
+
+    mysqli_stmt_bind_param($stmt, 'i', $participant_id);
+
+    $success = mysqli_stmt_execute($stmt);
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($con);
+
+    return $success;
+}
+
+
+/*
+ * Mark a participant as Deleted.
+ * The record remains in the database for historical purposes.
+ */
+function delete_participant($participant_id) {
+
+    $query = "UPDATE dbparticipants
+              SET status = 'Deleted'
+              WHERE id = ?";
+
+    $con = connect();
+
+    $stmt = mysqli_prepare($con, $query);
+
+    if (!$stmt) {
+        mysqli_close($con);
+        return false;
+    }
+
+    mysqli_stmt_bind_param($stmt, 'i', $participant_id);
+
+    $success = mysqli_stmt_execute($stmt);
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($con);
+
+    return $success;
 }
 
 ?>
