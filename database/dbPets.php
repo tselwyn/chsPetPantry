@@ -82,4 +82,136 @@ function add_pet($pet) {
     return $id;
 }
 
+/*
+ * Get all pets belonging to one participant.
+ */
+function get_pets_by_participant($participant_id, $includeDeleted = false) {
+
+
+if ($includeDeleted) {
+    $query = 'SELECT * FROM dbpets
+              WHERE participant_id = ?
+              ORDER BY name';
+
+} 
+else {
+
+    $query = "SELECT * FROM dbpets
+              WHERE participant_id = ?
+              AND status != 'Deleted'
+              ORDER BY name";
+}
+
+    $con = connect();
+
+    $stmt = mysqli_prepare($con, $query);
+
+    if (!$stmt) {
+        mysqli_close($con);
+        return [];
+    }
+
+    mysqli_stmt_bind_param($stmt, 'i', $participant_id);
+    mysqli_stmt_execute($stmt);
+
+    $result = mysqli_stmt_get_result($stmt);
+
+    $pets = [];
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $pets[] = make_a_pet($row);
+    }
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($con);
+
+    return $pets;
+}
+
+/*
+ * Set a pet's status to Inactive.
+ * This keeps the pet in the database instead of permanently deleting it.
+ */
+function deactivate_pet($pet_id) {
+
+    $query = "UPDATE dbpets
+              SET status = 'Inactive'
+              WHERE id = ?";
+
+    $con = connect();
+
+    $stmt = mysqli_prepare($con, $query);
+
+    if (!$stmt) {
+        mysqli_close($con);
+        return false;
+    }
+
+    mysqli_stmt_bind_param($stmt, 'i', $pet_id);
+
+    $success = mysqli_stmt_execute($stmt);
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($con);
+
+    return $success;
+}
+
+/*
+ * Set an inactive pet back to Active.
+ */
+function activate_pet($pet_id) {
+
+    $query = "UPDATE dbpets
+              SET status = 'Active'
+              WHERE id = ?";
+
+    $con = connect();
+
+    $stmt = mysqli_prepare($con, $query);
+
+    if (!$stmt) {
+        mysqli_close($con);
+        return false;
+    }
+
+    mysqli_stmt_bind_param($stmt, 'i', $pet_id);
+
+    $success = mysqli_stmt_execute($stmt);
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($con);
+
+    return $success;
+}
+
+/*
+ * Mark a pet as Deleted.
+ * The record stays in the database for historical purposes.
+ */
+function delete_pet($pet_id) {
+
+    $query = "UPDATE dbpets
+              SET status = 'Deleted'
+              WHERE id = ?";
+
+    $con = connect();
+
+    $stmt = mysqli_prepare($con, $query);
+
+    if (!$stmt) {
+        mysqli_close($con);
+        return false;
+    }
+
+    mysqli_stmt_bind_param($stmt, 'i', $pet_id);
+
+    $success = mysqli_stmt_execute($stmt);
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($con);
+
+    return $success;
+}
+
 ?>
