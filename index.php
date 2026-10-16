@@ -537,21 +537,6 @@
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="Delete Pet Icon">
         </div>
 
-        <div class="large-text-sub" style="color:white;">Delete Pet</div>
-        <div class="graph-text" style="color:white;">Remove a pet record from the system.</div>
-        </div>
-        <div class="content-box-test" onclick="window.location.href='viewItemCategories.php'" >
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/list-solid.svg" alt="Categories Icon">
-        </div>
-
-        <div class="large-text-sub" style="color:white;">Manage Item Categories</div>
-        <div class="graph-text" style="color:white;">Add, edit, and delete item categories.</div>
-        </div>
-        <div class="content-box-test" onclick="window.location.href='viewConsumptionRates.php'" >
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/clipboard-list-alt.svg" alt="Consumption Rates Icon">
-        </div>
 
         <div class="large-text-sub" style="color:white;">Consumption Rates</div>
         <div class="graph-text" style="color:white;">Record and calculate item consumption rates.</div>
@@ -585,6 +570,40 @@
         Add a pet to an existing participant.
         </div>
         </div>
+
+        <!-- Remove Participant / Pet -->
+        <div class="content-box-test" onclick="window.location.href='deleteParticipantPet.php'">
+        <div class="icon-overlay pet-icon">
+        <span class="paw-icon">🐾</span>
+        <span class="pet-minus">−</span>
+        </div>
+
+        <div class="large-text-sub" style="color:white;">
+        Remove Participant / Pet
+        </div>
+
+        <div class="graph-text" style="color:white;">
+        Remove a participant or pet from the Pet Pantry system.
+        </div>
+        </div>
+
+        <!-- Manage Item Categories -->
+        <div class="content-box-test" onclick="window.location.href='viewItemCategories.php'">
+        <div class="icon-overlay">
+        <img style="border-radius: 5px;" 
+             src="images/list-solid.svg" 
+             alt="Categories Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">
+        Manage Item Categories
+        </div>
+
+        <div class="graph-text" style="color:white;">
+        Add, edit, and delete item categories.
+        </div>
+        </div>
+
         <!--
         <div class="nav-buttons">
             <button class="nav-button" onclick="window.location.href='personSearch.php'">
