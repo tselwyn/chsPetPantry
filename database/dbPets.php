@@ -17,11 +17,15 @@ function make_a_pet($result_row) {
         $result_row['date_of_birth'],
         $result_row['dob_is_estimate'],
         $result_row['weight_lbs'],
-        $result_row['is_altered'],
+        $result_row['spay_neuter_status'],
+        $result_row['rabies_status'],
         $result_row['food_type'],
         $result_row['food_restriction'],
         $result_row['notes'],
-        $result_row['status']
+        $result_row['status'],
+        $result_row['counseling_status'],
+        $result_row['counseling_date'],
+        $result_row['counseled_by']
     );
 }
 
@@ -34,8 +38,9 @@ function add_pet($pet) {
 
     $query = 'INSERT INTO dbpets '
         . '(participant_id, name, species, breed, sex, date_of_birth, '
-        . 'dob_is_estimate, weight_lbs, is_altered, food_type, food_restriction, notes, status) '
-        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        . 'dob_is_estimate, weight_lbs, spay_neuter_status, rabies_status, '
+        . 'food_type, food_restriction, notes, status) '
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
     $args = [
         $pet->get_participant_id(),
@@ -46,7 +51,8 @@ function add_pet($pet) {
         $pet->get_date_of_birth(),
         $pet->get_dob_is_estimate(),
         $pet->get_weight_lbs(),
-        $pet->get_is_altered(),
+        $pet->get_spay_neuter_status(),
+        $pet->get_rabies_status(),
         $pet->get_food_type(),
         $pet->get_food_restriction(),
         $pet->get_notes(),
@@ -62,7 +68,7 @@ function add_pet($pet) {
         if ($stmt) {
             mysqli_stmt_bind_param(
                 $stmt,
-                'isssssidissss',
+                'isssssidssssss',
                 ...$args
             );
 
@@ -80,6 +86,83 @@ function add_pet($pet) {
     mysqli_close($con);
 
     return $id;
+}
+
+/*
+ * Get one pet by its id.
+ * Returns a Pet, or null if there is no pet with that id.
+ */
+function get_pet_by_id($id) {
+
+    $query = 'SELECT * FROM dbpets WHERE id = ?';
+
+    $con = connect();
+
+    $stmt = mysqli_prepare($con, $query);
+
+    if (!$stmt) {
+        mysqli_close($con);
+        return null;
+    }
+
+    mysqli_stmt_bind_param($stmt, 'i', $id);
+    mysqli_stmt_execute($stmt);
+
+    $result = mysqli_stmt_get_result($stmt);
+    $row = mysqli_fetch_assoc($result);
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($con);
+
+    return $row ? make_a_pet($row) : null;
+}
+
+/*
+ * Save a pet's spay/neuter and rabies vaccination status (UC-08).
+ * When $counseling_status is 'Yes', counseling is recorded as given today
+ * by $counseled_by. Otherwise the counseling fields are left as they were,
+ * so a pet that was already counseled stays Yes.
+ * Returns true if the update ran.
+ */
+function update_pet_snv($pet_id, $spay_neuter_status, $rabies_status,
+        $counseling_status, $counseled_by) {
+
+    if ($counseling_status === 'Yes') {
+        $query = "UPDATE dbpets
+                  SET spay_neuter_status = ?, rabies_status = ?,
+                      counseling_status = 'Yes', counseling_date = ?,
+                      counseled_by = ?
+                  WHERE id = ?";
+        $types = 'ssssi';
+        $args = [$spay_neuter_status, $rabies_status, date('Y-m-d'),
+            $counseled_by, $pet_id];
+    } else {
+        $query = 'UPDATE dbpets
+                  SET spay_neuter_status = ?, rabies_status = ?
+                  WHERE id = ?';
+        $types = 'ssi';
+        $args = [$spay_neuter_status, $rabies_status, $pet_id];
+    }
+
+    $con = connect();
+    $success = false;
+
+    try {
+        $stmt = mysqli_prepare($con, $query);
+
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, $types, ...$args);
+            $success = mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
+
+    } catch (mysqli_sql_exception $e) {
+        $success = false;
+    }
+
+    mysqli_close($con);
+
+    return $success;
 }
 
 /*

@@ -23,6 +23,7 @@
     require_once('include/output.php');
     require_once('database/dbParticipants.php');
     require_once('database/dbParticipantDistributions.php');
+    require_once('database/dbPets.php');
 
     // Choices offered on the form, same as registrationForm.php
     $states = array('VA' => 'Virginia', 'MD' => 'Maryland', 'WV' => 'West Virginia',
@@ -237,6 +238,10 @@ require_once('header.php');
         <div class="happy-toast">The food distribution has been recorded.</div>
         <?php endif ?>
 
+        <?php if (isset($_GET['snv']) && count($errors) == 0): ?>
+        <div class="happy-toast">Spay/neuter and vaccination information updated.</div>
+        <?php endif ?>
+
         <?php if (count($errors) > 0): ?>
         <div class="error-toast">
             <p>The participant was not saved:</p>
@@ -324,6 +329,56 @@ require_once('header.php');
 
         <input type="submit" value="Save Changes">
     </form>
+
+    <?php
+    // Only Active pets are listed; Inactive and Deleted pets are managed on deleteParticipantPet.php
+    $pets = array_filter(get_pets_by_participant($participant->get_id()), function ($pet) {
+        return $pet->get_status() === 'Active';
+    });
+    ?>
+    <div class="signup-form" id="pets">
+        <fieldset class="section-box mb-4">
+            <h3>Pets</h3>
+            <p class="mb-2">This participant's active pets and their spay/neuter, rabies vaccination, and counseling status.</p>
+            <div class="blue-div"></div>
+
+            <?php if (count($pets) == 0): ?>
+            <p>This participant has no active pets. <a href="registerPet.php?participant_id=<?php echo (int) $participant->get_id() ?>">Register a pet</a></p>
+            <?php else: ?>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Species</th>
+                            <th>Spay/Neuter</th>
+                            <th>Rabies</th>
+                            <th>Counseling</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($pets as $pet): ?>
+                        <tr>
+                            <td><?php echo hsc($pet->get_name()) ?></td>
+                            <td><?php echo hsc($pet->get_species()) ?></td>
+                            <td><?php echo hsc($pet->get_spay_neuter_status()) ?></td>
+                            <td><?php echo hsc($pet->get_rabies_status()) ?></td>
+                            <td>
+                                <?php echo hsc($pet->get_counseling_status()) ?>
+                                <?php if ($pet->get_counseling_status() === 'Yes' && $pet->get_counseling_date()): ?>
+                                (<?php echo hsc(date('M j, Y', strtotime($pet->get_counseling_date()))) ?>)
+                                <?php endif ?>
+                            </td>
+                            <td><a href="petSNV.php?id=<?php echo (int) $pet->get_id() ?>" class="button">SNV / Counseling</a></td>
+                        </tr>
+                        <?php endforeach ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php endif ?>
+        </fieldset>
+    </div>
 
     <?php $distributions = get_participant_distributions($participant->get_id()) ?>
     <div class="signup-form" id="distribution-history">
