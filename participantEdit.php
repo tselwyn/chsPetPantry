@@ -13,8 +13,8 @@
         $accessLevel = $_SESSION['access_level'];
         $userID = $_SESSION['_id'];
     }
-    // admin-only access
-    if ($accessLevel < 2) {
+    // Volunteers and admins (SRS UC-02 to UC-07)
+    if ($accessLevel < 1) {
         header('Location: index.php');
         die();
     }
@@ -34,6 +34,9 @@
 
     $id = (isset($_GET['id']) && ctype_digit($_GET['id'])) ? (int) $_GET['id'] : 0;
     $participant = $id > 0 ? retrieve_participant($id) : null;
+
+    // Removing an alert is admin-only (FR-023); anyone can set one
+    $canRemoveAlert = $accessLevel >= 2 || ($participant !== null && !$participant->get_alert());
 
     $errors = array();
     $args = array();
@@ -129,6 +132,11 @@
 
         if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Yes', 'No'))) {
             $errors[] = 'Choose Yes or No for Alert / Flag.';
+        }
+
+        // Volunteers can set an alert but only an admin can remove one (FR-023)
+        if (!$canRemoveAlert && $args['participant_alert'] !== 'Yes') {
+            $errors[] = 'Only an administrator can remove an Alert / Flag.';
         }
 
         if (count($errors) == 0) {
@@ -320,8 +328,11 @@ require_once('header.php');
 
             <label for="participant_alert">Alert / Flag</label>
             <select id="participant_alert" name="participant_alert">
-                <?php participant_options(array('No', 'Yes'), $args['participant_alert']) ?>
+                <?php participant_options($canRemoveAlert ? array('No', 'Yes') : array('Yes'), $args['participant_alert']) ?>
             </select>
+            <?php if (!$canRemoveAlert): ?>
+            <p class="mb-2">Only an administrator can remove this alert.</p>
+            <?php endif ?>
 
             <label for="notes">Notes</label>
             <textarea id="notes" name="notes" rows="4" placeholder="Enter any additional notes about the participant..."><?php echo hsc($args['notes']) ?></textarea>
