@@ -13,8 +13,8 @@
         $accessLevel = $_SESSION['access_level'];
         $userID = $_SESSION['_id'];
     }
-    // admin-only access
-    if ($accessLevel < 2) {
+    // Volunteers and admins (SRS UC-02 to UC-07)
+    if ($accessLevel < 1) {
         header('Location: index.php');
         die();
     }

@@ -36,9 +36,6 @@
     }
     $owner = $pet !== null ? retrieve_participant($pet->get_participant_id()) : null;
 
-    // participantEdit.php is admin-only, so volunteers come back to this page after saving
-    $canViewParticipant = $accessLevel >= 2;
-
     $errors = array();
     $args = array();
     if ($pet !== null) {
@@ -75,11 +72,7 @@
 
             if (update_pet_snv($pet->get_id(), $args['spay_neuter_status'], $args['rabies_status'], $counseling, $userID)) {
                 // Redirect so refreshing the page doesn't submit the form again
-                if ($canViewParticipant) {
-                    header('Location: participantEdit.php?id=' . (int) $pet->get_participant_id() . '&snv=1');
-                } else {
-                    header('Location: petSNV.php?id=' . (int) $pet->get_id() . '&snv=1');
-                }
+                header('Location: participantEdit.php?id=' . (int) $pet->get_participant_id() . '&snv=1');
                 die();
             }
             $errors[] = 'The pet could not be saved. Please try again.';
@@ -117,9 +110,7 @@ require_once('header.php');
     </div>
 
     <div class="text-center">
-        <?php if ($canViewParticipant): ?>
         <a href="participantSearch.php" class="button">Back to Participant Search</a>
-        <?php endif ?>
         <a href="index.php" class="button">Return to Dashboard</a>
     </div>
 <?php else: ?>
@@ -130,10 +121,6 @@ require_once('header.php');
                 <p class="sub-text">Review and update this pet's spay/neuter and rabies vaccination status. Choose Unknown rather than guessing.</p>
             </div>
         </div>
-
-        <?php if (isset($_GET['snv']) && count($errors) == 0): ?>
-        <div class="happy-toast">Spay/neuter and vaccination information updated.</div>
-        <?php endif ?>
 
         <?php if (count($errors) > 0): ?>
         <div class="error-toast">
@@ -216,9 +203,7 @@ require_once('header.php');
     </form>
 
     <div class="text-center">
-        <?php if ($canViewParticipant): ?>
         <a href="participantEdit.php?id=<?php echo (int) $pet->get_participant_id() ?>" class="button">Back to participant</a>
-        <?php endif ?>
         <a href="index.php" class="button">Return to Dashboard</a>
     </div>
 

@@ -13,8 +13,8 @@ if (isset($_SESSION['_id'])) {
     $userID = $_SESSION['_id'];
 }
 
-// Only admins can access pet registration
-if ($accessLevel < 2) {
+// Volunteers and admins can register pets (SRS UC-05)
+if ($accessLevel < 1) {
     header('Location: index.php');
     die();
 }
