@@ -408,8 +408,8 @@
                         border-radius: 12px;
                         padding: 20px;
                         color: white;                 /* default text color */
-                        flex: 1 1 280px;
-                        max-width: 375px;
+                        flex: 0 0 340px;
+                        max-width: 340px;
                         min-height: 250px;            /* keeps all boxes same height even without bg image */
                         }
 
@@ -515,7 +515,8 @@
     <div style="margin-top: 50px; padding: 0px 80px;">
     <h2><b>Pet Pantry Dashboard</b></h2>
     </div>
-    <div class="full-width-bar-sub">
+    
+    <div class="full-width-bar-sub"> <!--
         <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'">
             <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
@@ -535,16 +536,16 @@
         <div class="content-box-test" onclick="window.location.href='deletePet.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="Delete Pet Icon">
-        </div>
+        </div> -->
 
-
+      <!--          
         <div class="large-text-sub" style="color:white;">Consumption Rates</div>
         <div class="graph-text" style="color:white;">Record and calculate item consumption rates.</div>
-        </div>
+        </div> -->
         <div class="content-box-test" onclick="window.location.href='participantSearch.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/person-search.svg" alt="Participant Search Icon">
-        </div>
+        </div> 
 
         <div class="large-text-sub" style="color:white;">Participant Search</div>
         <div class="graph-text" style="color:white;">Find a participant by ID, name, address, or phone.</div>
@@ -587,13 +588,13 @@
         </div>
         </div>
 
-        <!-- Manage Item Categories -->
+        <!-- Manage Item Categories 
         <div class="content-box-test" onclick="window.location.href='viewItemCategories.php'">
         <div class="icon-overlay">
         <img style="border-radius: 5px;" 
              src="images/list-solid.svg" 
              alt="Categories Icon">
-        </div>
+        </div> 
 
         <div class="large-text-sub" style="color:white;">
         Manage Item Categories
@@ -602,7 +603,7 @@
         <div class="graph-text" style="color:white;">
         Add, edit, and delete item categories.
         </div>
-        </div>
+        </div> -->
 
         <!--
         <div class="nav-buttons">
@@ -810,7 +811,7 @@
     </div>
     <div class="full-width-bar-sub">
 
-    <!-- Update Inventory -->
+    <!-- Update Inventory 
     <div class="content-box-test" onclick="window.location.href='viewUpdateInventory.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-checklist.svg" alt="Inventory Icon">
@@ -818,9 +819,9 @@
 
         <div class="large-text-sub" style="color:white;">Update Inventory</div>
         <div class="graph-text" style="color:white;">Add inventory entry.</div>
-    </div>
+    </div> -->
 
-    <!-- View Inventory -->
+    <!-- View Inventory 
     <div class="content-box-test" onclick="window.location.href='inventory.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-list-alt.svg" alt="Inventory Icon">
@@ -828,27 +829,27 @@
         
         <div class="large-text-sub" style="color:white;">View Inventory</div>
         <div class="graph-text" style="color:white;">Track inventory changes.</div>
-    </div>
+    </div>-->
 
-    <!-- Weekly Inventory Report -->
+    <!-- Weekly Inventory Report 
     <div class="content-box-test" onclick="window.location.href='viewWeeklyReport.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-arrow-down.svg" alt="Report Icon">
         </div>
         <div class="large-text-sub" style="color:white;">Weekly Inventory Report</div>
         <div class="graph-text" style="color:white;">View updated weekly inventory.</div>
-    </div>
+    </div> -->
     
-    <!-- Shopping List -->
+    <!-- Shopping List 
     <div class="content-box-test" onclick="window.location.href='viewShoppingList.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-list-alt.svg" alt="Shopping List Icon">
         </div>
         <div class="large-text-sub" style="color:white;">Shopping List</div>
         <div class="graph-text" style="color:white;">View and manage recommended baskets by family size.</div>
-    </div>
+    </div> -->
 
-    <!-- Inventory Analytics -->
+    <!-- Inventory Analytics 
     <div class="content-box-test" onclick="window.location.href='generateReport.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/document-report.svg" alt="Report Icon">
@@ -856,8 +857,8 @@
         
         <div class="large-text-sub"style="color:white;">Inventory Analytics</div>
         <div class="graph-text"style="color:white;">Explore visual reports and analytics for inventory data.</div>
-    </div>
-    </div>
+    </div> -->
+    </div>  
 
 <div style="width: 90%; /* Stops before page ends */
             height: 100%;
