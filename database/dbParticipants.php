@@ -384,4 +384,166 @@ function delete_participant($participant_id) {
     return $success;
 }
 
+/*
+ * Get participants for the Current Participant List report.
+ * Can filter by location and registration date.
+ */
+function get_participant_report($location = '', $startDate = '', $endDate = '') {
+
+    $con = connect();
+
+    $query = "SELECT *
+              FROM dbparticipants
+              WHERE status != 'Deleted'";
+
+    // Add location filter if one was selected
+    if ($location != '') {
+        $safeLocation = mysqli_real_escape_string($con, $location);
+        $query .= " AND location = '$safeLocation'";
+    }
+
+    // Add start date filter if one was selected
+    if ($startDate != '') {
+        $safeStartDate = mysqli_real_escape_string($con, $startDate);
+        $query .= " AND registration_date >= '$safeStartDate'";
+    }
+
+    // Add end date filter if one was selected
+    if ($endDate != '') {
+        $safeEndDate = mysqli_real_escape_string($con, $endDate);
+        $query .= " AND registration_date <= '$safeEndDate'";
+    }
+
+    $query .= " ORDER BY last_name, first_name";
+
+    $result = mysqli_query($con, $query);
+
+    $participants = [];
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $participants[] = $row;
+    }
+
+    mysqli_close($con);
+
+    return $participants;
+}
+
+/*
+ * Get the participant locations for the report dropdown.
+ */
+function get_participant_locations() {
+
+    $con = connect();
+
+    $query = "SELECT DISTINCT location
+              FROM dbparticipants
+              WHERE location IS NOT NULL
+              AND location != ''
+              ORDER BY location";
+
+    $result = mysqli_query($con, $query);
+
+    $locations = [];
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $locations[] = $row['location'];
+    }
+
+    mysqli_close($con);
+
+    return $locations;
+}
+
+/*
+ * Get participants for the Participant Status report.
+ * Shows Active, Inactive, and Expired participants.
+ */
+function get_participant_status_report($location = '', $startDate = '', $endDate = '') {
+
+    $con = connect();
+
+    $query = "SELECT *
+              FROM dbparticipants
+              WHERE status IN ('Active', 'Inactive', 'Expired')";
+
+    // Filter by location
+    if ($location != '') {
+        $safeLocation = mysqli_real_escape_string($con, $location);
+        $query .= " AND location = '$safeLocation'";
+    }
+
+    // Filter by registration start date
+    if ($startDate != '') {
+        $safeStartDate = mysqli_real_escape_string($con, $startDate);
+        $query .= " AND registration_date >= '$safeStartDate'";
+    }
+
+    // Filter by registration end date
+    if ($endDate != '') {
+        $safeEndDate = mysqli_real_escape_string($con, $endDate);
+        $query .= " AND registration_date <= '$safeEndDate'";
+    }
+
+    $query .= " ORDER BY status, last_name, first_name";
+
+    $result = mysqli_query($con, $query);
+
+    $participants = [];
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $participants[] = $row;
+    }
+
+    mysqli_close($con);
+
+    return $participants;
+}
+
+/*
+ * Get participants who have been flagged.
+ */
+function get_flagged_participants_report($location = '', $startDate = '', $endDate = '') {
+
+    $con = connect();
+
+    $query = "SELECT *
+              FROM dbparticipants
+              WHERE alert = 1
+              AND status != 'Deleted'";
+
+    // Filter by location
+    if ($location != '') {
+        $safeLocation = mysqli_real_escape_string($con, $location);
+        $query .= " AND location = '$safeLocation'";
+    }
+
+    // Filter by registration start date
+    if ($startDate != '') {
+        $safeStartDate = mysqli_real_escape_string($con, $startDate);
+        $query .= " AND registration_date >= '$safeStartDate'";
+    }
+
+    // Filter by registration end date
+    if ($endDate != '') {
+        $safeEndDate = mysqli_real_escape_string($con, $endDate);
+        $query .= " AND registration_date <= '$safeEndDate'";
+    }
+
+    $query .= " ORDER BY last_name, first_name";
+
+    $result = mysqli_query($con, $query);
+
+    $participants = [];
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $participants[] = $row;
+    }
+
+    mysqli_close($con);
+
+    return $participants;
+}
+
+
 ?>
