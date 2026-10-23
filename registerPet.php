@@ -13,8 +13,8 @@ if (isset($_SESSION['_id'])) {
     $userID = $_SESSION['_id'];
 }
 
-// Only admins can access pet registration
-if ($accessLevel < 2) {
+// Volunteers and admins can register pets (SRS UC-05)
+if ($accessLevel < 1) {
     header('Location: index.php');
     die();
 }
@@ -44,6 +44,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $food_restriction = $_POST['food_restriction'] ?? '';
     $notes = $_POST['notes'] ?? '';
     $spay_neuter = $_POST['spay_neuter'] ?? '';
+    $rabies_status = $_POST['rabies_status'] ?? '';
 
     // Make sure required fields were entered
     if ($participant_id === '') {
@@ -58,12 +59,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $errors[] = 'Please select a species.';
     }
 
-    if ($spay_neuter === '') {
+    // Spay/neuter and rabies are Yes, No, or Unknown (FR-029)
+    if (!in_array($spay_neuter, array('Yes', 'No', 'Unknown'), true)) {
         $errors[] = 'Please select whether the pet is spayed/neutered.';
     }
 
-    // Convert Yes/No into the value stored by the database
-    $is_altered = ($spay_neuter === 'yes') ? 1 : 0;
+    if (!in_array($rabies_status, array('Yes', 'No', 'Unknown'), true)) {
+        $errors[] = 'Please select whether the pet has a rabies vaccination.';
+    }
 
     // Optional database fields should be NULL when left blank
     $breed = ($breed === '') ? null : $breed;
@@ -88,7 +91,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $date_of_birth,
             $dob_is_estimate,
             $weight_lbs,
-            $is_altered,
+            $spay_neuter,
+            $rabies_status,
             $food_type,
             $food_restriction,
             $notes,
@@ -288,10 +292,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <option value="Female">Female</option>
         </select>
 
-        <label for="spay_neuter">Spay/Neuter</label>
+        <label for="spay_neuter">Spay/Neuter Status</label>
         <select id="spay_neuter" name="spay_neuter" required>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
+            <option value="Unknown">Unknown</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+        </select>
+
+        <label for="rabies_status">Rabies Vaccination Status</label>
+        <select id="rabies_status" name="rabies_status" required>
+            <option value="Unknown">Unknown</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
         </select>
 
         <label for="food_type">Food Type</label>

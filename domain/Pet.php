@@ -16,15 +16,21 @@ class Pet {
     private $date_of_birth;
     private $dob_is_estimate;
     private $weight_lbs;
-    private $is_altered; // 1 = Yes, 0 = No
+    private $spay_neuter_status; // Yes, No, or Unknown
+    private $rabies_status; // Yes, No, or Unknown
     private $food_type;
     private $food_restriction;
     private $notes;
     private $status; // Active, Inactive, or Deleted
+    private $counseling_status; // Yes once free spay/neuter and vaccination info was given
+    private $counseling_date;
+    private $counseled_by; // dbpersons id of the user who recorded the counseling
 
     function __construct($id, $participant_id, $name, $species, $breed,
             $sex, $date_of_birth, $dob_is_estimate, $weight_lbs,
-            $is_altered, $food_type, $food_restriction, $notes, $status) {
+            $spay_neuter_status, $rabies_status, $food_type, $food_restriction,
+            $notes, $status, $counseling_status = 'No', $counseling_date = null,
+            $counseled_by = null) {
 
         $this->id = $id;
         $this->participant_id = $participant_id;
@@ -35,11 +41,15 @@ class Pet {
         $this->date_of_birth = $date_of_birth;
         $this->dob_is_estimate = $dob_is_estimate;
         $this->weight_lbs = $weight_lbs;
+        $this->spay_neuter_status = $spay_neuter_status;
+        $this->rabies_status = $rabies_status;
         $this->food_type = $food_type;
         $this->food_restriction = $food_restriction;
         $this->notes = $notes;
-        $this->is_altered = $is_altered;
         $this->status = $status;
+        $this->counseling_status = $counseling_status;
+        $this->counseling_date = $counseling_date;
+        $this->counseled_by = $counseled_by;
     }
 
     function get_id() {
@@ -78,8 +88,12 @@ class Pet {
         return $this->weight_lbs;
     }
 
-    function get_is_altered() {
-        return $this->is_altered;
+    function get_spay_neuter_status() {
+        return $this->spay_neuter_status;
+    }
+
+    function get_rabies_status() {
+        return $this->rabies_status;
     }
 
     function get_food_type() {
@@ -96,6 +110,18 @@ class Pet {
 
     function get_status() {
         return $this->status;
+    }
+
+    function get_counseling_status() {
+        return $this->counseling_status;
+    }
+
+    function get_counseling_date() {
+        return $this->counseling_date;
+    }
+
+    function get_counseled_by() {
+        return $this->counseled_by;
     }
 
 }

@@ -486,8 +486,8 @@
 <!-- all users can see the header -->
 <?php require 'header.php';?>
 
-<!-- ONLY SUPER ADMIN AND ADMIN(S) WILL SEE THIS -->
-<?php if ($_SESSION['access_level'] >= 2): ?>
+<!-- VOLUNTEERS (INVENTORY COUNTER) AND ADMINS SEE THE PET PANTRY DASHBOARD; ADMIN-ONLY CARDS ARE MARKED BELOW -->
+<?php if ($_SESSION['access_level'] >= 1): ?>
 <body>
 
     <!-- Dummy content to enable scrolling -->
@@ -515,8 +515,9 @@
     <div style="margin-top: 50px; padding: 0px 80px;">
     <h2><b>Pet Pantry Dashboard</b></h2>
     </div>
-    
-    <div class="full-width-bar-sub"> <!--
+    <div class="full-width-bar-sub">
+        <?php if ($_SESSION['access_level'] >= 2): ?>
+        <!-- Admin only -->
         <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'">
             <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
@@ -541,7 +542,10 @@
       <!--          
         <div class="large-text-sub" style="color:white;">Consumption Rates</div>
         <div class="graph-text" style="color:white;">Record and calculate item consumption rates.</div>
-        </div> -->
+        </div>
+        <?php endif ?>
+
+        <!-- Volunteers and admins (SRS UC-02 to UC-06) -->
         <div class="content-box-test" onclick="window.location.href='participantSearch.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/person-search.svg" alt="Participant Search Icon">
@@ -572,6 +576,8 @@
         </div>
         </div>
 
+        <?php if ($_SESSION['access_level'] >= 2): ?>
+        <!-- Admin only -->
         <!-- Remove Participant / Pet -->
         <div class="content-box-test" onclick="window.location.href='deleteParticipantPet.php'">
         <div class="icon-overlay pet-icon">
@@ -603,7 +609,18 @@
         <div class="graph-text" style="color:white;">
         Add, edit, and delete item categories.
         </div>
-        </div> -->
+        </div>
+        <?php endif ?>
+
+        <!-- Record Food Distribution -->
+        <div class="content-box-test" onclick="window.location.href='distributionRecord.php'" >
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/clipboard-checklist.svg" alt="Record Food Distribution Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Record Food Distribution</div>
+        <div class="graph-text" style="color:white;">Record pet food given to a participant.</div>
+        </div>
 
         <!--
         <div class="nav-buttons">
