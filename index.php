@@ -534,14 +534,24 @@
         <div class="large-text-sub" style="color:white;">Add User</div>
         <div class="graph-text" style="color:white;">Add user and set permissions.</div>
         </div>
+        <!-- Consumption Rates (hidden for the client demonstration)
         <div class="content-box-test" onclick="window.location.href='deletePet.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="Delete Pet Icon">
-        </div> -->
-
-      <!--          
+        </div>
         <div class="large-text-sub" style="color:white;">Consumption Rates</div>
         <div class="graph-text" style="color:white;">Record and calculate item consumption rates.</div>
+        </div>
+        -->
+
+        <!-- Reports (SRS UC-13) -->
+        <div class="content-box-test" onclick="window.location.href='participantReports.php'" >
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/document-report.svg" alt="Reports Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Reports</div>
+        <div class="graph-text" style="color:white;">Generate, print, and export Pet Pantry reports.</div>
         </div>
         <?php endif ?>
 
@@ -594,7 +604,7 @@
         </div>
         </div>
 
-        <!-- Manage Item Categories 
+        <!-- Manage Item Categories (hidden for the client demonstration)
         <div class="content-box-test" onclick="window.location.href='viewItemCategories.php'">
         <div class="icon-overlay">
         <img style="border-radius: 5px;" 
@@ -610,6 +620,7 @@
         Add, edit, and delete item categories.
         </div>
         </div>
+        -->
         <?php endif ?>
 
         <!-- Record Food Distribution -->
