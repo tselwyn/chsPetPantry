@@ -258,7 +258,7 @@ require_once('header.php');
         .report-table { width: 100%; border-collapse: collapse; text-align: left; }
         .report-table th { background-color: #2E5E6E; color: #fff; padding: .5rem; }
         .report-table td { border-bottom: 1px solid #ccc; padding: .5rem; vertical-align: top; }
-        .report-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+        .report-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; margin-top: 1rem; }
         .report-actions .button { margin: 0; }
         .print-only { display: none; }
 
