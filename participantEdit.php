@@ -13,8 +13,8 @@
         $accessLevel = $_SESSION['access_level'];
         $userID = $_SESSION['_id'];
     }
-    // admin-only access
-    if ($accessLevel < 2) {
+    // Volunteers and admins (SRS UC-02 to UC-07)
+    if ($accessLevel < 1) {
         header('Location: index.php');
         die();
     }
@@ -22,6 +22,8 @@
     require_once('include/input-validation.php');
     require_once('include/output.php');
     require_once('database/dbParticipants.php');
+    require_once('database/dbParticipantDistributions.php');
+    require_once('database/dbPets.php');
 
     // Choices offered on the form, same as registrationForm.php
     $states = array('VA' => 'Virginia', 'MD' => 'Maryland', 'WV' => 'West Virginia',
@@ -32,6 +34,9 @@
 
     $id = (isset($_GET['id']) && ctype_digit($_GET['id'])) ? (int) $_GET['id'] : 0;
     $participant = $id > 0 ? retrieve_participant($id) : null;
+
+    // Removing an alert is admin-only (FR-023); anyone can set one
+    $canRemoveAlert = $accessLevel >= 2 || ($participant !== null && !$participant->get_alert());
 
     $errors = array();
     $args = array();
@@ -127,6 +132,11 @@
 
         if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Yes', 'No'))) {
             $errors[] = 'Choose Yes or No for Alert / Flag.';
+        }
+
+        // Volunteers can set an alert but only an admin can remove one (FR-023)
+        if (!$canRemoveAlert && $args['participant_alert'] !== 'Yes') {
+            $errors[] = 'Only an administrator can remove an Alert / Flag.';
         }
 
         if (count($errors) == 0) {
@@ -232,6 +242,14 @@ require_once('header.php');
         <div class="happy-toast">The participant's information has been saved.</div>
         <?php endif ?>
 
+        <?php if (isset($_GET['distributed']) && count($errors) == 0): ?>
+        <div class="happy-toast">The food distribution has been recorded.</div>
+        <?php endif ?>
+
+        <?php if (isset($_GET['snv']) && count($errors) == 0): ?>
+        <div class="happy-toast">Spay/neuter and vaccination information updated.</div>
+        <?php endif ?>
+
         <?php if (count($errors) > 0): ?>
         <div class="error-toast">
             <p>The participant was not saved:</p>
@@ -310,8 +328,11 @@ require_once('header.php');
 
             <label for="participant_alert">Alert / Flag</label>
             <select id="participant_alert" name="participant_alert">
-                <?php participant_options(array('No', 'Yes'), $args['participant_alert']) ?>
+                <?php participant_options($canRemoveAlert ? array('No', 'Yes') : array('Yes'), $args['participant_alert']) ?>
             </select>
+            <?php if (!$canRemoveAlert): ?>
+            <p class="mb-2">Only an administrator can remove this alert.</p>
+            <?php endif ?>
 
             <label for="notes">Notes</label>
             <textarea id="notes" name="notes" rows="4" placeholder="Enter any additional notes about the participant..."><?php echo hsc($args['notes']) ?></textarea>
@@ -320,7 +341,100 @@ require_once('header.php');
         <input type="submit" value="Save Changes">
     </form>
 
+    <?php
+    // Only Active pets are listed; Inactive and Deleted pets are managed on deleteParticipantPet.php
+    $pets = array_filter(get_pets_by_participant($participant->get_id()), function ($pet) {
+        return $pet->get_status() === 'Active';
+    });
+    ?>
+    <div class="signup-form" id="pets">
+        <fieldset class="section-box mb-4">
+            <h3>Pets</h3>
+            <p class="mb-2">This participant's active pets and their spay/neuter, rabies vaccination, and counseling status.</p>
+            <div class="blue-div"></div>
+
+            <?php if (count($pets) == 0): ?>
+            <p>This participant has no active pets. <a href="registerPet.php?participant_id=<?php echo (int) $participant->get_id() ?>">Register a pet</a></p>
+            <?php else: ?>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Species</th>
+                            <th>Spay/Neuter</th>
+                            <th>Rabies</th>
+                            <th>Counseling</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($pets as $pet): ?>
+                        <tr>
+                            <td><?php echo hsc($pet->get_name()) ?></td>
+                            <td><?php echo hsc($pet->get_species()) ?></td>
+                            <td><?php echo hsc($pet->get_spay_neuter_status()) ?></td>
+                            <td><?php echo hsc($pet->get_rabies_status()) ?></td>
+                            <td>
+                                <?php echo hsc($pet->get_counseling_status()) ?>
+                                <?php if ($pet->get_counseling_status() === 'Yes' && $pet->get_counseling_date()): ?>
+                                (<?php echo hsc(date('M j, Y', strtotime($pet->get_counseling_date()))) ?>)
+                                <?php endif ?>
+                            </td>
+                            <td><a href="petSNV.php?id=<?php echo (int) $pet->get_id() ?>" class="button">SNV / Counseling</a></td>
+                        </tr>
+                        <?php endforeach ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php endif ?>
+        </fieldset>
+    </div>
+
+    <?php $distributions = get_participant_distributions($participant->get_id()) ?>
+    <div class="signup-form" id="distribution-history">
+        <fieldset class="section-box mb-4">
+            <h3>Distribution History</h3>
+            <p class="mb-2">Food distributions recorded for this participant, newest first.</p>
+            <div class="blue-div"></div>
+
+            <?php if (count($distributions) == 0): ?>
+            <p>No distributions have been recorded for this participant.</p>
+            <?php else: ?>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Location</th>
+                            <th>Pets</th>
+                            <th>Dog Food (lbs)</th>
+                            <th>Cat Food (lbs)</th>
+                            <th>Processed By</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($distributions as $distribution): ?>
+                        <tr>
+                            <td><?php echo hsc(date('M j, Y', strtotime($distribution->get_distribution_date()))) ?></td>
+                            <td><?php echo hsc($distribution->get_location()) ?></td>
+                            <td><?php echo (int) $distribution->get_pets_served() ?></td>
+                            <td><?php echo hsc($distribution->get_dog_food_lbs()) ?></td>
+                            <td><?php echo hsc($distribution->get_cat_food_lbs()) ?></td>
+                            <td><?php echo hsc($distribution->get_processed_by()) ?></td>
+                            <td><?php echo nl2br(hsc($distribution->get_notes())) ?></td>
+                        </tr>
+                        <?php endforeach ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php endif ?>
+        </fieldset>
+    </div>
+
     <div class="text-center">
+        <a href="distributionRecord.php?id=<?php echo (int) $participant->get_id() ?>" class="button">Record Distribution</a>
         <a href="participantSearch.php" class="button">Back to Participant Search</a>
         <a href="index.php" class="button">Return to Dashboard</a>
     </div>

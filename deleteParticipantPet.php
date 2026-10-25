@@ -331,6 +331,13 @@ if (isset($_GET['participant_id'])) {
     background-color: #1f5c23;
 }
 
+/* base.css gives buttons 94% width; center them instead of leaving them at the left edge */
+.search-button, .remove-button, .delete-button, .active-button {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
     </style>
 </head>
 

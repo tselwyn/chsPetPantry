@@ -4120,6 +4120,29 @@ INSERT INTO `dbpalletevent` (`id`, `name`, `personId`, `date`, `notes`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `dbparticipantdistributions`
+--
+-- One row per food distribution given to a participant (UC-06), recorded
+-- through distributionRecord.php. `processed_by` is the dbpersons id of the
+-- user who recorded it.
+--
+
+CREATE TABLE `dbparticipantdistributions` (
+  `id` int NOT NULL,
+  `participant_id` int NOT NULL,
+  `distribution_date` date NOT NULL,
+  `location` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `pets_served` int NOT NULL,
+  `dog_food_lbs` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `cat_food_lbs` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `processed_by` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `dbparticipants`
 --
 -- Pet Pantry participants (households). Ported from Andrew's `participant` table
@@ -4270,6 +4293,11 @@ INSERT INTO `dbpersons` (`personId`, `id`, `first_name`, `last_name`, `email`, `
 -- migrations 0001 and 0006), cut down to what Sprint 1 needs. Species and breed
 -- are plain text because the starter has no species or breed tables.
 --
+-- UC-08 (FR-027, FR-029, FR-043): spay/neuter and rabies status are
+-- Yes / No / Unknown. counseling_status records whether the participant was
+-- given free spay/neuter and vaccination service information; counseled_by is
+-- the dbpersons id of the volunteer or admin who recorded it.
+--
 
 CREATE TABLE `dbpets` (
   `id` int NOT NULL,
@@ -4281,7 +4309,14 @@ CREATE TABLE `dbpets` (
   `date_of_birth` date DEFAULT NULL,
   `dob_is_estimate` tinyint(1) NOT NULL DEFAULT '1',
   `weight_lbs` decimal(5,1) DEFAULT NULL,
-  `is_altered` tinyint(1) NOT NULL DEFAULT '0',
+  `spay_neuter_status` enum('Yes','No','Unknown') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Unknown',
+  `rabies_status` enum('Yes','No','Unknown') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Unknown',
+  `counseling_status` enum('Yes','No') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'No',
+  `counseling_date` date DEFAULT NULL,
+  `counseled_by` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `food_type` enum('dry','wet','either') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `food_restriction` text COLLATE utf8mb4_unicode_ci,
+  `notes` text COLLATE utf8mb4_unicode_ci,
   `status` enum('Active','Inactive','Deleted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Active',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -4290,17 +4325,17 @@ CREATE TABLE `dbpets` (
 -- Dumping data for table `dbpets`
 --
 
-INSERT INTO `dbpets` (`id`, `participant_id`, `name`, `species`, `breed`, `sex`, `date_of_birth`, `dob_is_estimate`, `weight_lbs`, `is_altered`, `status`, `created_at`) VALUES
-(1, 1, 'Canela', 'Dog', 'Chihuahua mix', 'Female', '2020-05-01', 1, 9.5, 1, 'Active', '2026-08-04 10:15:00'),
-(2, 2, 'Duke', 'Dog', 'Labrador Retriever', 'Male', '2018-03-01', 1, 72.0, 1, 'Active', '2026-08-11 11:02:00'),
-(3, 3, 'Mittens', 'Cat', 'Domestic Shorthair', 'Female', '2016-01-01', 1, 10.0, 1, 'Active', '2026-08-18 13:40:00'),
-(4, 3, 'Socks', 'Cat', 'Domestic Shorthair', 'Male', '2017-06-01', 1, 12.5, 1, 'Active', '2026-08-18 13:41:00'),
-(5, 4, 'Rocky', 'Dog', 'Pit Bull mix', 'Male', '2022-09-01', 1, 55.0, 0, 'Active', '2026-08-25 09:30:00'),
-(6, 4, 'Luna', 'Cat', NULL, 'Female', NULL, 1, 8.0, 0, 'Active', '2026-08-25 09:31:00'),
-(7, 5, 'Biscuit', 'Dog', 'Beagle', 'Male', '2019-04-01', 1, 24.0, 1, 'Inactive', '2026-06-02 14:20:00'),
-(8, 6, 'Shadow', 'Cat', NULL, 'Male', NULL, 1, NULL, 1, 'Active', '2026-03-10 10:05:00'),
-(9, 7, 'Peanut', 'Dog', 'Dachshund', 'Female', '2021-11-01', 0, 11.0, 1, 'Active', '2026-09-01 15:45:00'),
-(10, 7, 'Oreo', 'Cat', 'Domestic Longhair', 'Male', '2023-02-01', 1, 9.0, 0, 'Active', '2026-09-01 15:46:00');
+INSERT INTO `dbpets` (`id`, `participant_id`, `name`, `species`, `breed`, `sex`, `date_of_birth`, `dob_is_estimate`, `weight_lbs`, `spay_neuter_status`, `rabies_status`, `status`, `created_at`) VALUES
+(1, 1, 'Canela', 'Dog', 'Chihuahua mix', 'Female', '2020-05-01', 1, 9.5, 'Yes', 'Yes', 'Active', '2026-08-04 10:15:00'),
+(2, 2, 'Duke', 'Dog', 'Labrador Retriever', 'Male', '2018-03-01', 1, 72.0, 'Yes', 'Yes', 'Active', '2026-08-11 11:02:00'),
+(3, 3, 'Mittens', 'Cat', 'Domestic Shorthair', 'Female', '2016-01-01', 1, 10.0, 'Yes', 'Unknown', 'Active', '2026-08-18 13:40:00'),
+(4, 3, 'Socks', 'Cat', 'Domestic Shorthair', 'Male', '2017-06-01', 1, 12.5, 'Yes', 'Yes', 'Active', '2026-08-18 13:41:00'),
+(5, 4, 'Rocky', 'Dog', 'Pit Bull mix', 'Male', '2022-09-01', 1, 55.0, 'No', 'Yes', 'Active', '2026-08-25 09:30:00'),
+(6, 4, 'Luna', 'Cat', NULL, 'Female', NULL, 1, 8.0, 'No', 'Unknown', 'Active', '2026-08-25 09:31:00'),
+(7, 5, 'Biscuit', 'Dog', 'Beagle', 'Male', '2019-04-01', 1, 24.0, 'Yes', 'Yes', 'Inactive', '2026-06-02 14:20:00'),
+(8, 6, 'Shadow', 'Cat', NULL, 'Male', NULL, 1, NULL, 'Yes', 'No', 'Active', '2026-03-10 10:05:00'),
+(9, 7, 'Peanut', 'Dog', 'Dachshund', 'Female', '2021-11-01', 0, 11.0, 'Yes', 'Yes', 'Active', '2026-09-01 15:45:00'),
+(10, 7, 'Oreo', 'Cat', 'Domestic Longhair', 'Male', '2023-02-01', 1, 9.0, 'No', 'No', 'Active', '2026-09-01 15:46:00');
 
 -- --------------------------------------------------------
 
@@ -4913,6 +4948,14 @@ ALTER TABLE `dbpalletevent`
   ADD UNIQUE KEY `name` (`name`);
 
 --
+-- Indexes for table `dbparticipantdistributions`
+--
+ALTER TABLE `dbparticipantdistributions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `participant_id` (`participant_id`,`distribution_date`),
+  ADD KEY `distribution_date` (`distribution_date`);
+
+--
 -- Indexes for table `dbparticipants`
 --
 ALTER TABLE `dbparticipants`
@@ -5098,6 +5141,12 @@ ALTER TABLE `dbpalletevent`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
+-- AUTO_INCREMENT for table `dbparticipantdistributions`
+--
+ALTER TABLE `dbparticipantdistributions`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `dbparticipants`
 --
 ALTER TABLE `dbparticipants`
@@ -5172,6 +5221,12 @@ ALTER TABLE `user_verified_ids`
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `dbparticipantdistributions`
+--
+ALTER TABLE `dbparticipantdistributions`
+  ADD CONSTRAINT `fk_dbparticipantdistributions_participant_id` FOREIGN KEY (`participant_id`) REFERENCES `dbparticipants` (`id`);
 
 --
 -- Constraints for table `dbpets`

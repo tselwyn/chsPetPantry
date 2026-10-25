@@ -408,8 +408,8 @@
                         border-radius: 12px;
                         padding: 20px;
                         color: white;                 /* default text color */
-                        flex: 1 1 280px;
-                        max-width: 375px;
+                        flex: 0 0 340px;
+                        max-width: 340px;
                         min-height: 250px;            /* keeps all boxes same height even without bg image */
                         }
 
@@ -486,8 +486,8 @@
 <!-- all users can see the header -->
 <?php require 'header.php';?>
 
-<!-- ONLY SUPER ADMIN AND ADMIN(S) WILL SEE THIS -->
-<?php if ($_SESSION['access_level'] >= 2): ?>
+<!-- VOLUNTEERS (INVENTORY COUNTER) AND ADMINS SEE THE PET PANTRY DASHBOARD; ADMIN-ONLY CARDS ARE MARKED BELOW -->
+<?php if ($_SESSION['access_level'] >= 1): ?>
 <body>
 
     <!-- Dummy content to enable scrolling -->
@@ -516,6 +516,8 @@
     <h2><b>Pet Pantry Dashboard</b></h2>
     </div>
     <div class="full-width-bar-sub">
+        <?php if ($_SESSION['access_level'] >= 2): ?>
+        <!-- Admin only -->
         <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'">
             <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
@@ -532,19 +534,32 @@
         <div class="large-text-sub" style="color:white;">Add User</div>
         <div class="graph-text" style="color:white;">Add user and set permissions.</div>
         </div>
+        <!-- Consumption Rates (hidden for the client demonstration)
         <div class="content-box-test" onclick="window.location.href='deletePet.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="Delete Pet Icon">
         </div>
-
-
         <div class="large-text-sub" style="color:white;">Consumption Rates</div>
         <div class="graph-text" style="color:white;">Record and calculate item consumption rates.</div>
         </div>
+        -->
+
+        <!-- Reports (SRS UC-13) -->
+        <div class="content-box-test" onclick="window.location.href='participantReports.php'" >
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/document-report.svg" alt="Reports Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Reports</div>
+        <div class="graph-text" style="color:white;">Generate, print, and export Pet Pantry reports.</div>
+        </div>
+        <?php endif ?>
+
+        <!-- Volunteers and admins (SRS UC-02 to UC-06) -->
         <div class="content-box-test" onclick="window.location.href='participantSearch.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/person-search.svg" alt="Participant Search Icon">
-        </div>
+        </div> 
 
         <div class="large-text-sub" style="color:white;">Participant Search</div>
         <div class="graph-text" style="color:white;">Find a participant by ID, name, address, or phone.</div>
@@ -571,6 +586,8 @@
         </div>
         </div>
 
+        <?php if ($_SESSION['access_level'] >= 2): ?>
+        <!-- Admin only -->
         <!-- Remove Participant / Pet -->
         <div class="content-box-test" onclick="window.location.href='deleteParticipantPet.php'">
         <div class="icon-overlay pet-icon">
@@ -587,13 +604,13 @@
         </div>
         </div>
 
-        <!-- Manage Item Categories -->
+        <!-- Manage Item Categories (hidden for the client demonstration)
         <div class="content-box-test" onclick="window.location.href='viewItemCategories.php'">
         <div class="icon-overlay">
         <img style="border-radius: 5px;" 
              src="images/list-solid.svg" 
              alt="Categories Icon">
-        </div>
+        </div> 
 
         <div class="large-text-sub" style="color:white;">
         Manage Item Categories
@@ -602,6 +619,18 @@
         <div class="graph-text" style="color:white;">
         Add, edit, and delete item categories.
         </div>
+        </div>
+        -->
+        <?php endif ?>
+
+        <!-- Record Food Distribution -->
+        <div class="content-box-test" onclick="window.location.href='distributionRecord.php'" >
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/clipboard-checklist.svg" alt="Record Food Distribution Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Record Food Distribution</div>
+        <div class="graph-text" style="color:white;">Record pet food given to a participant.</div>
         </div>
 
         <!--
@@ -838,7 +867,7 @@
         <div class="large-text-sub" style="color:white;">Weekly Inventory Report</div>
         <div class="graph-text" style="color:white;">View updated weekly inventory.</div>
     </div>
-    
+
     <!-- Shopping List -->
     <div class="content-box-test" onclick="window.location.href='viewShoppingList.php'" >
         <div class="icon-overlay">

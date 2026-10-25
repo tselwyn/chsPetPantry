@@ -13,8 +13,8 @@
         $accessLevel = $_SESSION['access_level'];
         $userID = $_SESSION['_id'];
     }
-    // admin-only access
-    if ($accessLevel < 2) {
+    // Volunteers and admins (SRS UC-02 to UC-07)
+    if ($accessLevel < 1) {
         header('Location: index.php');
         die();
     }
@@ -259,7 +259,7 @@ require_once('header.php');
                                         <td>' . hsc($participant->get_status()) . '</td>
                                         <td>' . $participant->get_pet_count() . '</td>
                                         <td>' . hsc($registered) . '</td>
-                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">View / Update</a></td>
+                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">View / Update</a><br><a href="distributionRecord.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">Record Distribution</a></td>
                                     </tr>';
                         }
                         echo '
