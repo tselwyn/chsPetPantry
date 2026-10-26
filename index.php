@@ -535,14 +535,24 @@
         <div class="large-text-sub" style="color:white;">Add User</div>
         <div class="graph-text" style="color:white;">Add user and set permissions.</div>
         </div>
+        <!-- Consumption Rates (hidden for the client demonstration)
         <div class="content-box-test" onclick="window.location.href='deletePet.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="Delete Pet Icon">
-        </div> -->
-
-      <!--          
+        </div>
         <div class="large-text-sub" style="color:white;">Consumption Rates</div>
         <div class="graph-text" style="color:white;">Record and calculate item consumption rates.</div>
+        </div>
+        -->
+
+        <!-- Reports (SRS UC-13) -->
+        <div class="content-box-test" onclick="window.location.href='participantReports.php'" >
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/document-report.svg" alt="Reports Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Reports</div>
+        <div class="graph-text" style="color:white;">Generate, print, and export Pet Pantry reports.</div>
         </div>
         <?php endif ?>
 
@@ -595,7 +605,7 @@
         </div>
         </div>
 
-        <!-- Manage Item Categories 
+        <!-- Manage Item Categories (hidden for the client demonstration)
         <div class="content-box-test" onclick="window.location.href='viewItemCategories.php'">
         <div class="icon-overlay">
         <img style="border-radius: 5px;" 
@@ -611,6 +621,7 @@
         Add, edit, and delete item categories.
         </div>
         </div>
+        -->
         <?php endif ?>
 
         <!-- Record Food Distribution -->
@@ -829,7 +840,7 @@
     </div>
     <div class="full-width-bar-sub">
 
-    <!-- Update Inventory 
+    <!-- Update Inventory -->
     <div class="content-box-test" onclick="window.location.href='viewUpdateInventory.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-checklist.svg" alt="Inventory Icon">
@@ -837,9 +848,9 @@
 
         <div class="large-text-sub" style="color:white;">Update Inventory</div>
         <div class="graph-text" style="color:white;">Add inventory entry.</div>
-    </div> -->
+    </div>
 
-    <!-- View Inventory 
+    <!-- View Inventory -->
     <div class="content-box-test" onclick="window.location.href='inventory.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-list-alt.svg" alt="Inventory Icon">
@@ -847,27 +858,27 @@
         
         <div class="large-text-sub" style="color:white;">View Inventory</div>
         <div class="graph-text" style="color:white;">Track inventory changes.</div>
-    </div>-->
+    </div>
 
-    <!-- Weekly Inventory Report 
+    <!-- Weekly Inventory Report -->
     <div class="content-box-test" onclick="window.location.href='viewWeeklyReport.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-arrow-down.svg" alt="Report Icon">
         </div>
         <div class="large-text-sub" style="color:white;">Weekly Inventory Report</div>
         <div class="graph-text" style="color:white;">View updated weekly inventory.</div>
-    </div> -->
-    
-    <!-- Shopping List 
+    </div>
+
+    <!-- Shopping List -->
     <div class="content-box-test" onclick="window.location.href='viewShoppingList.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/clipboard-list-alt.svg" alt="Shopping List Icon">
         </div>
         <div class="large-text-sub" style="color:white;">Shopping List</div>
         <div class="graph-text" style="color:white;">View and manage recommended baskets by family size.</div>
-    </div> -->
+    </div>
 
-    <!-- Inventory Analytics 
+    <!-- Inventory Analytics -->
     <div class="content-box-test" onclick="window.location.href='generateReport.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/document-report.svg" alt="Report Icon">
@@ -875,8 +886,8 @@
         
         <div class="large-text-sub"style="color:white;">Inventory Analytics</div>
         <div class="graph-text"style="color:white;">Explore visual reports and analytics for inventory data.</div>
-    </div> -->
-    </div>  
+    </div>
+    </div>
 
 <div style="width: 90%; /* Stops before page ends */
             height: 100%;

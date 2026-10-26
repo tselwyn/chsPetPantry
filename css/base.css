@@ -346,6 +346,11 @@ input[type=submit]:hover, button:hover, .button:hover, a.button-signup:hover {
     background-color: var(--accent-color);
 }
 
+/* Center a form's submit button; at 94% width it otherwise sits against the left edge */
+form.signup-form > input[type=submit] {
+    align-self: center;
+}
+
 /* Disabled submit/button appearance for attendance logging */
 .disabled-btn,
 button.disabled-btn,
