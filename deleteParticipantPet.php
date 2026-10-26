@@ -287,7 +287,7 @@ if (isset($_GET['participant_id'])) {
 }
 
 .remove-button {
-    background-color: #b94a48;
+    background-color: #c1bfbf;
     color: white;
     border: none;
     padding: 8px 15px;
@@ -298,7 +298,7 @@ if (isset($_GET['participant_id'])) {
 }
 
 .remove-button:hover {
-    background-color: #943b39;
+    background-color: #f8acaa;
 }
 
 .delete-button {
