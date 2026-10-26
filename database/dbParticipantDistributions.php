@@ -107,3 +107,61 @@ function count_active_pets($participant_id) {
     mysqli_close($con);
     return $count;
 }
+
+/*
+ * Get distributions for reports.
+ * Optional filters: location, start date, and end date.
+ * Results are newest first.
+ */
+function get_distribution_report($location = '', $start_date = '', $end_date = '') {
+    $con = connect();
+    $distributions = array();
+
+    $query = 'SELECT * FROM dbparticipantdistributions WHERE 1=1';
+    $types = '';
+    $params = array();
+
+    if ($location !== '') {
+        $query .= ' AND location = ?';
+        $types .= 's';
+        $params[] = $location;
+    }
+
+    if ($start_date !== '') {
+        $query .= ' AND distribution_date >= ?';
+        $types .= 's';
+        $params[] = $start_date;
+    }
+
+    if ($end_date !== '') {
+        $query .= ' AND distribution_date <= ?';
+        $types .= 's';
+        $params[] = $end_date;
+    }
+
+    $query .= ' ORDER BY distribution_date DESC, id DESC';
+
+    try {
+        $stmt = mysqli_prepare($con, $query);
+
+        if ($stmt) {
+            if (!empty($params)) {
+                mysqli_stmt_bind_param($stmt, $types, ...$params);
+            }
+
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+
+            while ($row = mysqli_fetch_assoc($result)) {
+                $distributions[] = make_a_participant_distribution($row);
+            }
+
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $distributions = array();
+    }
+
+    mysqli_close($con);
+    return $distributions;
+}
