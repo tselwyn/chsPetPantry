@@ -27,6 +27,7 @@
     require_once('database/dbItemCounts.php');
     require_once('database/dbItemCategory.php');
     require_once('database/dbParticipantDistributions.php');
+    require_once('database/dbPets.php');
 
     // Phone numbers are stored as 10 digits; reports show them as (540) 555-0101
     function report_phone($phone) {
@@ -39,6 +40,19 @@
 
     function report_name($row) {
         return trim($row['first_name'] . ' ' . $row['last_name']);
+    }
+
+    function report_participant_name($participant_id) {
+        $participant = retrieve_participant($participant_id);
+
+        if (!$participant) {
+            return 'Unknown Participant';
+        }
+
+        return trim(
+            $participant->get_first_name() . ' ' . 
+            $participant->get_last_name()
+        );
     }
 
     function report_current_inventory($location = '', $startDate = '', $endDate = '') {
@@ -96,6 +110,7 @@
         'participant_list' => array(
             'title' => 'Current Participant List',
             'date_label' => 'Registration date',
+            'show_filters' => true,
             'columns' => array('ID', 'Name', 'Phone', 'Location', 'Registration Date', 'Status'),
             'fetch' => 'get_participant_report',
             'row' => function ($p) {
@@ -106,6 +121,7 @@
         'participant_status' => array(
             'title' => 'Active / Inactive / Expired Participants',
             'date_label' => 'Registration date',
+            'show_filters' => true,
             'columns' => array('ID', 'Name', 'Phone', 'Location', 'Registration Date', 'Status'),
             'fetch' => 'get_participant_status_report',
             'row' => function ($p) {
@@ -116,6 +132,7 @@
         'flagged' => array(
             'title' => 'Flagged Participants',
             'date_label' => 'Registration date',
+            'show_filters' => true,
             'columns' => array('ID', 'Name', 'Phone', 'Location', 'Status', 'Notes'),
             'fetch' => 'get_flagged_participants_report',
             'row' => function ($p) {
@@ -127,6 +144,7 @@
         'distribution_history' => array(
             'title' => 'Food Distribution History',
             'date_label' => 'Distribution date',
+            'show_filters' => true,
             'columns' => array(
                 'Participant ID',
                 'Distribution Date',
@@ -139,7 +157,7 @@
             'fetch' => 'get_distribution_report',
             'row' => function ($d) {
                 return array(
-                    $d->get_participant_id(),
+                    report_participant_name($d->get_participant()),
                     $d->get_distribution_date(),
                     $d->get_location(),
                     $d->get_pets_served(),
@@ -148,7 +166,64 @@
                     $d->get_notes()
                 );
             }
+        ),
+        
+        'registered_pets' => array(
+            'title' => 'Registered Pets',
+            'date_label' => '',
+            'show_filters' => false,
+            'columns' => array(
+                'Participant',
+                'Pet Name',
+                'Species',
+                'Breed',
+                'Sex',
+                'Spayed/Neutered',
+                'Rabies',
+                'Status'
+            ),
+            'fetch' => 'get_pet_report',
+            'row' => function ($pet) {
+                return array(
+                    report_participant_name($pet->get_participant_id()),
+                    $pet->get_name(),
+                    $pet->get_species(),
+                    $pet->get_breed(),
+                    $pet->get_sex(),
+                    $pet->get_spay_neuter_status(),
+                    $pet->get_rabies_status(),
+                    $pet->get_status()
+                );
+            }
+        ),
+
+        'snv_status' => array(
+            'title' => 'Spay/Neuter & Rabies Status',
+            'date_label' => '',
+            'show_filters' => false,
+            'columns' => array(
+                'Participant',
+                'Pet Name',
+                'Species',
+                'Spayed/Neutered',
+                'Rabies',
+                'Counseling Provided',
+                'Counseling Date'
+            ),
+            'fetch' => 'get_pet_report',
+            'row' => function ($pet) {
+                return array(
+                    report_participant_name($pet->get_participant_id()),
+                    $pet->get_name(),
+                    $pet->get_species(),
+                    $pet->get_spay_neuter_status(),
+                    $pet->get_rabies_status(),
+                    $pet->get_counseling_status(),
+                    $pet->get_counseling_date() ?: ''
+                );
+            }
         )
+
       /*
         'current_inventory' => array(
             'title' => 'Current Inventory',
@@ -216,18 +291,30 @@
     }
 
     // Lines describing the filters, shown above the report and in the PDF
-    $filterSummary = array();
-    if ($report !== null) {
-        $filterSummary[] = 'Location: ' . ($filters['location'] === '' ? 'All locations' : $filters['location']);
-        if ($filters['start_date'] === '' && $filters['end_date'] === '') {
-            $filterSummary[] = $report['date_label'] . ': any';
-        } else {
-            $filterSummary[] = $report['date_label'] . ': '
-                . ($filters['start_date'] === '' ? 'any' : date('M j, Y', strtotime($filters['start_date'])))
-                . ' to '
-                . ($filters['end_date'] === '' ? 'any' : date('M j, Y', strtotime($filters['end_date'])));
-        }
+    // Lines describing the filters, shown above the report and in the PDF
+$filterSummary = array();
+
+if ($report !== null && $report['show_filters']) {
+
+    $filterSummary[] = 'Location: '
+        . ($filters['location'] === '' ? 'All locations' : $filters['location']);
+
+    if ($filters['start_date'] === '' && $filters['end_date'] === '') {
+
+        $filterSummary[] = $report['date_label'] . ': any';
+
+    } else {
+
+        $filterSummary[] = $report['date_label'] . ': '
+            . ($filters['start_date'] === ''
+                ? 'any'
+                : date('M j, Y', strtotime($filters['start_date'])))
+            . ' to '
+            . ($filters['end_date'] === ''
+                ? 'any'
+                : date('M j, Y', strtotime($filters['end_date'])));
     }
+}
     $generatedAt = date('M j, Y g:i A');
 
     // Exports are sent as a download instead of the page (FR-063 to FR-065)
@@ -402,6 +489,8 @@ require_once('header.php');
                 <option value="<?php echo hsc($key) ?>"<?php if ($key === $filters['report_type']) echo ' selected' ?>><?php echo hsc($type['title']) ?></option>
                 <?php endforeach ?>
             </select>
+            
+            <div id="report-filters">
 
             <label for="start_date">Start Date</label>
             <input type="date" id="start_date" name="start_date" value="<?php echo hsc($filters['start_date']) ?>">
@@ -416,6 +505,7 @@ require_once('header.php');
                 <option value="<?php echo hsc($location) ?>"<?php if ($location === $filters['location']) echo ' selected' ?>><?php echo hsc($location) ?></option>
                 <?php endforeach ?>
             </select>
+            </div>
         </fieldset>
 
         <input type="submit" value="Generate Report">
@@ -473,6 +563,30 @@ require_once('header.php');
     </div>
   </div>
 </main>
+
+<script>
+    const reportType = document.getElementById('report_type');
+    const reportFilters = document.getElementById('report-filters');
+
+    const reportsWithFilters = [
+        'participant_list',
+        'participant_status',
+        'flagged',
+        'distribution_history'
+    ];
+
+    function updateReportFilters() {
+        if (reportsWithFilters.includes(reportType.value)) {
+            reportFilters.style.display = '';
+        } else {
+            reportFilters.style.display = 'none';
+        }
+    }
+
+    reportType.addEventListener('change', updateReportFilters);
+
+    updateReportFilters();
+</script>
 
 </body>
 </html>
