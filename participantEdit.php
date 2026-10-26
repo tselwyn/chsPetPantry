@@ -191,6 +191,17 @@
 $tailwind_mode = true;
 require_once('header.php');
 ?>
+
+<style>
+    #participant_id,
+    #registration_date {
+        background-color: #f5f5f5 !important;
+        color: #333 !important;
+        opacity: 1 !important;
+        -webkit-text-fill-color: #333 !important;
+        cursor: not-allowed;
+    }
+</style>
 <!-- BANDAID END, REMOVE ONCE SOME GENIUS FIXES -->
 </head>
 <body class="relative">

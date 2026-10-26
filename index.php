@@ -546,7 +546,7 @@
         -->
 
         <!-- Reports (SRS UC-13) -->
-        <div class="content-box-test" onclick="window.location.href='participantReports.php'" >
+        <div class="content-box-test" onclick="window.location.href='reports.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/document-report.svg" alt="Reports Icon">
         </div>

@@ -297,4 +297,40 @@ function delete_pet($pet_id) {
     return $success;
 }
 
+/*
+ * Get all pets for reports.
+ * Deleted pets are not included.
+ */
+function get_pet_report($location = '', $start_date = '', $end_date = '') {
+
+    $query = "SELECT * FROM dbpets
+              WHERE status != 'Deleted'
+              ORDER BY participant_id, name";
+
+    $con = connect();
+    $pets = array();
+
+    try {
+        $stmt = mysqli_prepare($con, $query);
+
+        if ($stmt) {
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+
+            while ($row = mysqli_fetch_assoc($result)) {
+                $pets[] = make_a_pet($row);
+            }
+
+            mysqli_stmt_close($stmt);
+        }
+
+    } catch (mysqli_sql_exception $e) {
+        $pets = array();
+    }
+
+    mysqli_close($con);
+
+    return $pets;
+}
+
 ?>
