@@ -4268,6 +4268,11 @@ CREATE TABLE `dbpersons` (
 --
 -- Dumping data for table `dbpersons`
 --
+-- chs_admin and chs_volunteer are the shared Administrator and Volunteer
+-- logins the client asked for. Their password is a placeholder that is not a
+-- password hash, so neither can log in until a password is set (see README,
+-- "Shared Administrator and Volunteer logins").
+--
 
 INSERT INTO `dbpersons` (`personId`, `id`, `first_name`, `last_name`, `email`, `type`, `status`, `password`, `force_password_change`) VALUES
 (1, 'vmsroot', 'vmsroot', '', '', 'superadmin', 'Active', '$2y$10$.3p8xvmUqmxNztEzMJQRBesLDwdiRU3xnt/HOcJtsglwsbUk88VTO', 0),
@@ -4282,7 +4287,9 @@ INSERT INTO `dbpersons` (`personId`, `id`, `first_name`, `last_name`, `email`, `
 (10, 'rbrt', 'Robert', 'Burton', 'rbrt1248@gmail.com', 'admin', 'Inactive', '$2y$10$3gZWuMzmsWZNM3Cvt1j/JOwvDfrRJ2QMbS1BJ35VG4OfVwpIhAvt2', 0),
 (11, 'aconsuegra', 'Allison', 'Consuegra', 'allisonconsuegra0@gmail.com', 'Superadmin', 'Active', '$2y$10$3tWO/ffX7TlUX.qnzAW8vO4rq0ALGXOdsDnbNVq54bByQ.pS1ZIQm', 0),
 (12, 'dev', 'eron', 'hardin', 'eronhardin2002@gmail.com', 'admin', 'Deleted', '$2y$10$Jkl5e1MIk3bnfBEFXfxEC.w0.qBYH7AKzYlyLghvsnLmv9moMSMeq', 0),
-(13, 'jazmyne.bartlett@ccda.net', 'Jazmyne', 'Bartlett', 'Jazmyne.bartlett@ccda.net', 'Admin', 'Active', '$2y$10$udcW6zeb/C1MRGNGRXiy/.Ia4noOL0ZvHL33TiuJ2ociuaSVPrLzC', 0);
+(13, 'jazmyne.bartlett@ccda.net', 'Jazmyne', 'Bartlett', 'Jazmyne.bartlett@ccda.net', 'Admin', 'Active', '$2y$10$udcW6zeb/C1MRGNGRXiy/.Ia4noOL0ZvHL33TiuJ2ociuaSVPrLzC', 0),
+(14, 'chs_admin', 'Administrator', '', '', 'admin', 'Active', 'SET-A-PASSWORD', 0),
+(15, 'chs_volunteer', 'Volunteer', '', '', 'volunteer', 'Active', 'SET-A-PASSWORD', 0);
 
 -- --------------------------------------------------------
 
@@ -5159,7 +5166,7 @@ ALTER TABLE `dbparticipants`
 -- AUTO_INCREMENT for table `dbpersons`
 --
 ALTER TABLE `dbpersons`
-  MODIFY `personId` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `personId` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `dbpets`

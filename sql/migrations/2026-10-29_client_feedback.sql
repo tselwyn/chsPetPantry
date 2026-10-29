@@ -52,3 +52,11 @@ ALTER TABLE `dbpets`
 
 -- 7. Last distribution date on the Remove Participant list. No database
 --    change; it is MAX(distribution_date) from dbparticipantdistributions.
+
+-- 8a. Shared Administrator and Volunteer logins. The password is a
+--     placeholder that is not a hash, so neither account can log in until a
+--     password is set (README, "Shared Administrator and Volunteer logins").
+--     INSERT IGNORE skips an account whose username already exists.
+INSERT IGNORE INTO `dbpersons` (`id`, `first_name`, `last_name`, `email`, `type`, `status`, `password`, `force_password_change`) VALUES
+('chs_admin', 'Administrator', '', '', 'admin', 'Active', 'SET-A-PASSWORD', 0),
+('chs_volunteer', 'Volunteer', '', '', 'volunteer', 'Active', 'SET-A-PASSWORD', 0);
