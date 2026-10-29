@@ -118,6 +118,54 @@ function get_pet_by_id($id) {
 }
 
 /*
+ * Save the fields of a Pet that petEdit.php changes. The owner, status and
+ * counseling record are left as they were. Returns true if the update ran.
+ */
+function update_pet($pet) {
+
+    $query = 'UPDATE dbpets SET name = ?, species = ?, breed = ?, sex = ?, '
+        . 'date_of_birth = ?, dob_is_estimate = ?, weight_lbs = ?, '
+        . 'spay_neuter_status = ?, rabies_status = ?, food_type = ?, '
+        . 'food_restriction = ?, notes = ? WHERE id = ?';
+
+    $args = [
+        $pet->get_name(),
+        $pet->get_species(),
+        $pet->get_breed(),
+        $pet->get_sex(),
+        $pet->get_date_of_birth(),
+        $pet->get_dob_is_estimate(),
+        $pet->get_weight_lbs(),
+        $pet->get_spay_neuter_status(),
+        $pet->get_rabies_status(),
+        $pet->get_food_type(),
+        $pet->get_food_restriction(),
+        $pet->get_notes(),
+        $pet->get_id()
+    ];
+
+    $con = connect();
+    $success = false;
+
+    try {
+        $stmt = mysqli_prepare($con, $query);
+
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'sssssidsssssi', ...$args);
+            $success = mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
+
+    } catch (mysqli_sql_exception $e) {
+        $success = false;
+    }
+
+    mysqli_close($con);
+
+    return $success;
+}
+
+/*
  * Save a pet's spay/neuter and rabies vaccination status (UC-08).
  * When $counseling_status is 'Yes', counseling is recorded as given today
  * by $counseled_by. Otherwise the counseling fields are left as they were,

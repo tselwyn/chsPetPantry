@@ -30,3 +30,6 @@ ALTER TABLE `dbparticipants`
 -- 3. "Save and Add Pets" goes straight to Register Pet. No database change.
 
 -- 4. Pets shown inline in participant search results. No database change.
+
+-- 5. Edit and Delete on the participant page's pets table. No database
+--    change; a deleted pet keeps its row with status Deleted.

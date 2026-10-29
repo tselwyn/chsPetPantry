@@ -201,6 +201,29 @@ require_once('header.php');
         -webkit-text-fill-color: #333 !important;
         cursor: not-allowed;
     }
+
+    /* Edit and Delete sit beside SNV / Counseling in each pet row */
+    #pets td.pet-actions {
+        white-space: nowrap;
+    }
+
+    #pets td.pet-actions .button,
+    #pets td.pet-actions button {
+        width: auto;
+        margin: 0.125rem;
+    }
+
+    #pets td.pet-actions form {
+        display: inline;
+    }
+
+    #pets button.delete-pet-button {
+        background-color: #8b0000;
+    }
+
+    #pets button.delete-pet-button:hover {
+        background-color: #660000;
+    }
 </style>
 <!-- BANDAID END, REMOVE ONCE SOME GENIUS FIXES -->
 </head>
@@ -366,10 +389,16 @@ require_once('header.php');
 
             <?php if (isset($_GET['petAdded'])): ?>
             <div class="happy-toast">The pet has been registered.</div>
+            <?php elseif (isset($_GET['petSaved'])): ?>
+            <div class="happy-toast">The pet's information has been saved.</div>
+            <?php elseif (isset($_GET['petDeleted'])): ?>
+            <div class="happy-toast">The pet has been deleted.</div>
+            <?php elseif (isset($_GET['petNotDeleted'])): ?>
+            <div class="error-toast">The pet could not be deleted. Please try again.</div>
             <?php endif ?>
 
             <?php if (count($pets) == 0): ?>
-            <p>This participant has no active pets. <a href="registerPet.php?participant_id=<?php echo (int) $participant->get_id() ?>">Register a pet</a></p>
+            <p>This participant has no active pets.</p>
             <?php else: ?>
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; text-align: left;">
@@ -396,13 +425,24 @@ require_once('header.php');
                                 (<?php echo hsc(date('M j, Y', strtotime($pet->get_counseling_date()))) ?>)
                                 <?php endif ?>
                             </td>
-                            <td><a href="petSNV.php?id=<?php echo (int) $pet->get_id() ?>" class="button">SNV / Counseling</a></td>
+                            <td class="pet-actions">
+                                <a href="petSNV.php?id=<?php echo (int) $pet->get_id() ?>" class="button">SNV / Counseling</a>
+                                <a href="petEdit.php?id=<?php echo (int) $pet->get_id() ?>" class="button">Edit</a>
+                                <form method="post" action="petDelete.php" onsubmit="return confirm(<?php echo hsc(json_encode('Delete ' . $pet->get_name() . '? This cannot be undone from this page.')) ?>);">
+                                    <input type="hidden" name="pet_id" value="<?php echo (int) $pet->get_id() ?>">
+                                    <button type="submit" class="delete-pet-button">Delete</button>
+                                </form>
+                            </td>
                         </tr>
                         <?php endforeach ?>
                     </tbody>
                 </table>
             </div>
             <?php endif ?>
+
+            <div class="text-center mt-2">
+                <a href="registerPet.php?participant_id=<?php echo (int) $participant->get_id() ?>" class="button">Add a Pet</a>
+            </div>
         </fieldset>
     </div>
 
