@@ -48,12 +48,13 @@ function make_a_participant($result_row) {
 
 /*
  * Add a Participant to dbparticipants. Its id is ignored; the table assigns one.
- * Returns the new participant's id, or false if the insert failed.
+ * The participant agreement is no longer collected, so consent is left at the
+ * column's default. Returns the new participant's id, or false if the insert failed.
  */
 function add_participant($participant) {
     $query = 'INSERT INTO dbparticipants (first_name, last_name, street_address, city, state, zip, '
-        . 'phone, email, preferred_language, location, registration_date, status, alert, notes, consent) '
-        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        . 'phone, email, preferred_language, location, registration_date, status, alert, notes) '
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
     $args = [
         $participant->get_first_name(),
         $participant->get_last_name(),
@@ -68,8 +69,7 @@ function add_participant($participant) {
         $participant->get_registration_date(),
         $participant->get_status(),
         $participant->get_alert(),
-        $participant->get_notes(),
-        $participant->get_consent()
+        $participant->get_notes()
     ];
 
     $con = connect();
@@ -77,7 +77,7 @@ function add_participant($participant) {
     try {
         $stmt = mysqli_prepare($con, $query);
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'ssssssssssssisi', ...$args);
+            mysqli_stmt_bind_param($stmt, 'ssssssssssssis', ...$args);
             if (mysqli_stmt_execute($stmt)) {
                 $id = mysqli_insert_id($con);
             }

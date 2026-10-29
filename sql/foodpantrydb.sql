@@ -4151,7 +4151,7 @@ CREATE TABLE `dbparticipantdistributions` (
 --   first_name, last_name, street_address, city, state, zip, phone (phone1), email,
 --   preferred_language, location (participant_location), registration_date,
 --   status (participant_status), alert (participant_alert), notes,
---   consent (participant_consent)
+--   consent (participant_consent, no longer collected since Oct 2026; new rows keep the default 0)
 -- phone holds digits only, like dbpersons.
 --
 

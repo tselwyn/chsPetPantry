@@ -23,3 +23,6 @@ UPDATE `dbparticipants`
 
 ALTER TABLE `dbparticipants`
   MODIFY `status` enum('Active','Inactive','Expired','DND','Deleted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Active';
+
+-- 2. The participant agreement is no longer collected at registration.
+--    No change: dbparticipants.consent stays, and new rows get its default 0.

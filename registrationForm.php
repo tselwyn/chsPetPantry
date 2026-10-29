@@ -288,40 +288,6 @@
         <!--<input type="hidden" name="is_new_volunteer" value="1">
         <input type="hidden" name="total_hours_volunteered" value="0"> -->
         
-        <fieldset class="section-box mb-4">
-             <h3>Participant Agreement</h3>
-                <p class="mb-2">
-                Please confirm that the participant agrees to the Pet Pantry program rules
-                and the collection of their registration information.
-                </p>
-
-            <div class="blue-div"></div>
-
-            <label>
-            <em>* </em>Participant Consent
-            </label>
-
-            <div>
-            <input
-            type="radio"
-            id="consent_yes"
-            name="participant_consent"
-            value="Yes"
-            required
-            >
-            <label for="consent_yes">Participant agrees</label>
-            </div>
-
-            <div>
-            <input
-            type="radio"
-            id="consent_no"
-            name="participant_consent"
-            value="No"
-            >
-            <label for="consent_no">Participant does not agree</label>
-            </div>
-        </fieldset>
 
 
         <p class="text-center notice"></p>

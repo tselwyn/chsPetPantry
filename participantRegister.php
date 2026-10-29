@@ -38,7 +38,7 @@
             'first_name', 'last_name', 'street_address', 'city', 'state', 'zip',
             'phone1', 'email', 'preferred_language',
             'participant_location', 'registration_date', 'participant_status',
-            'participant_alert', 'notes', 'participant_consent'
+            'participant_alert', 'notes'
         );
         foreach ($fields as $field) {
             $args[$field] = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim($_POST[$field]) : '';
@@ -47,8 +47,7 @@
         $required = array(
             'first_name', 'last_name', 'street_address',
             'phone1', 'email', 'preferred_language',
-            'participant_location', 'registration_date', 'participant_status',
-            'participant_consent'
+            'participant_location', 'registration_date', 'participant_status'
         );
         if (!wereRequiredFieldsSubmitted($args, $required, false)) {
             $errors[] = 'Please fill in every required field.';
@@ -109,12 +108,6 @@
             $errors[] = 'Choose Yes or No for Alert / Flag.';
         }
 
-        if ($args['participant_consent'] !== '' && !valueConstrainedTo($args['participant_consent'], array('Yes', 'No'))) {
-            $errors[] = 'Choose whether the participant agrees.';
-        } else if ($args['participant_consent'] === 'No') {
-            $errors[] = 'The participant must agree to the Pet Pantry program rules before they can be registered.';
-        }
-
         if (count($errors) == 0) {
             $participant = new Participant(
                 null,
@@ -132,7 +125,7 @@
                 $args['participant_status'],
                 $args['participant_alert'] === 'Yes' ? 1 : 0,
                 $args['notes'] === '' ? null : $args['notes'],
-                1
+                null
             );
             $participant_id = add_participant($participant);
 
