@@ -26,3 +26,5 @@ ALTER TABLE `dbparticipants`
 
 -- 2. The participant agreement is no longer collected at registration.
 --    No change: dbparticipants.consent stays, and new rows get its default 0.
+
+-- 3. "Save and Add Pets" goes straight to Register Pet. No database change.

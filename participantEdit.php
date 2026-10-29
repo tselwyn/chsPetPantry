@@ -364,6 +364,10 @@ require_once('header.php');
             <p class="mb-2">This participant's active pets and their spay/neuter, rabies vaccination, and counseling status.</p>
             <div class="blue-div"></div>
 
+            <?php if (isset($_GET['petAdded'])): ?>
+            <div class="happy-toast">The pet has been registered.</div>
+            <?php endif ?>
+
             <?php if (count($pets) == 0): ?>
             <p>This participant has no active pets. <a href="registerPet.php?participant_id=<?php echo (int) $participant->get_id() ?>">Register a pet</a></p>
             <?php else: ?>
