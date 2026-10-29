@@ -21,6 +21,14 @@ if ($accessLevel < 2) {
 
 require_once('database/dbParticipants.php');
 require_once('database/dbPets.php');
+require_once('database/dbParticipantDistributions.php');
+
+// A participant's last distribution date for the list, or "None"
+function last_distribution_label($lastDates, $participantID) {
+    return isset($lastDates[$participantID])
+        ? date('M j, Y', strtotime($lastDates[$participantID]))
+        : 'None';
+}
 
 // Mark pet as inactive when the "Mark Inactive" button is clicked
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_pet'])) {
@@ -157,6 +165,13 @@ if (isset($_GET['participant_id'])) {
     }
 }
 
+$lastDistributionDates = get_last_distribution_dates(array_merge(
+    array_map(function ($participant) {
+        return $participant->get_id();
+    }, $searchResults),
+    $selectedParticipant ? array($selectedParticipant->get_id()) : array()
+));
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -234,20 +249,33 @@ if (isset($_GET['participant_id'])) {
     color: #1f5968;
 }
 
-.participant-result {
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 15px;
+.record-table-wrap {
+    overflow-x: auto;
     margin-top: 15px;
 }
 
-.participant-result p {
-    margin: 5px 0;
+.record-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.record-table th {
+    background-color: #1f5968;
+    color: white;
+    padding: 10px;
+    white-space: nowrap;
+}
+
+.record-table td {
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+    vertical-align: middle;
 }
 
 .select-button {
     display: inline-block;
-    margin-top: 10px;
+    white-space: nowrap;
     background-color: #1f5968;
     color: white;
     text-decoration: none;
@@ -390,38 +418,46 @@ if (isset($_GET['participant_id'])) {
 
         <?php else: ?>
 
+            <div class="record-table-wrap">
+            <table class="record-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Last Distribution</th>
+                        <th>ID</th>
+                        <th>Address</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
             <?php foreach ($searchResults as $participant): ?>
-
-                <div class="participant-result">
-
-                    <strong>
-                        <?php
-                        echo htmlspecialchars(
-                            $participant->get_first_name() . ' ' .
-                            $participant->get_last_name()
-                        );
-                        ?>
-                    </strong>
-
-                    <p>
-                        Participant ID:
-                        <?php echo htmlspecialchars($participant->get_id()); ?>
-                    </p>
-
-                    <p>
-                        <?php
-                        echo htmlspecialchars($participant->get_street_address());
-                        ?>
-                    </p>
-
-                    <a class="select-button"
-                       href="deleteParticipantPet.php?participant_id=<?php echo urlencode($participant->get_id()); ?>">
-                        Select Participant
-                    </a>
-
-                </div>
-
+                    <tr>
+                        <td>
+                            <strong>
+                                <?php
+                                echo htmlspecialchars(
+                                    $participant->get_first_name() . ' ' .
+                                    $participant->get_last_name()
+                                );
+                                ?>
+                            </strong>
+                        </td>
+                        <td><?php echo htmlspecialchars(last_distribution_label($lastDistributionDates, (int) $participant->get_id())); ?></td>
+                        <td><?php echo htmlspecialchars($participant->get_id()); ?></td>
+                        <td><?php echo htmlspecialchars($participant->get_street_address()); ?></td>
+                        <td><?php echo htmlspecialchars($participant->get_status()); ?></td>
+                        <td>
+                            <a class="select-button"
+                               href="deleteParticipantPet.php?participant_id=<?php echo urlencode($participant->get_id()); ?>">
+                                Select Participant
+                            </a>
+                        </td>
+                    </tr>
             <?php endforeach; ?>
+                </tbody>
+            </table>
+            </div>
 
         <?php endif; ?>
 
@@ -458,6 +494,11 @@ if (isset($_GET['participant_id'])) {
             <p>
                 Status:
                 <?php echo htmlspecialchars($selectedParticipant->get_status()); ?>
+            </p>
+
+            <p>
+                Last distribution:
+                <?php echo htmlspecialchars(last_distribution_label($lastDistributionDates, (int) $selectedParticipant->get_id())); ?>
             </p>
             <?php if ($selectedParticipant->get_status() === 'Active'): ?>
 

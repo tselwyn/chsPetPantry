@@ -49,3 +49,6 @@ UPDATE `dbpets`
 ALTER TABLE `dbpets`
   DROP COLUMN `date_of_birth`,
   DROP COLUMN `dob_is_estimate`;
+
+-- 7. Last distribution date on the Remove Participant list. No database
+--    change; it is MAX(distribution_date) from dbparticipantdistributions.
