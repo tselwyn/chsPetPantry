@@ -64,7 +64,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // "Done" with nothing typed in just finishes; there is no pet to save
     $petEntered = $args['name'] !== '' || $args['species'] !== '' || $args['breed'] !== ''
-        || $args['date_of_birth'] !== '' || $args['weight_lbs'] !== ''
+        || $args['age_years'] !== '' || $args['weight_lbs'] !== ''
         || $args['food_restriction'] !== '' || $args['notes'] !== '';
 
     if ($action === 'done' && !$petEntered) {

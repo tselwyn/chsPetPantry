@@ -33,18 +33,21 @@
             value="<?php echo hsc($args['breed']) ?>"
         >
 
-        <label for="date_of_birth">Date of Birth</label>
+        <label for="age_years">
+            <em>* </em>Age (Years)
+        </label>
         <input
-            type="date"
-            id="date_of_birth"
-            name="date_of_birth"
-            value="<?php echo hsc($args['date_of_birth']) ?>"
+            type="number"
+            id="age_years"
+            name="age_years"
+            required
+            min="<?php echo PET_MIN_AGE_YEARS ?>"
+            max="<?php echo PET_MAX_AGE_YEARS ?>"
+            step="0.1"
+            inputmode="decimal"
+            placeholder="Ex. 3, or 0.5 for six months"
+            value="<?php echo hsc($args['age_years']) ?>"
         >
-
-        <label for="dob_is_estimate">Is this date estimated?</label>
-        <select id="dob_is_estimate" name="dob_is_estimate">
-            <?php pet_options(array('1' => 'Yes', '0' => 'No'), $args['dob_is_estimate']) ?>
-        </select>
 
         <label for="weight_lbs">Weight(lbs)</label>
         <input

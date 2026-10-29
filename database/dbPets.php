@@ -14,8 +14,7 @@ function make_a_pet($result_row) {
         $result_row['species'],
         $result_row['breed'],
         $result_row['sex'],
-        $result_row['date_of_birth'],
-        $result_row['dob_is_estimate'],
+        $result_row['age_years'],
         $result_row['weight_lbs'],
         $result_row['spay_neuter_status'],
         $result_row['rabies_status'],
@@ -37,10 +36,10 @@ function make_a_pet($result_row) {
 function add_pet($pet) {
 
     $query = 'INSERT INTO dbpets '
-        . '(participant_id, name, species, breed, sex, date_of_birth, '
-        . 'dob_is_estimate, weight_lbs, spay_neuter_status, rabies_status, '
+        . '(participant_id, name, species, breed, sex, age_years, '
+        . 'weight_lbs, spay_neuter_status, rabies_status, '
         . 'food_type, food_restriction, notes, status) '
-        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
     $args = [
         $pet->get_participant_id(),
@@ -48,8 +47,7 @@ function add_pet($pet) {
         $pet->get_species(),
         $pet->get_breed(),
         $pet->get_sex(),
-        $pet->get_date_of_birth(),
-        $pet->get_dob_is_estimate(),
+        $pet->get_age_years(),
         $pet->get_weight_lbs(),
         $pet->get_spay_neuter_status(),
         $pet->get_rabies_status(),
@@ -68,7 +66,7 @@ function add_pet($pet) {
         if ($stmt) {
             mysqli_stmt_bind_param(
                 $stmt,
-                'isssssidssssss',
+                'issssddssssss',
                 ...$args
             );
 
@@ -124,7 +122,7 @@ function get_pet_by_id($id) {
 function update_pet($pet) {
 
     $query = 'UPDATE dbpets SET name = ?, species = ?, breed = ?, sex = ?, '
-        . 'date_of_birth = ?, dob_is_estimate = ?, weight_lbs = ?, '
+        . 'age_years = ?, weight_lbs = ?, '
         . 'spay_neuter_status = ?, rabies_status = ?, food_type = ?, '
         . 'food_restriction = ?, notes = ? WHERE id = ?';
 
@@ -133,8 +131,7 @@ function update_pet($pet) {
         $pet->get_species(),
         $pet->get_breed(),
         $pet->get_sex(),
-        $pet->get_date_of_birth(),
-        $pet->get_dob_is_estimate(),
+        $pet->get_age_years(),
         $pet->get_weight_lbs(),
         $pet->get_spay_neuter_status(),
         $pet->get_rabies_status(),
@@ -151,7 +148,7 @@ function update_pet($pet) {
         $stmt = mysqli_prepare($con, $query);
 
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'sssssidsssssi', ...$args);
+            mysqli_stmt_bind_param($stmt, 'ssssddsssssi', ...$args);
             $success = mysqli_stmt_execute($stmt);
             mysqli_stmt_close($stmt);
         }

@@ -57,7 +57,7 @@
                                                         <td>' . hsc($pet->get_name()) . '</td>
                                                         <td>' . hsc($pet->get_species()) . '</td>
                                                         <td>' . hsc($pet->get_breed()) . '</td>
-                                                        <td>' . ($age === null ? 'Unknown' : hsc(number_format((float) $age, 1))) . '</td>
+                                                        <td>' . ($age === null ? 'Unknown' : hsc($age)) . '</td>
                                                         <td>' . hsc($pet->get_sex()) . '</td>
                                                         <td>' . hsc($pet->get_spay_neuter_status()) . '</td>
                                                         <td>' . hsc($pet->get_rabies_status()) . '</td>

@@ -33,3 +33,19 @@ ALTER TABLE `dbparticipants`
 
 -- 5. Edit and Delete on the participant page's pets table. No database
 --    change; a deleted pet keeps its row with status Deleted.
+
+-- 6. Pet age in years replaces date of birth and "is this estimated".
+--    Existing pets get their age from the date of birth: years since then,
+--    rounded to one decimal place and kept within the form's 0.1 to 40.
+--    Pets with no date of birth get no age; Edit Pet asks for one the next
+--    time they are edited.
+ALTER TABLE `dbpets`
+  ADD COLUMN `age_years` decimal(4,1) DEFAULT NULL AFTER `sex`;
+
+UPDATE `dbpets`
+  SET `age_years` = LEAST(40.0, GREATEST(0.1, ROUND(DATEDIFF(CURDATE(), `date_of_birth`) / 365.25, 1)))
+  WHERE `date_of_birth` IS NOT NULL;
+
+ALTER TABLE `dbpets`
+  DROP COLUMN `date_of_birth`,
+  DROP COLUMN `dob_is_estimate`;

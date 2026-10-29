@@ -13,8 +13,7 @@ class Pet {
     private $species;
     private $breed;
     private $sex;
-    private $date_of_birth;
-    private $dob_is_estimate;
+    private $age_years; // age in years to one decimal place, e.g. 0.5 for six months
     private $weight_lbs;
     private $spay_neuter_status; // Yes, No, or Unknown
     private $rabies_status; // Yes, No, or Unknown
@@ -27,7 +26,7 @@ class Pet {
     private $counseled_by; // dbpersons id of the user who recorded the counseling
 
     function __construct($id, $participant_id, $name, $species, $breed,
-            $sex, $date_of_birth, $dob_is_estimate, $weight_lbs,
+            $sex, $age_years, $weight_lbs,
             $spay_neuter_status, $rabies_status, $food_type, $food_restriction,
             $notes, $status, $counseling_status = 'No', $counseling_date = null,
             $counseled_by = null) {
@@ -38,8 +37,7 @@ class Pet {
         $this->species = $species;
         $this->breed = $breed;
         $this->sex = $sex;
-        $this->date_of_birth = $date_of_birth;
-        $this->dob_is_estimate = $dob_is_estimate;
+        $this->age_years = $age_years;
         $this->weight_lbs = $weight_lbs;
         $this->spay_neuter_status = $spay_neuter_status;
         $this->rabies_status = $rabies_status;
@@ -76,23 +74,11 @@ class Pet {
         return $this->sex;
     }
 
-    function get_date_of_birth() {
-        return $this->date_of_birth;
-    }
-
     /*
-     * Age in whole and tenth years from the date of birth, or null if unknown
+     * Age in years as entered, or null for a pet saved before ages were recorded
      */
     function get_age_years() {
-        if (!$this->date_of_birth) {
-            return null;
-        }
-        $days = (new DateTime($this->date_of_birth))->diff(new DateTime('today'))->days;
-        return round($days / 365.25, 1);
-    }
-
-    function get_dob_is_estimate() {
-        return $this->dob_is_estimate;
+        return $this->age_years;
     }
 
     function get_weight_lbs() {

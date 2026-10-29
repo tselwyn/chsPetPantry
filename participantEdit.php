@@ -406,6 +406,7 @@ require_once('header.php');
                         <tr>
                             <th>Name</th>
                             <th>Species</th>
+                            <th>Age (Years)</th>
                             <th>Spay/Neuter</th>
                             <th>Rabies</th>
                             <th>Counseling</th>
@@ -417,6 +418,7 @@ require_once('header.php');
                         <tr>
                             <td><?php echo hsc($pet->get_name()) ?></td>
                             <td><?php echo hsc($pet->get_species()) ?></td>
+                            <td><?php echo $pet->get_age_years() === null ? 'Unknown' : hsc($pet->get_age_years()) ?></td>
                             <td><?php echo hsc($pet->get_spay_neuter_status()) ?></td>
                             <td><?php echo hsc($pet->get_rabies_status()) ?></td>
                             <td>
