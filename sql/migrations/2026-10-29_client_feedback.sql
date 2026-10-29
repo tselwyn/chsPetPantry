@@ -60,3 +60,6 @@ ALTER TABLE `dbpets`
 INSERT IGNORE INTO `dbpersons` (`id`, `first_name`, `last_name`, `email`, `type`, `status`, `password`, `force_password_change`) VALUES
 ('chs_admin', 'Administrator', '', '', 'admin', 'Active', 'SET-A-PASSWORD', 0),
 ('chs_volunteer', 'Volunteer', '', '', 'volunteer', 'Active', 'SET-A-PASSWORD', 0);
+
+-- 8c. Alert / Flag reads Flagged / No and only an administrator can change
+--     it. No database change: dbparticipants.alert stays 1 (Flagged) / 0 (No).

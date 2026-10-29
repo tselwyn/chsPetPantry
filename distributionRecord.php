@@ -41,7 +41,7 @@
     if ($participant !== null) {
         // Restrictions the user has to see before the distribution is completed
         if ($participant->get_alert()) {
-            $warnings[] = 'This participant has an alert / flag on their record.';
+            $warnings[] = 'This participant is Flagged (Alert / Flag on their record).';
         }
         if ($participant->get_status() === 'DND') {
             $warnings[] = 'This participant is marked DND (Do Not Distribute).';

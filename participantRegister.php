@@ -104,8 +104,12 @@
             $errors[] = 'Choose a participant status from the list.';
         }
 
-        if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Yes', 'No'))) {
-            $errors[] = 'Choose Yes or No for Alert / Flag.';
+        // Only an admin can flag a participant; a volunteer's choice is ignored
+        if ($accessLevel < 2) {
+            $args['participant_alert'] = 'No';
+        }
+        if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Flagged', 'No'))) {
+            $errors[] = 'Choose Flagged or No for Alert / Flag.';
         }
 
         if (count($errors) == 0) {
@@ -123,7 +127,7 @@
                 $args['participant_location'],
                 $args['registration_date'],
                 $args['participant_status'],
-                $args['participant_alert'] === 'Yes' ? 1 : 0,
+                $args['participant_alert'] === 'Flagged' ? 1 : 0,
                 $args['notes'] === '' ? null : $args['notes'],
                 null
             );

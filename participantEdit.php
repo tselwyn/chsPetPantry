@@ -35,8 +35,8 @@
     $id = (isset($_GET['id']) && ctype_digit($_GET['id'])) ? (int) $_GET['id'] : 0;
     $participant = $id > 0 ? retrieve_participant($id) : null;
 
-    // Removing an alert is admin-only (FR-023); anyone can set one
-    $canRemoveAlert = $accessLevel >= 2 || ($participant !== null && !$participant->get_alert());
+    // Only an admin can set or clear the Alert / Flag; volunteers see it read-only
+    $canChangeAlert = $accessLevel >= 2;
 
     $errors = array();
     $args = array();
@@ -66,7 +66,7 @@
             'preferred_language' => $participant->get_preferred_language(),
             'participant_location' => $participant->get_location(),
             'participant_status' => $participant->get_status(),
-            'participant_alert' => $participant->get_alert() ? 'Yes' : 'No',
+            'participant_alert' => $participant->get_alert() ? 'Flagged' : 'No',
             'notes' => (string) $participant->get_notes()
         );
     }
@@ -75,6 +75,10 @@
         // Trimmed only, not sanitize()d: update_participant uses prepared statements
         // and pages escape participant data with hsc() when they show it
         foreach (array_keys($args) as $field) {
+            // A volunteer's Alert / Flag stays as saved, whatever is submitted
+            if ($field === 'participant_alert' && !$canChangeAlert) {
+                continue;
+            }
             $args[$field] = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim($_POST[$field]) : '';
         }
 
@@ -130,13 +134,8 @@
             $errors[] = 'Choose a participant status from the list.';
         }
 
-        if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Yes', 'No'))) {
-            $errors[] = 'Choose Yes or No for Alert / Flag.';
-        }
-
-        // Volunteers can set an alert but only an admin can remove one (FR-023)
-        if (!$canRemoveAlert && $args['participant_alert'] !== 'Yes') {
-            $errors[] = 'Only an administrator can remove an Alert / Flag.';
+        if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Flagged', 'No'))) {
+            $errors[] = 'Choose Flagged or No for Alert / Flag.';
         }
 
         if (count($errors) == 0) {
@@ -155,7 +154,7 @@
                 $args['participant_location'],
                 $participant->get_registration_date(),
                 $args['participant_status'],
-                $args['participant_alert'] === 'Yes' ? 1 : 0,
+                $args['participant_alert'] === 'Flagged' ? 1 : 0,
                 $args['notes'] === '' ? null : $args['notes'],
                 $participant->get_consent()
             );
@@ -194,7 +193,8 @@ require_once('header.php');
 
 <style>
     #participant_id,
-    #registration_date {
+    #registration_date,
+    #participant_alert[readonly] {
         background-color: #f5f5f5 !important;
         color: #333 !important;
         opacity: 1 !important;
@@ -361,11 +361,13 @@ require_once('header.php');
             </select>
 
             <label for="participant_alert">Alert / Flag</label>
+            <?php if ($canChangeAlert): ?>
             <select id="participant_alert" name="participant_alert">
-                <?php participant_options($canRemoveAlert ? array('No', 'Yes') : array('Yes'), $args['participant_alert']) ?>
+                <?php participant_options(array('No', 'Flagged'), $args['participant_alert']) ?>
             </select>
-            <?php if (!$canRemoveAlert): ?>
-            <p class="mb-2">Only an administrator can remove this alert.</p>
+            <?php else: ?>
+            <input type="text" id="participant_alert" value="<?php echo hsc($args['participant_alert']) ?>" readonly disabled>
+            <p class="mb-2">Only an administrator can change the Alert / Flag.</p>
             <?php endif ?>
 
             <label for="notes">Notes</label>

@@ -20,7 +20,7 @@ class Participant {
     private $location; // Empower, Senior Center, Home Delivery
     private $registration_date;
     private $status; // Active, Inactive, Expired, DND (Do Not Distribute), Deleted
-    private $alert; // 1 if the participant is flagged
+    private $alert; // 1 if the participant is Flagged; only an admin can change it
     private $notes;
     private $consent; // no longer collected; kept for rows registered before Oct 2026
     private $pet_count; // active pets, filled in by searches; null if not loaded

@@ -352,7 +352,7 @@ require_once('header.php');
                                 <tbody>';
                         foreach ($participants as $participant) {
                             $participantId = (int) $participant->get_id();
-                            $alert = $participant->get_alert() ? ' <span class="alert-flag">Alert</span>' : '';
+                            $alert = $participant->get_alert() ? ' <span class="alert-flag">Flagged</span>' : '';
                             $registered = date('M j, Y', strtotime($participant->get_registration_date()));
                             $toggle = 'data-pets-toggle aria-expanded="false" aria-controls="pets-' . $participantId . '"';
                             echo '

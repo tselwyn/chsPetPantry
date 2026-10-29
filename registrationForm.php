@@ -273,10 +273,15 @@
             <label for="participant_alert">
                 Alert / Flag
             </label>
+            <?php if ($accessLevel >= 2): ?>
             <select id="participant_alert" name="participant_alert">
                 <option value="No" selected>No</option>
-                <option value="Yes">Yes</option>
+                <option value="Flagged">Flagged</option>
             </select>
+            <?php else: ?>
+            <input type="text" id="participant_alert" value="No" readonly disabled>
+            <p class="mb-2">Only an administrator can flag a participant.</p>
+            <?php endif ?>
 
             <label for="notes">
                 Notes
