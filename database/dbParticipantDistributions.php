@@ -17,6 +17,7 @@ function make_a_participant_distribution($result_row) {
         $result_row['cat_food_lbs'],
         $result_row['processed_by'],
         $result_row['notes'],
+        $result_row['processed_by_name'],
         $result_row['created_at']
     );
 }
@@ -28,8 +29,8 @@ function make_a_participant_distribution($result_row) {
  */
 function add_participant_distribution($distribution) {
     $query = 'INSERT INTO dbparticipantdistributions (participant_id, distribution_date, location, '
-        . 'pets_served, dog_food_lbs, cat_food_lbs, processed_by, notes) '
-        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+        . 'pets_served, dog_food_lbs, cat_food_lbs, processed_by, processed_by_name, notes) '
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
     $args = [
         $distribution->get_participant_id(),
         $distribution->get_distribution_date(),
@@ -38,6 +39,7 @@ function add_participant_distribution($distribution) {
         $distribution->get_dog_food_lbs(),
         $distribution->get_cat_food_lbs(),
         $distribution->get_processed_by(),
+        $distribution->get_processed_by_name(),
         $distribution->get_notes()
     ];
 
@@ -46,7 +48,7 @@ function add_participant_distribution($distribution) {
     try {
         $stmt = mysqli_prepare($con, $query);
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'issiddss', ...$args);
+            mysqli_stmt_bind_param($stmt, 'issiddsss', ...$args);
             if (mysqli_stmt_execute($stmt)) {
                 $id = mysqli_insert_id($con);
             }

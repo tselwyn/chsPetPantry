@@ -4124,7 +4124,8 @@ INSERT INTO `dbpalletevent` (`id`, `name`, `personId`, `date`, `notes`) VALUES
 --
 -- One row per food distribution given to a participant (UC-06), recorded
 -- through distributionRecord.php. `processed_by` is the dbpersons id of the
--- user who recorded it.
+-- login that recorded it. Logins are shared, so `processed_by_name` is the
+-- volunteer's name as typed on the form (required since Oct 2026).
 --
 
 CREATE TABLE `dbparticipantdistributions` (
@@ -4136,6 +4137,7 @@ CREATE TABLE `dbparticipantdistributions` (
   `dog_food_lbs` decimal(5,2) NOT NULL DEFAULT '0.00',
   `cat_food_lbs` decimal(5,2) NOT NULL DEFAULT '0.00',
   `processed_by` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `processed_by_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `notes` text COLLATE utf8mb4_unicode_ci,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

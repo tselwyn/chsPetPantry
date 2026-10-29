@@ -481,7 +481,7 @@ require_once('header.php');
                             <td><?php echo (int) $distribution->get_pets_served() ?></td>
                             <td><?php echo hsc($distribution->get_dog_food_lbs()) ?></td>
                             <td><?php echo hsc($distribution->get_cat_food_lbs()) ?></td>
-                            <td><?php echo hsc($distribution->get_processed_by()) ?></td>
+                            <td><?php echo hsc($distribution->get_processed_by_name()) ?></td>
                             <td><?php echo nl2br(hsc($distribution->get_notes())) ?></td>
                         </tr>
                         <?php endforeach ?>

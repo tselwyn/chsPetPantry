@@ -146,23 +146,25 @@
             'date_label' => 'Distribution date',
             'show_filters' => true,
             'columns' => array(
-                'Participant ID',
+                'Participant',
                 'Distribution Date',
                 'Location',
                 'Pets Served',
                 'Dog Food (lbs)',
                 'Cat Food (lbs)',
+                'Processed By',
                 'Notes'
             ),
             'fetch' => 'get_distribution_report',
             'row' => function ($d) {
                 return array(
-                    report_participant_name($d->get_participant()),
+                    report_participant_name($d->get_participant_id()),
                     $d->get_distribution_date(),
                     $d->get_location(),
                     $d->get_pets_served(),
                     $d->get_dog_food_lbs(),
                     $d->get_cat_food_lbs(),
+                    $d->get_processed_by_name(),
                     $d->get_notes()
                 );
             }

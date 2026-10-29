@@ -63,3 +63,15 @@ INSERT IGNORE INTO `dbpersons` (`id`, `first_name`, `last_name`, `email`, `type`
 
 -- 8c. Alert / Flag reads Flagged / No and only an administrator can change
 --     it. No database change: dbparticipants.alert stays 1 (Flagged) / 0 (No).
+
+-- 8d. "Processed By" on Record Distribution: the volunteer's name, typed in
+--     because logins are shared. processed_by keeps the login's id.
+--     Distributions recorded before this get the name of the login that
+--     recorded them, or its id if that login has no name.
+ALTER TABLE `dbparticipantdistributions`
+  ADD COLUMN `processed_by_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' AFTER `processed_by`;
+
+UPDATE `dbparticipantdistributions` d
+  LEFT JOIN `dbpersons` p ON p.`id` = d.`processed_by`
+  SET d.`processed_by_name` = LEFT(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', p.`first_name`, p.`last_name`)), ''), d.`processed_by`), 100)
+  WHERE d.`processed_by_name` = '';

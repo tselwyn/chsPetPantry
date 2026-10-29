@@ -15,12 +15,14 @@ class ParticipantDistribution {
     private $pets_served;
     private $dog_food_lbs;
     private $cat_food_lbs;
-    private $processed_by; // dbpersons id of the user who recorded it
+    private $processed_by; // dbpersons id of the login that recorded it
     private $notes;
+    private $processed_by_name; // name of the volunteer, typed in since logins are shared
     private $created_at;
 
     function __construct($id, $participant_id, $distribution_date, $location, $pets_served,
-            $dog_food_lbs, $cat_food_lbs, $processed_by, $notes, $created_at = null) {
+            $dog_food_lbs, $cat_food_lbs, $processed_by, $notes, $processed_by_name = '',
+            $created_at = null) {
         $this->id = $id;
         $this->participant_id = $participant_id;
         $this->distribution_date = $distribution_date;
@@ -30,6 +32,7 @@ class ParticipantDistribution {
         $this->cat_food_lbs = $cat_food_lbs;
         $this->processed_by = $processed_by;
         $this->notes = $notes;
+        $this->processed_by_name = $processed_by_name;
         $this->created_at = $created_at;
     }
 
@@ -67,6 +70,14 @@ class ParticipantDistribution {
 
     function get_notes() {
         return $this->notes;
+    }
+
+    /*
+     * Who processed the distribution: the name typed on the form, or for
+     * distributions recorded before that field existed, the login's id
+     */
+    function get_processed_by_name() {
+        return (string) $this->processed_by_name !== '' ? $this->processed_by_name : $this->processed_by;
     }
 
     function get_created_at() {
