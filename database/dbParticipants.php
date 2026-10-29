@@ -9,6 +9,19 @@ include_once(dirname(__FILE__).'/../domain/Participant.php');
 define('PARTICIPANT_SEARCH_MAX_LENGTH', 100);
 
 /*
+ * Participant statuses a user can choose, value => label. Deleted is left
+ * out: it is only set by delete_participant.
+ */
+function participant_statuses() {
+    return array(
+        'Active' => 'Active',
+        'Inactive' => 'Inactive',
+        'Expired' => 'Expired',
+        'DND' => 'DND (Do Not Distribute)'
+    );
+}
+
+/*
  * Build a Participant from a dbparticipants row
  */
 function make_a_participant($result_row) {

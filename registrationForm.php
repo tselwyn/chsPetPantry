@@ -267,7 +267,7 @@
                 <option value="Active" selected>Active</option>
                 <option value="Inactive">Inactive</option>
                 <option value="Expired">Expired</option>
-                <option value="No Service">No Service</option>
+                <option value="DND">DND (Do Not Distribute)</option>
             </select>
 
             <label for="participant_alert">

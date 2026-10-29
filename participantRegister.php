@@ -27,7 +27,7 @@
     $states = array('VA', 'MD', 'WV', 'DC', 'NC', 'other');
     $languages = array('English', 'Spanish', 'Other');
     $locations = array('Empower', 'Senior Center', 'Home Delivery');
-    $statuses = array('Active', 'Inactive', 'Expired', 'No Service');
+    $statuses = array_keys(participant_statuses());
 
     $errors = array();
     $args = array();

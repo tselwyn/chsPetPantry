@@ -19,7 +19,7 @@ class Participant {
     private $preferred_language;
     private $location; // Empower, Senior Center, Home Delivery
     private $registration_date;
-    private $status; // Active, Inactive, Expired, No Service
+    private $status; // Active, Inactive, Expired, DND (Do Not Distribute), Deleted
     private $alert; // 1 if the participant is flagged
     private $notes;
     private $consent; // 1 if the participant agreed to the program rules

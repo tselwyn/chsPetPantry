@@ -43,7 +43,9 @@
         if ($participant->get_alert()) {
             $warnings[] = 'This participant has an alert / flag on their record.';
         }
-        if ($participant->get_status() !== 'Active') {
+        if ($participant->get_status() === 'DND') {
+            $warnings[] = 'This participant is marked DND (Do Not Distribute).';
+        } else if ($participant->get_status() !== 'Active') {
             $warnings[] = 'This participant\'s status is ' . $participant->get_status() . ', not Active.';
         }
 

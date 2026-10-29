@@ -4168,7 +4168,7 @@ CREATE TABLE `dbparticipants` (
   `preferred_language` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'English',
   `location` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `registration_date` date NOT NULL,
-  `status` enum('Active','Inactive','Expired','No Service') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Active',
+  `status` enum('Active','Inactive','Expired','DND','Deleted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Active',
   `alert` tinyint(1) NOT NULL DEFAULT '0',
   `notes` text COLLATE utf8mb4_unicode_ci,
   `consent` tinyint(1) NOT NULL DEFAULT '0'
@@ -4189,7 +4189,7 @@ INSERT INTO `dbparticipants` (`id`, `first_name`, `last_name`, `street_address`,
 (5, 'Angela', 'Smith', '15 Kings Hwy', 'Fredericksburg', 'VA', '22405', '5405550223', 'angela.smith@example.com', 'English', 'Senior Center', '2026-06-02', 'Inactive', 0, 'Moved in with family, may come back in the spring.', 1),
 (6, 'Robert', 'Smith', '3302 Plank Rd', 'Fredericksburg', 'VA', '22407', '5405550256', 'rsmith@example.com', 'English', 'Empower', '2026-03-10', 'Expired', 0, NULL, 1),
 (7, 'Keisha', 'Thompson', '601 Caroline St', 'Fredericksburg', 'VA', '22401', '5405550290', 'keisha.t@example.com', 'English', 'Empower', '2026-09-01', 'Active', 0, NULL, 1),
-(8, 'Walter', 'O\'Neil', '44 William St', 'Fredericksburg', 'VA', '22401', '5405550311', 'woneil@example.com', 'English', 'Senior Center', '2026-09-15', 'No Service', 0, 'Outside the service area.', 1);
+(8, 'Walter', 'O\'Neil', '44 William St', 'Fredericksburg', 'VA', '22401', '5405550311', 'woneil@example.com', 'English', 'Senior Center', '2026-09-15', 'DND', 0, 'Outside the service area.', 1);
 
 -- --------------------------------------------------------
 

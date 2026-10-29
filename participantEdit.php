@@ -30,7 +30,7 @@
         'DC' => 'District of Columbia', 'NC' => 'North Carolina', 'other' => 'Other');
     $languages = array('English', 'Spanish', 'Other');
     $locations = array('Empower', 'Senior Center', 'Home Delivery');
-    $statuses = array('Active', 'Inactive', 'Expired', 'No Service');
+    $statuses = participant_statuses();
 
     $id = (isset($_GET['id']) && ctype_digit($_GET['id'])) ? (int) $_GET['id'] : 0;
     $participant = $id > 0 ? retrieve_participant($id) : null;
@@ -126,7 +126,7 @@
             $errors[] = 'Choose a participant location from the list.';
         }
 
-        if ($args['participant_status'] !== '' && !valueConstrainedTo($args['participant_status'], $statuses)) {
+        if ($args['participant_status'] !== '' && !isset($statuses[$args['participant_status']])) {
             $errors[] = 'Choose a participant status from the list.';
         }
 
