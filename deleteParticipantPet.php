@@ -312,21 +312,32 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
     color: #1f5968;
 }
 
-.participant-info,
-.pet-result {
+.participant-info {
     border: 1px solid #ccc;
     border-radius: 8px;
     padding: 15px;
     margin-top: 10px;
 }
 
-.pet-result {
-    margin-bottom: 10px;
+.participant-info p {
+    margin: 5px 0;
 }
 
-.participant-info p,
-.pet-result p {
-    margin: 5px 0;
+/* Pet action buttons sit side by side in the table's last column */
+.pet-actions {
+    white-space: nowrap;
+}
+
+.pet-actions form {
+    display: inline-block;
+}
+
+.pet-actions .remove-button,
+.pet-actions .delete-button,
+.pet-actions .active-button {
+    display: inline-block;
+    width: auto;
+    margin: 2px;
 }
 
 .remove-button {
@@ -609,28 +620,27 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
 
         <?php else: ?>
 
+            <div class="record-table-wrap">
+            <table class="record-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Species</th>
+                        <th>Breed</th>
+                        <th>Age (Years)</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
             <?php foreach ($participantPets as $pet): ?>
-
-                <div class="pet-result">
-
-                    <strong>
-                        🐾 <?php echo htmlspecialchars($pet->get_name()); ?>
-                    </strong>
-
-                    <p>
-                        Species:
-                        <?php echo htmlspecialchars($pet->get_species()); ?>
-                    </p>
-
-                    <p>
-                        Breed:
-                        <?php echo htmlspecialchars($pet->get_breed() ?? 'Not provided'); ?>
-                    </p>
-
-                    <p>
-                        Status:
-                        <?php echo htmlspecialchars($pet->get_status()); ?>
-                    </p>
+                    <tr>
+                        <td><strong><?php echo htmlspecialchars($pet->get_name()); ?></strong></td>
+                        <td><?php echo htmlspecialchars($pet->get_species()); ?></td>
+                        <td><?php echo htmlspecialchars($pet->get_breed() ?? 'Not provided'); ?></td>
+                        <td><?php echo htmlspecialchars($pet->get_age_years() ?? 'Unknown'); ?></td>
+                        <td><?php echo htmlspecialchars($pet->get_status()); ?></td>
+                        <td class="pet-actions">
 
                     <?php if ($pet->get_status() === 'Active'): ?>
 
@@ -675,8 +685,6 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
 
 <?php elseif ($pet->get_status() === 'Inactive'): ?>
 
-    <p><strong>This pet is inactive.</strong></p>
-
     <!-- Mark Active -->
 <form method="post"
       action="deleteParticipantPet.php?participant_id=<?php
@@ -718,13 +726,16 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
 
 <?php elseif ($pet->get_status() === 'Deleted'): ?>
 
-    <p><strong>This pet has been deleted.</strong></p>
+    This pet has been deleted.
 
 <?php endif; ?>
 
-                </div>
-
+                        </td>
+                    </tr>
             <?php endforeach; ?>
+                </tbody>
+            </table>
+            </div>
 
         <?php endif; ?>
 

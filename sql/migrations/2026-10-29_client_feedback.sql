@@ -75,3 +75,6 @@ UPDATE `dbparticipantdistributions` d
   LEFT JOIN `dbpersons` p ON p.`id` = d.`processed_by`
   SET d.`processed_by_name` = LEFT(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', p.`first_name`, p.`last_name`)), ''), d.`processed_by`), 100)
   WHERE d.`processed_by_name` = '';
+
+-- 9. Layout only (pets on Remove Participant / Pet shown as a table).
+--    No database change.
