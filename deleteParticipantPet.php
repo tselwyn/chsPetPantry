@@ -13,11 +13,13 @@ if (isset($_SESSION['_id'])) {
     $userID = $_SESSION['_id'];
 }
 
-// Only admins can access this page
-if ($accessLevel < 2) {
+// Volunteers and admins can remove pets; only admins can deactivate,
+// reactivate or delete a participant
+if ($accessLevel < 1) {
     header('Location: index.php');
     die();
 }
+$canManageParticipants = $accessLevel >= 2;
 
 require_once('database/dbParticipants.php');
 require_once('database/dbPets.php');
@@ -80,6 +82,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['activate_pet'])) {
 
         die();
     }
+}
+
+// The participant actions below are admin-only. A volunteer's request is
+// refused here, not just hidden on the page.
+$participantActions = array('deactivate_participant', 'activate_participant', 'delete_participant');
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$canManageParticipants
+        && count(array_intersect($participantActions, array_keys($_POST))) > 0) {
+    $participantID = (isset($_POST['participant_id']) && is_string($_POST['participant_id'])) ? $_POST['participant_id'] : '';
+    header(
+        'Location: deleteParticipantPet.php?participant_id=' .
+        urlencode($participantID) . '&notAllowed'
+    );
+    die();
 }
 
 // Mark participant inactive
@@ -359,6 +374,13 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
     background-color: #1f5c23;
 }
 
+.not-allowed {
+    border-left: 4px solid #dc2626;
+    background-color: #fef2f2;
+    color: #991b1b;
+    padding: 10px 15px;
+}
+
 /* base.css gives buttons 94% width; center them instead of leaving them at the left edge */
 .search-button, .remove-button, .delete-button, .active-button {
     display: block;
@@ -377,11 +399,19 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
 
     <div class="remove-box">
 
-        <h2>Remove Participant / Pet</h2>
+        <h2><?php echo $canManageParticipants ? 'Remove Participant / Pet' : 'Remove Pet'; ?></h2>
 
         <p>
+            <?php if ($canManageParticipants): ?>
             Search for the participant whose account or pet you would like to remove.
+            <?php else: ?>
+            Search for the participant whose pet you would like to remove.
+            <?php endif; ?>
         </p>
+
+        <?php if (isset($_GET['notAllowed'])): ?>
+        <p class="not-allowed">Only an administrator can deactivate or delete a participant.</p>
+        <?php endif; ?>
 
         <form class="search-form"
               method="get"
@@ -500,7 +530,17 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
                 Last distribution:
                 <?php echo htmlspecialchars(last_distribution_label($lastDistributionDates, (int) $selectedParticipant->get_id())); ?>
             </p>
-            <?php if ($selectedParticipant->get_status() === 'Active'): ?>
+            <?php if ($selectedParticipant->get_status() === 'Deleted'): ?>
+
+    <p><strong>This participant has been deleted.</strong></p>
+
+<?php elseif (!$canManageParticipants): ?>
+
+    <p>Only an administrator can deactivate or delete a participant.</p>
+
+<?php else: ?>
+
+    <?php if ($selectedParticipant->get_status() === 'Active'): ?>
 
     <!-- Mark Participant Inactive -->
     <form method="post" action="deleteParticipantPet.php">
@@ -518,24 +558,7 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
 
     </form>
 
-    <!-- Delete Participant -->
-    <form method="post" action="deleteParticipantPet.php">
-
-        <input type="hidden"
-               name="participant_id"
-               value="<?php echo htmlspecialchars($selectedParticipant->get_id()); ?>">
-
-        <button type="submit"
-                name="delete_participant"
-                class="delete-button"
-                onclick="return confirm('Are you sure you want to delete this participant?');">
-            Delete Participant
-        </button>
-
-    </form>
-
-
-<?php elseif ($selectedParticipant->get_status() === 'Inactive'): ?>
+    <?php elseif ($selectedParticipant->get_status() === 'Inactive'): ?>
 
     <p><strong>This participant is inactive.</strong></p>
 
@@ -555,7 +578,9 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
 
     </form>
 
-    <!-- Delete Participant -->
+    <?php endif; ?>
+
+    <!-- Delete Participant: any status but Deleted, including Expired and DND -->
     <form method="post" action="deleteParticipantPet.php">
 
         <input type="hidden"
@@ -570,11 +595,6 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
         </button>
 
     </form>
-
-
-<?php elseif ($selectedParticipant->get_status() === 'Deleted'): ?>
-
-    <p><strong>This participant has been deleted.</strong></p>
 
 <?php endif; ?>
 

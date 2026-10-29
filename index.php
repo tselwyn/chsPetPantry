@@ -587,9 +587,8 @@
         </div>
         </div>
 
-        <?php if ($_SESSION['access_level'] >= 2): ?>
-        <!-- Admin only -->
-        <!-- Remove Participant / Pet -->
+        <!-- Remove Participant / Pet: volunteers can remove pets, only admins
+             can remove participants (checked again on deleteParticipantPet.php) -->
         <div class="content-box-test" onclick="window.location.href='deleteParticipantPet.php'">
         <div class="icon-overlay pet-icon">
         <span class="paw-icon">🐾</span>
@@ -597,14 +596,16 @@
         </div>
 
         <div class="large-text-sub" style="color:white;">
-        Remove Participant / Pet
+        <?php echo $_SESSION['access_level'] >= 2 ? 'Remove Participant / Pet' : 'Remove Pet' ?>
         </div>
 
         <div class="graph-text" style="color:white;">
-        Remove a participant or pet from the Pet Pantry system.
+        <?php echo $_SESSION['access_level'] >= 2 ? 'Remove a participant or pet from the Pet Pantry system.' : 'Remove a pet from the Pet Pantry system.' ?>
         </div>
         </div>
 
+        <?php if ($_SESSION['access_level'] >= 2): ?>
+        <!-- Admin only -->
         <!-- Manage Item Categories (hidden for the client demonstration)
         <div class="content-box-test" onclick="window.location.href='viewItemCategories.php'">
         <div class="icon-overlay">
