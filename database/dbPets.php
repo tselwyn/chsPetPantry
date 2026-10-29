@@ -212,6 +212,41 @@ else {
 }
 
 /*
+ * The pets of several participants at once, for participant search results.
+ * Deleted pets are left out. Returns an array of participant id => Pets.
+ */
+function get_pets_by_participants($participant_ids) {
+    $ids = array_values(array_unique(array_map('intval', $participant_ids)));
+    $pets = array();
+    if (count($ids) == 0) {
+        return $pets;
+    }
+
+    $query = 'SELECT * FROM dbpets WHERE participant_id IN ('
+        . implode(', ', array_fill(0, count($ids), '?')) . ") "
+        . "AND status != 'Deleted' ORDER BY participant_id, name";
+
+    $con = connect();
+    try {
+        $stmt = mysqli_prepare($con, $query);
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, str_repeat('i', count($ids)), ...$ids);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            while ($row = mysqli_fetch_assoc($result)) {
+                $pets[(int) $row['participant_id']][] = make_a_pet($row);
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $pets = array();
+    }
+    mysqli_close($con);
+
+    return $pets;
+}
+
+/*
  * Set a pet's status to Inactive.
  * This keeps the pet in the database instead of permanently deleting it.
  */

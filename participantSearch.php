@@ -21,10 +21,56 @@
 
     require_once('include/output.php');
     require_once('database/dbParticipants.php');
+    require_once('database/dbPets.php');
 
     // Most results shown at once; type more to narrow the search
     $resultLimit = 100;
     $term = isset($_GET['q']) ? trim($_GET['q']) : null;
+
+    // The hidden row under a participant's result listing their pets
+    function participant_search_pets_row($participantId, $pets) {
+        echo '
+                                    <tr class="pets-row" id="pets-' . $participantId . '" hidden>
+                                        <td colspan="10">';
+        if (count($pets) == 0) {
+            echo 'This participant has no pets registered.';
+        } else {
+            echo '
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Name</th>
+                                                        <th>Species</th>
+                                                        <th>Breed</th>
+                                                        <th>Age (Years)</th>
+                                                        <th>Sex</th>
+                                                        <th>Spayed/Neutered</th>
+                                                        <th>Rabies Current</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>';
+            foreach ($pets as $pet) {
+                $age = $pet->get_age_years();
+                echo '
+                                                    <tr>
+                                                        <td>' . hsc($pet->get_name()) . '</td>
+                                                        <td>' . hsc($pet->get_species()) . '</td>
+                                                        <td>' . hsc($pet->get_breed()) . '</td>
+                                                        <td>' . ($age === null ? 'Unknown' : hsc(number_format((float) $age, 1))) . '</td>
+                                                        <td>' . hsc($pet->get_sex()) . '</td>
+                                                        <td>' . hsc($pet->get_spay_neuter_status()) . '</td>
+                                                        <td>' . hsc($pet->get_rabies_status()) . '</td>
+                                                        <td>' . hsc($pet->get_status()) . '</td>
+                                                    </tr>';
+            }
+            echo '
+                                                </tbody>
+                                            </table>';
+        }
+        echo '</td>
+                                    </tr>';
+    }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -190,6 +236,62 @@ require_once('header.php');
         .info-section .blue-div {
             background-color: var(--chs-accent);
         }
+
+        /* Pet count and View Pets open the pets row under a participant */
+        .participant-results button.pet-count-toggle {
+            color: var(--chs-teal);
+            font-weight: 600;
+            text-decoration: underline;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .participant-results button.view-pets-button {
+            display: inline-block;
+            margin-top: 0.25rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.5rem;
+            border: 2px solid var(--chs-teal);
+            background-color: white;
+            color: var(--chs-teal);
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .participant-results button.view-pets-button:hover,
+        .participant-results button.view-pets-button[aria-expanded="true"] {
+            background-color: var(--chs-tint);
+        }
+
+        .participant-results button:focus-visible {
+            outline: 2px solid var(--chs-accent);
+            outline-offset: 2px;
+        }
+
+        .participant-results tbody tr.pets-row,
+        .participant-results tbody tr.pets-row:hover {
+            background-color: var(--chs-tint);
+        }
+
+        .participant-results .pets-row table {
+            width: 100%;
+            background-color: white;
+            border: 1px solid var(--chs-border);
+            font-size: 0.9rem;
+        }
+
+        .participant-results .pets-row th {
+            background-color: var(--chs-tint);
+            color: var(--chs-teal);
+            padding: 0.5rem 0.75rem;
+        }
+
+        .participant-results .pets-row td {
+            padding: 0.5rem 0.75rem;
+        }
 </style>
 <!-- BANDAID END, REMOVE ONCE SOME GENIUS FIXES -->
 </head>
@@ -227,6 +329,9 @@ require_once('header.php');
                     }
 
                     if (count($participants) > 0) {
+                        $petsByParticipant = get_pets_by_participants(array_map(function ($participant) {
+                            return $participant->get_id();
+                        }, $participants));
                         echo '
                         <div class="participant-results overflow-x-auto">
                             <table>
@@ -246,8 +351,10 @@ require_once('header.php');
                                 </thead>
                                 <tbody>';
                         foreach ($participants as $participant) {
+                            $participantId = (int) $participant->get_id();
                             $alert = $participant->get_alert() ? ' <span class="alert-flag">Alert</span>' : '';
                             $registered = date('M j, Y', strtotime($participant->get_registration_date()));
+                            $toggle = 'data-pets-toggle aria-expanded="false" aria-controls="pets-' . $participantId . '"';
                             echo '
                                     <tr>
                                         <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-link">' . (int) $participant->get_id() . '</a></td>
@@ -257,10 +364,11 @@ require_once('header.php');
                                         <td><a href="tel:' . hsc($participant->get_phone()) . '" class="participant-link">' . formatPhoneNumber($participant->get_phone()) . '</a></td>
                                         <td>' . hsc($participant->get_location()) . '</td>
                                         <td>' . hsc($participant->get_status()) . '</td>
-                                        <td>' . $participant->get_pet_count() . '</td>
+                                        <td><button type="button" class="pet-count-toggle" ' . $toggle . ' aria-label="' . (int) $participant->get_pet_count() . ' active pets. Show pets">' . (int) $participant->get_pet_count() . '</button></td>
                                         <td>' . hsc($registered) . '</td>
-                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">View / Update</a><br><a href="distributionRecord.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">Record Distribution</a></td>
+                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">View / Update</a><br><a href="distributionRecord.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">Record Distribution</a><br><button type="button" class="view-pets-button" ' . $toggle . '>View Pets</button></td>
                                     </tr>';
+                            participant_search_pets_row($participantId, $petsByParticipant[$participantId] ?? array());
                         }
                         echo '
                                 </tbody>
@@ -289,6 +397,23 @@ require_once('header.php');
     <div class="text-center mt-6">
         <a href="index.php" class="return-button">Return to Dashboard</a>
     </div>
+
+    <script>
+        // The pet count and View Pets both show or hide the pets row under a result
+        document.querySelectorAll('[data-pets-toggle]').forEach(button => {
+            button.addEventListener('click', () => {
+                const rowId = button.getAttribute('aria-controls');
+                const row = document.getElementById(rowId);
+                row.hidden = !row.hidden;
+                document.querySelectorAll('[aria-controls="' + rowId + '"]').forEach(toggle => {
+                    toggle.setAttribute('aria-expanded', row.hidden ? 'false' : 'true');
+                    if (toggle.classList.contains('view-pets-button')) {
+                        toggle.textContent = row.hidden ? 'View Pets' : 'Hide Pets';
+                    }
+                });
+            });
+        });
+    </script>
 
     <div class="info-section">
         <div class="blue-div"></div>

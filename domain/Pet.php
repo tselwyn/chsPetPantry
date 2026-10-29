@@ -80,6 +80,17 @@ class Pet {
         return $this->date_of_birth;
     }
 
+    /*
+     * Age in whole and tenth years from the date of birth, or null if unknown
+     */
+    function get_age_years() {
+        if (!$this->date_of_birth) {
+            return null;
+        }
+        $days = (new DateTime($this->date_of_birth))->diff(new DateTime('today'))->days;
+        return round($days / 365.25, 1);
+    }
+
     function get_dob_is_estimate() {
         return $this->dob_is_estimate;
     }

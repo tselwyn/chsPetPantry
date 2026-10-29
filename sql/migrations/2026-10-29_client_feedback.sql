@@ -28,3 +28,5 @@ ALTER TABLE `dbparticipants`
 --    No change: dbparticipants.consent stays, and new rows get its default 0.
 
 -- 3. "Save and Add Pets" goes straight to Register Pet. No database change.
+
+-- 4. Pets shown inline in participant search results. No database change.
