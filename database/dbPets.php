@@ -14,8 +14,7 @@ function make_a_pet($result_row) {
         $result_row['species'],
         $result_row['breed'],
         $result_row['sex'],
-        $result_row['date_of_birth'],
-        $result_row['dob_is_estimate'],
+        $result_row['age_years'],
         $result_row['weight_lbs'],
         $result_row['spay_neuter_status'],
         $result_row['rabies_status'],
@@ -37,10 +36,10 @@ function make_a_pet($result_row) {
 function add_pet($pet) {
 
     $query = 'INSERT INTO dbpets '
-        . '(participant_id, name, species, breed, sex, date_of_birth, '
-        . 'dob_is_estimate, weight_lbs, spay_neuter_status, rabies_status, '
+        . '(participant_id, name, species, breed, sex, age_years, '
+        . 'weight_lbs, spay_neuter_status, rabies_status, '
         . 'food_type, food_restriction, notes, status) '
-        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
     $args = [
         $pet->get_participant_id(),
@@ -48,8 +47,7 @@ function add_pet($pet) {
         $pet->get_species(),
         $pet->get_breed(),
         $pet->get_sex(),
-        $pet->get_date_of_birth(),
-        $pet->get_dob_is_estimate(),
+        $pet->get_age_years(),
         $pet->get_weight_lbs(),
         $pet->get_spay_neuter_status(),
         $pet->get_rabies_status(),
@@ -68,7 +66,7 @@ function add_pet($pet) {
         if ($stmt) {
             mysqli_stmt_bind_param(
                 $stmt,
-                'isssssidssssss',
+                'issssddssssss',
                 ...$args
             );
 
@@ -115,6 +113,53 @@ function get_pet_by_id($id) {
     mysqli_close($con);
 
     return $row ? make_a_pet($row) : null;
+}
+
+/*
+ * Save the fields of a Pet that petEdit.php changes. The owner, status and
+ * counseling record are left as they were. Returns true if the update ran.
+ */
+function update_pet($pet) {
+
+    $query = 'UPDATE dbpets SET name = ?, species = ?, breed = ?, sex = ?, '
+        . 'age_years = ?, weight_lbs = ?, '
+        . 'spay_neuter_status = ?, rabies_status = ?, food_type = ?, '
+        . 'food_restriction = ?, notes = ? WHERE id = ?';
+
+    $args = [
+        $pet->get_name(),
+        $pet->get_species(),
+        $pet->get_breed(),
+        $pet->get_sex(),
+        $pet->get_age_years(),
+        $pet->get_weight_lbs(),
+        $pet->get_spay_neuter_status(),
+        $pet->get_rabies_status(),
+        $pet->get_food_type(),
+        $pet->get_food_restriction(),
+        $pet->get_notes(),
+        $pet->get_id()
+    ];
+
+    $con = connect();
+    $success = false;
+
+    try {
+        $stmt = mysqli_prepare($con, $query);
+
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'ssssddsssssi', ...$args);
+            $success = mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
+
+    } catch (mysqli_sql_exception $e) {
+        $success = false;
+    }
+
+    mysqli_close($con);
+
+    return $success;
 }
 
 /*
@@ -206,6 +251,41 @@ else {
     }
 
     mysqli_stmt_close($stmt);
+    mysqli_close($con);
+
+    return $pets;
+}
+
+/*
+ * The pets of several participants at once, for participant search results.
+ * Deleted pets are left out. Returns an array of participant id => Pets.
+ */
+function get_pets_by_participants($participant_ids) {
+    $ids = array_values(array_unique(array_map('intval', $participant_ids)));
+    $pets = array();
+    if (count($ids) == 0) {
+        return $pets;
+    }
+
+    $query = 'SELECT * FROM dbpets WHERE participant_id IN ('
+        . implode(', ', array_fill(0, count($ids), '?')) . ") "
+        . "AND status != 'Deleted' ORDER BY participant_id, name";
+
+    $con = connect();
+    try {
+        $stmt = mysqli_prepare($con, $query);
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, str_repeat('i', count($ids)), ...$ids);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            while ($row = mysqli_fetch_assoc($result)) {
+                $pets[(int) $row['participant_id']][] = make_a_pet($row);
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $pets = array();
+    }
     mysqli_close($con);
 
     return $pets;

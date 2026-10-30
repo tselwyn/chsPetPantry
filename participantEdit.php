@@ -30,13 +30,13 @@
         'DC' => 'District of Columbia', 'NC' => 'North Carolina', 'other' => 'Other');
     $languages = array('English', 'Spanish', 'Other');
     $locations = array('Empower', 'Senior Center', 'Home Delivery');
-    $statuses = array('Active', 'Inactive', 'Expired', 'No Service');
+    $statuses = participant_statuses();
 
     $id = (isset($_GET['id']) && ctype_digit($_GET['id'])) ? (int) $_GET['id'] : 0;
     $participant = $id > 0 ? retrieve_participant($id) : null;
 
-    // Removing an alert is admin-only (FR-023); anyone can set one
-    $canRemoveAlert = $accessLevel >= 2 || ($participant !== null && !$participant->get_alert());
+    // Only an admin can set or clear the Alert / Flag; volunteers see it read-only
+    $canChangeAlert = $accessLevel >= 2;
 
     $errors = array();
     $args = array();
@@ -66,7 +66,7 @@
             'preferred_language' => $participant->get_preferred_language(),
             'participant_location' => $participant->get_location(),
             'participant_status' => $participant->get_status(),
-            'participant_alert' => $participant->get_alert() ? 'Yes' : 'No',
+            'participant_alert' => $participant->get_alert() ? 'Flagged' : 'No',
             'notes' => (string) $participant->get_notes()
         );
     }
@@ -75,6 +75,10 @@
         // Trimmed only, not sanitize()d: update_participant uses prepared statements
         // and pages escape participant data with hsc() when they show it
         foreach (array_keys($args) as $field) {
+            // A volunteer's Alert / Flag stays as saved, whatever is submitted
+            if ($field === 'participant_alert' && !$canChangeAlert) {
+                continue;
+            }
             $args[$field] = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim($_POST[$field]) : '';
         }
 
@@ -126,17 +130,12 @@
             $errors[] = 'Choose a participant location from the list.';
         }
 
-        if ($args['participant_status'] !== '' && !valueConstrainedTo($args['participant_status'], $statuses)) {
+        if ($args['participant_status'] !== '' && !isset($statuses[$args['participant_status']])) {
             $errors[] = 'Choose a participant status from the list.';
         }
 
-        if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Yes', 'No'))) {
-            $errors[] = 'Choose Yes or No for Alert / Flag.';
-        }
-
-        // Volunteers can set an alert but only an admin can remove one (FR-023)
-        if (!$canRemoveAlert && $args['participant_alert'] !== 'Yes') {
-            $errors[] = 'Only an administrator can remove an Alert / Flag.';
+        if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Flagged', 'No'))) {
+            $errors[] = 'Choose Flagged or No for Alert / Flag.';
         }
 
         if (count($errors) == 0) {
@@ -155,7 +154,7 @@
                 $args['participant_location'],
                 $participant->get_registration_date(),
                 $args['participant_status'],
-                $args['participant_alert'] === 'Yes' ? 1 : 0,
+                $args['participant_alert'] === 'Flagged' ? 1 : 0,
                 $args['notes'] === '' ? null : $args['notes'],
                 $participant->get_consent()
             );
@@ -194,12 +193,36 @@ require_once('header.php');
 
 <style>
     #participant_id,
-    #registration_date {
+    #registration_date,
+    #participant_alert[readonly] {
         background-color: #f5f5f5 !important;
         color: #333 !important;
         opacity: 1 !important;
         -webkit-text-fill-color: #333 !important;
         cursor: not-allowed;
+    }
+
+    /* Edit and Delete sit beside SNV / Counseling in each pet row */
+    #pets td.pet-actions {
+        white-space: nowrap;
+    }
+
+    #pets td.pet-actions .button,
+    #pets td.pet-actions button {
+        width: auto;
+        margin: 0.125rem;
+    }
+
+    #pets td.pet-actions form {
+        display: inline;
+    }
+
+    #pets button.delete-pet-button {
+        background-color: #8b0000;
+    }
+
+    #pets button.delete-pet-button:hover {
+        background-color: #660000;
     }
 </style>
 <!-- BANDAID END, REMOVE ONCE SOME GENIUS FIXES -->
@@ -338,11 +361,13 @@ require_once('header.php');
             </select>
 
             <label for="participant_alert">Alert / Flag</label>
+            <?php if ($canChangeAlert): ?>
             <select id="participant_alert" name="participant_alert">
-                <?php participant_options($canRemoveAlert ? array('No', 'Yes') : array('Yes'), $args['participant_alert']) ?>
+                <?php participant_options(array('No', 'Flagged'), $args['participant_alert']) ?>
             </select>
-            <?php if (!$canRemoveAlert): ?>
-            <p class="mb-2">Only an administrator can remove this alert.</p>
+            <?php else: ?>
+            <input type="text" id="participant_alert" value="<?php echo hsc($args['participant_alert']) ?>" readonly disabled>
+            <p class="mb-2">Only an administrator can change the Alert / Flag.</p>
             <?php endif ?>
 
             <label for="notes">Notes</label>
@@ -364,8 +389,18 @@ require_once('header.php');
             <p class="mb-2">This participant's active pets and their spay/neuter, rabies vaccination, and counseling status.</p>
             <div class="blue-div"></div>
 
+            <?php if (isset($_GET['petAdded'])): ?>
+            <div class="happy-toast">The pet has been registered.</div>
+            <?php elseif (isset($_GET['petSaved'])): ?>
+            <div class="happy-toast">The pet's information has been saved.</div>
+            <?php elseif (isset($_GET['petDeleted'])): ?>
+            <div class="happy-toast">The pet has been deleted.</div>
+            <?php elseif (isset($_GET['petNotDeleted'])): ?>
+            <div class="error-toast">The pet could not be deleted. Please try again.</div>
+            <?php endif ?>
+
             <?php if (count($pets) == 0): ?>
-            <p>This participant has no active pets. <a href="registerPet.php?participant_id=<?php echo (int) $participant->get_id() ?>">Register a pet</a></p>
+            <p>This participant has no active pets.</p>
             <?php else: ?>
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; text-align: left;">
@@ -373,6 +408,7 @@ require_once('header.php');
                         <tr>
                             <th>Name</th>
                             <th>Species</th>
+                            <th>Age (Years)</th>
                             <th>Spay/Neuter</th>
                             <th>Rabies</th>
                             <th>Counseling</th>
@@ -384,6 +420,7 @@ require_once('header.php');
                         <tr>
                             <td><?php echo hsc($pet->get_name()) ?></td>
                             <td><?php echo hsc($pet->get_species()) ?></td>
+                            <td><?php echo $pet->get_age_years() === null ? 'Unknown' : hsc($pet->get_age_years()) ?></td>
                             <td><?php echo hsc($pet->get_spay_neuter_status()) ?></td>
                             <td><?php echo hsc($pet->get_rabies_status()) ?></td>
                             <td>
@@ -392,13 +429,24 @@ require_once('header.php');
                                 (<?php echo hsc(date('M j, Y', strtotime($pet->get_counseling_date()))) ?>)
                                 <?php endif ?>
                             </td>
-                            <td><a href="petSNV.php?id=<?php echo (int) $pet->get_id() ?>" class="button">SNV / Counseling</a></td>
+                            <td class="pet-actions">
+                                <a href="petSNV.php?id=<?php echo (int) $pet->get_id() ?>" class="button">SNV / Counseling</a>
+                                <a href="petEdit.php?id=<?php echo (int) $pet->get_id() ?>" class="button">Edit</a>
+                                <form method="post" action="petDelete.php" onsubmit="return confirm(<?php echo hsc(json_encode('Delete ' . $pet->get_name() . '? This cannot be undone from this page.')) ?>);">
+                                    <input type="hidden" name="pet_id" value="<?php echo (int) $pet->get_id() ?>">
+                                    <button type="submit" class="delete-pet-button">Delete</button>
+                                </form>
+                            </td>
                         </tr>
                         <?php endforeach ?>
                     </tbody>
                 </table>
             </div>
             <?php endif ?>
+
+            <div class="text-center mt-2">
+                <a href="registerPet.php?participant_id=<?php echo (int) $participant->get_id() ?>" class="button">Add a Pet</a>
+            </div>
         </fieldset>
     </div>
 
@@ -433,7 +481,7 @@ require_once('header.php');
                             <td><?php echo (int) $distribution->get_pets_served() ?></td>
                             <td><?php echo hsc($distribution->get_dog_food_lbs()) ?></td>
                             <td><?php echo hsc($distribution->get_cat_food_lbs()) ?></td>
-                            <td><?php echo hsc($distribution->get_processed_by()) ?></td>
+                            <td><?php echo hsc($distribution->get_processed_by_name()) ?></td>
                             <td><?php echo nl2br(hsc($distribution->get_notes())) ?></td>
                         </tr>
                         <?php endforeach ?>

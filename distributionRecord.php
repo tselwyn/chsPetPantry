@@ -31,6 +31,7 @@
     $maxPets = 50;
     $maxLbs = 999.99;
     $maxNotes = 1000;
+    $maxProcessedBy = 100;
 
     $id = (isset($_GET['id']) && ctype_digit($_GET['id'])) ? (int) $_GET['id'] : 0;
     $participant = $id > 0 ? retrieve_participant($id) : null;
@@ -41,9 +42,11 @@
     if ($participant !== null) {
         // Restrictions the user has to see before the distribution is completed
         if ($participant->get_alert()) {
-            $warnings[] = 'This participant has an alert / flag on their record.';
+            $warnings[] = 'This participant is Flagged (Alert / Flag on their record).';
         }
-        if ($participant->get_status() !== 'Active') {
+        if ($participant->get_status() === 'DND') {
+            $warnings[] = 'This participant is marked DND (Do Not Distribute).';
+        } else if ($participant->get_status() !== 'Active') {
             $warnings[] = 'This participant\'s status is ' . $participant->get_status() . ', not Active.';
         }
 
@@ -59,6 +62,7 @@
             'pets_served' => $petCount > 0 ? (string) $petCount : '',
             'dog_food_lbs' => '',
             'cat_food_lbs' => '',
+            'processed_by_name' => '',
             'notes' => '',
             'acknowledge_warning' => ''
         );
@@ -75,7 +79,8 @@
         $required = array(
             'distribution_date' => 'Distribution date',
             'distribution_location' => 'Distribution location',
-            'pets_served' => 'Number of pets receiving food'
+            'pets_served' => 'Number of pets receiving food',
+            'processed_by_name' => 'Processed By (your name)'
         );
         foreach ($required as $field => $label) {
             if ($args[$field] === '') {
@@ -114,6 +119,10 @@
             $errors[] = 'Enter a dog food quantity, a cat food quantity, or both.';
         }
 
+        if (mb_strlen($args['processed_by_name']) > $maxProcessedBy) {
+            $errors[] = 'Processed By must be ' . $maxProcessedBy . ' characters or fewer.';
+        }
+
         if (mb_strlen($args['notes']) > $maxNotes) {
             $errors[] = 'Notes must be ' . $maxNotes . ' characters or fewer.';
         }
@@ -123,7 +132,8 @@
         }
 
         if (count($errors) == 0) {
-            // The person processing the distribution is always the logged-in user
+            // Logins are shared, so the volunteer types their name; the login's
+            // id is kept as well
             $distribution = new ParticipantDistribution(
                 null,
                 $participant->get_id(),
@@ -133,7 +143,8 @@
                 (float) $args['dog_food_lbs'],
                 (float) $args['cat_food_lbs'],
                 $userID,
-                $args['notes'] === '' ? null : $args['notes']
+                $args['notes'] === '' ? null : $args['notes'],
+                $args['processed_by_name']
             );
             if (add_participant_distribution($distribution)) {
                 // Redirect so refreshing the page doesn't record the distribution again
@@ -257,8 +268,8 @@ require_once('header.php');
                 <?php endforeach ?>
             </select>
 
-            <label for="processed_by">Processed By</label>
-            <input type="text" id="processed_by" value="<?php echo hsc($userID) ?>" readonly disabled>
+            <label for="processed_by_name"><em>* </em>Processed By (your name)</label>
+            <input type="text" id="processed_by_name" name="processed_by_name" required maxlength="<?php echo $maxProcessedBy ?>" placeholder="Enter your first and last name" autocomplete="off" value="<?php echo hsc($args['processed_by_name']) ?>">
         </fieldset>
 
         <fieldset class="section-box mb-4">

@@ -19,114 +19,98 @@ if ($accessLevel < 1) {
     die();
 }
 
+require_once('include/output.php');
+require_once('include/pet-form.php');
 require_once('database/dbParticipants.php');
 require_once('database/dbPets.php');
 
-$participants = get_all_participants();
-//if coming from participant registration get participantID from URL
-$selected_participant_id = $_GET['participant_id'] ?? '';
+// The participant the pet is for: from the URL when coming from participant
+// registration, "Save & Add Another Pet" or the participant page, otherwise
+// chosen from the dropdown
+$selected_participant_id = '';
+if (isset($_GET['participant_id']) && ctype_digit($_GET['participant_id'])) {
+    $selected_participant_id = $_GET['participant_id'];
+}
+if (isset($_POST['participant_id']) && is_string($_POST['participant_id']) && ctype_digit($_POST['participant_id'])) {
+    $selected_participant_id = $_POST['participant_id'];
+}
 
-$success = false;
+// A deleted participant is kept only for history, so it is treated as not found
+$selectedParticipant = $selected_participant_id !== '' ? retrieve_participant((int) $selected_participant_id) : null;
+if ($selectedParticipant !== null && $selectedParticipant->get_status() === 'Deleted') {
+    $selectedParticipant = null;
+}
+$participantNotFound = $selected_participant_id !== '' && $selectedParticipant === null;
+if ($participantNotFound) {
+    $selected_participant_id = '';
+}
+
+$participants = $selectedParticipant === null ? get_all_participants() : array();
+
 $errors = array();
+
+// What the form shows until something is submitted
+$args = pet_form_defaults();
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
+    // "Save & Add Another Pet" or "Done"
+    $action = (isset($_POST['action']) && $_POST['action'] === 'done') ? 'done' : 'another';
+
     // Get information submitted by the form
-    $participant_id = $_POST['participant_id'] ?? '';
-    $name = trim($_POST['name'] ?? '');
-    $species = $_POST['species'] ?? '';
-    $breed = trim($_POST['breed'] ?? '');
-    $sex = $_POST['sex'] ?? '';
-    $date_of_birth = $_POST['date_of_birth'] ?? '';
-    $dob_is_estimate = $_POST['dob_is_estimate'] ?? '1';
-    $weight_lbs = $_POST['weight_lbs'] ?? '';
-    $food_type = $_POST['food_type'] ?? '';
-    $food_restriction = $_POST['food_restriction'] ?? '';
-    $notes = $_POST['notes'] ?? '';
-    $spay_neuter = $_POST['spay_neuter'] ?? '';
-    $rabies_status = $_POST['rabies_status'] ?? '';
+    foreach (array_keys($args) as $field) {
+        $args[$field] = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim($_POST[$field]) : '';
+    }
+
+    // "Done" with nothing typed in just finishes; there is no pet to save
+    $petEntered = $args['name'] !== '' || $args['species'] !== '' || $args['breed'] !== ''
+        || $args['age_years'] !== '' || $args['weight_lbs'] !== ''
+        || $args['food_restriction'] !== '' || $args['notes'] !== '';
+
+    if ($action === 'done' && !$petEntered) {
+        if ($selectedParticipant !== null) {
+            header('Location: participantEdit.php?id=' . (int) $selectedParticipant->get_id() . '#pets');
+        } else {
+            header('Location: index.php');
+        }
+        die();
+    }
 
     // Make sure required fields were entered
-    if ($participant_id === '') {
+    if ($selectedParticipant === null) {
         $errors[] = 'Please select a participant.';
     }
-
-    if ($name === '') {
-        $errors[] = 'Please enter the pet name.';
-    }
-
-    if ($species === '') {
-        $errors[] = 'Please select a species.';
-    }
-
-    // Spay/neuter and rabies are Yes, No, or Unknown (FR-029)
-    if (!in_array($spay_neuter, array('Yes', 'No', 'Unknown'), true)) {
-        $errors[] = 'Please select whether the pet is spayed/neutered.';
-    }
-
-    if (!in_array($rabies_status, array('Yes', 'No', 'Unknown'), true)) {
-        $errors[] = 'Please select whether the pet has a rabies vaccination.';
-    }
-
-    // Optional database fields should be NULL when left blank
-    $breed = ($breed === '') ? null : $breed;
-    $date_of_birth = ($date_of_birth === '') ? null : $date_of_birth;
-    $weight_lbs = ($weight_lbs === '') ? null : $weight_lbs;
-    $food_type = ($food_type === '') ? null : $food_type;
-    $food_restriction = ($food_restriction === '') ? null : $food_restriction;
-    $notes = ($notes === '') ? null : $notes;
-
-    // New pets are active automatically
-    $status = 'Active';
+    $errors = array_merge($errors, pet_form_errors($args));
 
     if (count($errors) == 0) {
 
-        $pet = new Pet(
-            null,
-            $participant_id,
-            $name,
-            $species,
-            $breed,
-            $sex,
-            $date_of_birth,
-            $dob_is_estimate,
-            $weight_lbs,
-            $spay_neuter,
-            $rabies_status,
-            $food_type,
-            $food_restriction,
-            $notes,
-            $status
-        );
-
-        $pet_id = add_pet($pet);
+        // New pets are active automatically
+        $pet_id = add_pet(pet_from_form(null, $selectedParticipant->get_id(), $args, 'Active'));
 
         if ($pet_id) {
-           //Save the pet's name temporarily for the confirmation page
-           $_SESSION['registered_pet'] = $name;
-           //redirect so refreshing the page doesn't resubmit the form
-           header("Location: registerPet.php?registered");
-           die();
-        } else {
-            $errors[] = 'The pet could not be saved. Please try again.';
+            // Redirect so refreshing the page doesn't resubmit the form
+            if ($action === 'done') {
+                header('Location: participantEdit.php?id=' . (int) $selectedParticipant->get_id() . '&petAdded#pets');
+            } else {
+                // Save the pet's name temporarily for the confirmation
+                $_SESSION['registered_pet'] = $args['name'];
+                header('Location: registerPet.php?participant_id=' . (int) $selectedParticipant->get_id() . '&added');
+            }
+            die();
         }
-    } 
+        $errors[] = 'The pet could not be saved. Please try again.';
     }
+}
 
-        //name shown on the confirmation page
-        $registeredPetName = null;
-        if(isset($_GET['registered']) && isset($_SESSION['registered_pet'])) {
-            $registeredPetName = $_SESSION['registered_pet'];
-            unset($_SESSION['registered_pet']);
-        }
+// Name of the pet just saved, shown once
+$registeredPetName = null;
+if (isset($_GET['added']) && isset($_SESSION['registered_pet'])) {
+    $registeredPetName = $_SESSION['registered_pet'];
+    unset($_SESSION['registered_pet']);
+}
 
-    ?>
-
-
-<!-- imports -->
-<script src="https://nosir.github.io/cleave.js/dist/cleave.min.js"></script>
-<script src="https://nosir.github.io/cleave.js/dist/cleave-phone.i18n.js"></script>
-
+$existingPets = $selectedParticipant !== null ? get_pets_by_participant($selectedParticipant->get_id()) : array();
+?>
 <!DOCTYPE html>
 <html>
 
@@ -139,12 +123,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $tailwind_mode = true;
     require_once('header.php');
     ?>
+
+    <style>
+        #participant_name,
+        #participant_number {
+            background-color: #f5f5f5 !important;
+            color: #333 !important;
+            opacity: 1 !important;
+            -webkit-text-fill-color: #333 !important;
+            cursor: not-allowed;
+        }
+
+        .pet-form-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .pet-form-buttons button {
+            width: auto;
+            flex: 1;
+            max-width: 20rem;
+        }
+    </style>
 </head>
 
 <body class="relative">
 
 <!-- Hero Section with Title -->
-<header class="hero-header"> 
+<header class="hero-header">
     <div class="center-header">
         <h1>Pet Registration</h1>
     </div>
@@ -153,25 +160,87 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <main>
   <div class="main-content-box">
 
-  <?php if ($registeredPetName !== null): ?>
-    <div class="happy-toast">
-        <?php echo htmlspecialchars($registeredPetName); ?>
-        has been successfully registered!
-    </div>
+	<form class="signup-form" method="post"<?php if ($selectedParticipant !== null) echo ' action="registerPet.php?participant_id=' . (int) $selectedParticipant->get_id() . '"' ?>>
 
-    <div class="text-center">
-        <a href="registerPet.php" class="button">
-            Register Another Pet
-        </a>
-        <a href="index.php" class="button">
-            Return to Dashboard
-        </a>
-    </div>
-    <?php else: ?>
+        <?php if (isset($_GET['registered']) && $selectedParticipant !== null && count($errors) == 0): ?>
+        <div class="happy-toast">
+            <?php echo hsc($selectedParticipant->get_first_name() . ' ' . $selectedParticipant->get_last_name()) ?>
+            has been registered as a Pet Pantry participant. Add their pets below.
+        </div>
+        <?php endif ?>
 
-	<form class="signup-form" method="post">
-        
-        
+        <?php if ($registeredPetName !== null): ?>
+        <div class="happy-toast">
+            <?php echo hsc($registeredPetName) ?> has been registered. Add another pet, or select Done.
+        </div>
+        <?php endif ?>
+
+        <?php if ($participantNotFound): ?>
+        <div class="error-toast">That participant could not be found. Choose one from the list.</div>
+        <?php endif ?>
+
+        <?php if (count($errors) > 0): ?>
+        <div class="error-toast">
+            <p>The pet was not registered:</p>
+            <ul>
+                <?php foreach ($errors as $error): ?>
+                <li><?php echo hsc($error) ?></li>
+                <?php endforeach ?>
+            </ul>
+        </div>
+        <?php endif ?>
+
+        <fieldset class="section-box mb-4">
+            <h3 class="mt-2">Participant</h3>
+            <div class="blue-div"></div>
+
+<?php if ($selectedParticipant !== null): ?>
+            <label for="participant_name">Participant Name</label>
+            <input type="text" id="participant_name" value="<?php echo hsc($selectedParticipant->get_first_name() . ' ' . $selectedParticipant->get_last_name()) ?>" readonly disabled>
+
+            <label for="participant_number">Participant ID</label>
+            <input type="text" id="participant_number" value="<?php echo (int) $selectedParticipant->get_id() ?>" readonly disabled>
+
+            <input type="hidden" name="participant_id" value="<?php echo (int) $selectedParticipant->get_id() ?>">
+
+            <?php if (count($existingPets) > 0): ?>
+            <p class="mt-2">Pets already registered for this participant:</p>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Species</th>
+                            <th>Breed</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($existingPets as $existingPet): ?>
+                        <tr>
+                            <td><?php echo hsc($existingPet->get_name()) ?></td>
+                            <td><?php echo hsc($existingPet->get_species()) ?></td>
+                            <td><?php echo hsc($existingPet->get_breed()) ?></td>
+                            <td><?php echo hsc($existingPet->get_status()) ?></td>
+                        </tr>
+                        <?php endforeach ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php endif ?>
+<?php else: ?>
+            <label for="participant_id"><em>* </em>Participant</label>
+            <select id="participant_id" name="participant_id" required>
+                <option value="">Select Participant</option>
+                <?php foreach ($participants as $participant): ?>
+                <option value="<?php echo (int) $participant->get_id() ?>">
+                    <?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name() . ' (ID ' . $participant->get_id() . ')') ?>
+                </option>
+                <?php endforeach ?>
+            </select>
+<?php endif ?>
+        </fieldset>
+
         <fieldset class="section-box mb-4">
 
             <h3 class="mt-2">Pet Information</h3>
@@ -181,170 +250,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             <div class="blue-div"></div>
 
-           <label for="participant_id">* Participant</label>
-
-<?php if ($selected_participant_id !== ''): ?>
-
-    <?php
-    $selectedParticipantName = '';
-
-    foreach ($participants as $participant) {
-        if ($participant->get_id() == $selected_participant_id) {
-            $selectedParticipantName =
-                $participant->get_first_name() . ' ' .
-                $participant->get_last_name();
-            break;
-        }
-    }
-    ?>
-
-    <input
-        type="text"
-        value="<?php echo htmlspecialchars($selectedParticipantName); ?>"
-        readonly
-    >
-
-    <input
-        type="hidden"
-        name="participant_id"
-        value="<?php echo htmlspecialchars($selected_participant_id); ?>"
-    >
-
-<?php else: ?>
-
-    <select id="participant_id" name="participant_id" required>
-
-        <option value="">Select Participant</option>
-
-        <?php foreach ($participants as $participant): ?>
-
-            <option value="<?php echo $participant->get_id(); ?>">
-                <?php
-                echo htmlspecialchars(
-                    $participant->get_first_name() . ' ' .
-                    $participant->get_last_name()
-                );
-                ?>
-            </option>
-
-        <?php endforeach; ?>
-
-    </select>
-
-<?php endif; ?>
-
-        <label for="name">
-            <em>* </em>Name
-        </label>
-        <input
-            type="text"
-            id="name"
-            name="name"
-            required
-            placeholder="Enter pet's name"
-        >
-        
-        <label for="species">
-            <em>* </em>Species
-        </label>
-        <select id="species" name="species" required>
-            <option value="">Select Species</option>
-            <option value="Dog">Dog</option>
-            <option value="Cat">Cat</option>
-            <option value="Other">Other</option>
-        </select>
-
-        <label for="breed">Breed</label>
-        <input
-            type="text"
-            id="breed"
-            name="breed"
-            placeholder="Enter breed"
-        >
-
-        <label for="date_of_birth">Date of Birth</label>
-        <input
-            type="date"
-            id="date_of_birth"
-            name="date_of_birth"
-        >
-
-        <label for="dob_is_estimate">Is this date estimated?</label>
-        <select id="dob_is_estimate" name="dob_is_estimate">
-        <option value="1">Yes</option>
-        <option value="0">No</option>
-        </select>
-
-        <label for="weight_lbs">Weight(lbs)</label>
-        <input
-            type="number"
-            id="weight_lbs"
-            name="weight_lbs"
-            min="0"
-            step="0.1"
-            placeholder="Enter weight"
-        >
-
-        <label for="sex">Sex</label>
-        <select id="sex" name="sex">
-            <option value="Unknown">Unknown</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-        </select>
-
-        <label for="spay_neuter">Spay/Neuter Status</label>
-        <select id="spay_neuter" name="spay_neuter" required>
-            <option value="Unknown">Unknown</option>
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-        </select>
-
-        <label for="rabies_status">Rabies Vaccination Status</label>
-        <select id="rabies_status" name="rabies_status" required>
-            <option value="Unknown">Unknown</option>
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-        </select>
-
-        <label for="food_type">Food Type</label>
-        <select id="food_type" name="food_type">
-            <option value="dry">Dry</option>
-            <option value="wet">Wet</option>
-            <option value="either">Either</option>
-        </select>
-
-        <label for="food_restriction">Food Restrictions</label>
-        <textarea id="food_restriction" name="food_restriction" placeholder="Enter any food restrictions"></textarea>
-
-        <label for="notes">Notes</label>
-        <textarea id="notes" name="notes" placeholder="Enter any additional notes"></textarea>
+        <?php require('petFormFields.php') ?>
 
         </fieldset>
 
-        
-
-<?php if (count($errors) > 0): ?>
-
-    <div class="error-toast">
-        <p>The pet was not registered:</p>
-
-        <ul>
-            <?php foreach ($errors as $error): ?>
-                <li><?php echo htmlspecialchars($error); ?></li>
-            <?php endforeach; ?>
-        </ul>
-    </div>
-
-<?php endif; ?>
-
-<p class="text-center notice"></p>
-<input type="submit" value="Save Pet">
+        <!-- Done skips the browser's required-field check so it can finish
+             without a pet; a partly filled pet is still checked when saved -->
+        <div class="pet-form-buttons">
+            <button type="submit" name="action" value="another">Save &amp; Add Another Pet</button>
+            <button type="submit" name="action" value="done" formnovalidate>Done</button>
+        </div>
+        <p class="text-center mt-2">Done saves the pet above if one was entered, then opens the participant's page.</p>
 
     </form>
-    <?php endif; ?>
-   </div> 
+   </div>
 </main>
 
 </body>
 </html>
-            

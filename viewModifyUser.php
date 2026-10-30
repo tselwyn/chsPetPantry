@@ -475,6 +475,9 @@
                                             <option value="Admin"
                                                 <?php if ($thePerson->get_type() == "Admin") echo("selected");?>
                                                 >Admin</option>
+                                            <option value="Volunteer"
+                                                <?php if (strtolower($thePerson->get_type()) == "volunteer") echo("selected");?>
+                                                >Volunteer</option>
                                             <option value="Inventory_counter" 
                                                 <?php if ($thePerson->get_type() == "Inventory_counter") echo("selected");?>
                                                 >Inventory_counter</option>

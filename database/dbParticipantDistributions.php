@@ -17,6 +17,7 @@ function make_a_participant_distribution($result_row) {
         $result_row['cat_food_lbs'],
         $result_row['processed_by'],
         $result_row['notes'],
+        $result_row['processed_by_name'],
         $result_row['created_at']
     );
 }
@@ -28,8 +29,8 @@ function make_a_participant_distribution($result_row) {
  */
 function add_participant_distribution($distribution) {
     $query = 'INSERT INTO dbparticipantdistributions (participant_id, distribution_date, location, '
-        . 'pets_served, dog_food_lbs, cat_food_lbs, processed_by, notes) '
-        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+        . 'pets_served, dog_food_lbs, cat_food_lbs, processed_by, processed_by_name, notes) '
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
     $args = [
         $distribution->get_participant_id(),
         $distribution->get_distribution_date(),
@@ -38,6 +39,7 @@ function add_participant_distribution($distribution) {
         $distribution->get_dog_food_lbs(),
         $distribution->get_cat_food_lbs(),
         $distribution->get_processed_by(),
+        $distribution->get_processed_by_name(),
         $distribution->get_notes()
     ];
 
@@ -46,7 +48,7 @@ function add_participant_distribution($distribution) {
     try {
         $stmt = mysqli_prepare($con, $query);
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'issiddss', ...$args);
+            mysqli_stmt_bind_param($stmt, 'issiddsss', ...$args);
             if (mysqli_stmt_execute($stmt)) {
                 $id = mysqli_insert_id($con);
             }
@@ -82,6 +84,41 @@ function get_participant_distributions($participant_id) {
     }
     mysqli_close($con);
     return $distributions;
+}
+
+/*
+ * Each participant's most recent distribution date, for the Remove Participant
+ * list. Returns an array of participant id => 'Y-m-d'; participants with no
+ * distributions are left out.
+ */
+function get_last_distribution_dates($participant_ids) {
+    $ids = array_values(array_unique(array_map('intval', $participant_ids)));
+    $dates = array();
+    if (count($ids) == 0) {
+        return $dates;
+    }
+
+    $query = 'SELECT participant_id, MAX(distribution_date) AS last_date FROM dbparticipantdistributions '
+        . 'WHERE participant_id IN (' . implode(', ', array_fill(0, count($ids), '?')) . ') '
+        . 'GROUP BY participant_id';
+
+    $con = connect();
+    try {
+        $stmt = mysqli_prepare($con, $query);
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, str_repeat('i', count($ids)), ...$ids);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            while ($row = mysqli_fetch_assoc($result)) {
+                $dates[(int) $row['participant_id']] = $row['last_date'];
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $dates = array();
+    }
+    mysqli_close($con);
+    return $dates;
 }
 
 /*

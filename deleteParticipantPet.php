@@ -13,14 +13,24 @@ if (isset($_SESSION['_id'])) {
     $userID = $_SESSION['_id'];
 }
 
-// Only admins can access this page
-if ($accessLevel < 2) {
+// Volunteers and admins can remove pets; only admins can deactivate,
+// reactivate or delete a participant
+if ($accessLevel < 1) {
     header('Location: index.php');
     die();
 }
+$canManageParticipants = $accessLevel >= 2;
 
 require_once('database/dbParticipants.php');
 require_once('database/dbPets.php');
+require_once('database/dbParticipantDistributions.php');
+
+// A participant's last distribution date for the list, or "None"
+function last_distribution_label($lastDates, $participantID) {
+    return isset($lastDates[$participantID])
+        ? date('M j, Y', strtotime($lastDates[$participantID]))
+        : 'None';
+}
 
 // Mark pet as inactive when the "Mark Inactive" button is clicked
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_pet'])) {
@@ -72,6 +82,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['activate_pet'])) {
 
         die();
     }
+}
+
+// The participant actions below are admin-only. A volunteer's request is
+// refused here, not just hidden on the page.
+$participantActions = array('deactivate_participant', 'activate_participant', 'delete_participant');
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$canManageParticipants
+        && count(array_intersect($participantActions, array_keys($_POST))) > 0) {
+    $participantID = (isset($_POST['participant_id']) && is_string($_POST['participant_id'])) ? $_POST['participant_id'] : '';
+    header(
+        'Location: deleteParticipantPet.php?participant_id=' .
+        urlencode($participantID) . '&notAllowed'
+    );
+    die();
 }
 
 // Mark participant inactive
@@ -157,6 +180,13 @@ if (isset($_GET['participant_id'])) {
     }
 }
 
+$lastDistributionDates = get_last_distribution_dates(array_merge(
+    array_map(function ($participant) {
+        return $participant->get_id();
+    }, $searchResults),
+    $selectedParticipant ? array($selectedParticipant->get_id()) : array()
+));
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -234,20 +264,33 @@ if (isset($_GET['participant_id'])) {
     color: #1f5968;
 }
 
-.participant-result {
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 15px;
+.record-table-wrap {
+    overflow-x: auto;
     margin-top: 15px;
 }
 
-.participant-result p {
-    margin: 5px 0;
+.record-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.record-table th {
+    background-color: #1f5968;
+    color: white;
+    padding: 10px;
+    white-space: nowrap;
+}
+
+.record-table td {
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+    vertical-align: middle;
 }
 
 .select-button {
     display: inline-block;
-    margin-top: 10px;
+    white-space: nowrap;
     background-color: #1f5968;
     color: white;
     text-decoration: none;
@@ -269,21 +312,32 @@ if (isset($_GET['participant_id'])) {
     color: #1f5968;
 }
 
-.participant-info,
-.pet-result {
+.participant-info {
     border: 1px solid #ccc;
     border-radius: 8px;
     padding: 15px;
     margin-top: 10px;
 }
 
-.pet-result {
-    margin-bottom: 10px;
+.participant-info p {
+    margin: 5px 0;
 }
 
-.participant-info p,
-.pet-result p {
-    margin: 5px 0;
+/* Pet action buttons sit side by side in the table's last column */
+.pet-actions {
+    white-space: nowrap;
+}
+
+.pet-actions form {
+    display: inline-block;
+}
+
+.pet-actions .remove-button,
+.pet-actions .delete-button,
+.pet-actions .active-button {
+    display: inline-block;
+    width: auto;
+    margin: 2px;
 }
 
 .remove-button {
@@ -331,6 +385,13 @@ if (isset($_GET['participant_id'])) {
     background-color: #1f5c23;
 }
 
+.not-allowed {
+    border-left: 4px solid #dc2626;
+    background-color: #fef2f2;
+    color: #991b1b;
+    padding: 10px 15px;
+}
+
 /* base.css gives buttons 94% width; center them instead of leaving them at the left edge */
 .search-button, .remove-button, .delete-button, .active-button {
     display: block;
@@ -349,11 +410,19 @@ if (isset($_GET['participant_id'])) {
 
     <div class="remove-box">
 
-        <h2>Remove Participant / Pet</h2>
+        <h2><?php echo $canManageParticipants ? 'Remove Participant / Pet' : 'Remove Pet'; ?></h2>
 
         <p>
+            <?php if ($canManageParticipants): ?>
             Search for the participant whose account or pet you would like to remove.
+            <?php else: ?>
+            Search for the participant whose pet you would like to remove.
+            <?php endif; ?>
         </p>
+
+        <?php if (isset($_GET['notAllowed'])): ?>
+        <p class="not-allowed">Only an administrator can deactivate or delete a participant.</p>
+        <?php endif; ?>
 
         <form class="search-form"
               method="get"
@@ -390,38 +459,46 @@ if (isset($_GET['participant_id'])) {
 
         <?php else: ?>
 
+            <div class="record-table-wrap">
+            <table class="record-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Last Distribution</th>
+                        <th>ID</th>
+                        <th>Address</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
             <?php foreach ($searchResults as $participant): ?>
-
-                <div class="participant-result">
-
-                    <strong>
-                        <?php
-                        echo htmlspecialchars(
-                            $participant->get_first_name() . ' ' .
-                            $participant->get_last_name()
-                        );
-                        ?>
-                    </strong>
-
-                    <p>
-                        Participant ID:
-                        <?php echo htmlspecialchars($participant->get_id()); ?>
-                    </p>
-
-                    <p>
-                        <?php
-                        echo htmlspecialchars($participant->get_street_address());
-                        ?>
-                    </p>
-
-                    <a class="select-button"
-                       href="deleteParticipantPet.php?participant_id=<?php echo urlencode($participant->get_id()); ?>">
-                        Select Participant
-                    </a>
-
-                </div>
-
+                    <tr>
+                        <td>
+                            <strong>
+                                <?php
+                                echo htmlspecialchars(
+                                    $participant->get_first_name() . ' ' .
+                                    $participant->get_last_name()
+                                );
+                                ?>
+                            </strong>
+                        </td>
+                        <td><?php echo htmlspecialchars(last_distribution_label($lastDistributionDates, (int) $participant->get_id())); ?></td>
+                        <td><?php echo htmlspecialchars($participant->get_id()); ?></td>
+                        <td><?php echo htmlspecialchars($participant->get_street_address()); ?></td>
+                        <td><?php echo htmlspecialchars($participant->get_status()); ?></td>
+                        <td>
+                            <a class="select-button"
+                               href="deleteParticipantPet.php?participant_id=<?php echo urlencode($participant->get_id()); ?>">
+                                Select Participant
+                            </a>
+                        </td>
+                    </tr>
             <?php endforeach; ?>
+                </tbody>
+            </table>
+            </div>
 
         <?php endif; ?>
 
@@ -459,7 +536,22 @@ if (isset($_GET['participant_id'])) {
                 Status:
                 <?php echo htmlspecialchars($selectedParticipant->get_status()); ?>
             </p>
-            <?php if ($selectedParticipant->get_status() === 'Active'): ?>
+
+            <p>
+                Last distribution:
+                <?php echo htmlspecialchars(last_distribution_label($lastDistributionDates, (int) $selectedParticipant->get_id())); ?>
+            </p>
+            <?php if ($selectedParticipant->get_status() === 'Deleted'): ?>
+
+    <p><strong>This participant has been deleted.</strong></p>
+
+<?php elseif (!$canManageParticipants): ?>
+
+    <p>Only an administrator can deactivate or delete a participant.</p>
+
+<?php else: ?>
+
+    <?php if ($selectedParticipant->get_status() === 'Active'): ?>
 
     <!-- Mark Participant Inactive -->
     <form method="post" action="deleteParticipantPet.php">
@@ -477,24 +569,7 @@ if (isset($_GET['participant_id'])) {
 
     </form>
 
-    <!-- Delete Participant -->
-    <form method="post" action="deleteParticipantPet.php">
-
-        <input type="hidden"
-               name="participant_id"
-               value="<?php echo htmlspecialchars($selectedParticipant->get_id()); ?>">
-
-        <button type="submit"
-                name="delete_participant"
-                class="delete-button"
-                onclick="return confirm('Are you sure you want to delete this participant?');">
-            Delete Participant
-        </button>
-
-    </form>
-
-
-<?php elseif ($selectedParticipant->get_status() === 'Inactive'): ?>
+    <?php elseif ($selectedParticipant->get_status() === 'Inactive'): ?>
 
     <p><strong>This participant is inactive.</strong></p>
 
@@ -514,7 +589,9 @@ if (isset($_GET['participant_id'])) {
 
     </form>
 
-    <!-- Delete Participant -->
+    <?php endif; ?>
+
+    <!-- Delete Participant: any status but Deleted, including Expired and DND -->
     <form method="post" action="deleteParticipantPet.php">
 
         <input type="hidden"
@@ -530,11 +607,6 @@ if (isset($_GET['participant_id'])) {
 
     </form>
 
-
-<?php elseif ($selectedParticipant->get_status() === 'Deleted'): ?>
-
-    <p><strong>This participant has been deleted.</strong></p>
-
 <?php endif; ?>
 
         </div>
@@ -548,28 +620,27 @@ if (isset($_GET['participant_id'])) {
 
         <?php else: ?>
 
+            <div class="record-table-wrap">
+            <table class="record-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Species</th>
+                        <th>Breed</th>
+                        <th>Age (Years)</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
             <?php foreach ($participantPets as $pet): ?>
-
-                <div class="pet-result">
-
-                    <strong>
-                        🐾 <?php echo htmlspecialchars($pet->get_name()); ?>
-                    </strong>
-
-                    <p>
-                        Species:
-                        <?php echo htmlspecialchars($pet->get_species()); ?>
-                    </p>
-
-                    <p>
-                        Breed:
-                        <?php echo htmlspecialchars($pet->get_breed() ?? 'Not provided'); ?>
-                    </p>
-
-                    <p>
-                        Status:
-                        <?php echo htmlspecialchars($pet->get_status()); ?>
-                    </p>
+                    <tr>
+                        <td><strong><?php echo htmlspecialchars($pet->get_name()); ?></strong></td>
+                        <td><?php echo htmlspecialchars($pet->get_species()); ?></td>
+                        <td><?php echo htmlspecialchars($pet->get_breed() ?? 'Not provided'); ?></td>
+                        <td><?php echo htmlspecialchars($pet->get_age_years() ?? 'Unknown'); ?></td>
+                        <td><?php echo htmlspecialchars($pet->get_status()); ?></td>
+                        <td class="pet-actions">
 
                     <?php if ($pet->get_status() === 'Active'): ?>
 
@@ -614,8 +685,6 @@ if (isset($_GET['participant_id'])) {
 
 <?php elseif ($pet->get_status() === 'Inactive'): ?>
 
-    <p><strong>This pet is inactive.</strong></p>
-
     <!-- Mark Active -->
 <form method="post"
       action="deleteParticipantPet.php?participant_id=<?php
@@ -657,13 +726,16 @@ if (isset($_GET['participant_id'])) {
 
 <?php elseif ($pet->get_status() === 'Deleted'): ?>
 
-    <p><strong>This pet has been deleted.</strong></p>
+    This pet has been deleted.
 
 <?php endif; ?>
 
-                </div>
-
+                        </td>
+                    </tr>
             <?php endforeach; ?>
+                </tbody>
+            </table>
+            </div>
 
         <?php endif; ?>
 
