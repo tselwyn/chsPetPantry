@@ -27,7 +27,7 @@
     $states = array('VA', 'MD', 'WV', 'DC', 'NC', 'other');
     $languages = array('English', 'Spanish', 'Other');
     $locations = array('Empower', 'Senior Center', 'Home Delivery');
-    $statuses = array('Active', 'Inactive', 'Expired', 'No Service');
+    $statuses = array_keys(participant_statuses());
 
     $errors = array();
     $args = array();
@@ -38,7 +38,7 @@
             'first_name', 'last_name', 'street_address', 'city', 'state', 'zip',
             'phone1', 'email', 'preferred_language',
             'participant_location', 'registration_date', 'participant_status',
-            'participant_alert', 'notes', 'participant_consent'
+            'participant_alert', 'notes'
         );
         foreach ($fields as $field) {
             $args[$field] = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim($_POST[$field]) : '';
@@ -47,8 +47,7 @@
         $required = array(
             'first_name', 'last_name', 'street_address',
             'phone1', 'email', 'preferred_language',
-            'participant_location', 'registration_date', 'participant_status',
-            'participant_consent'
+            'participant_location', 'registration_date', 'participant_status'
         );
         if (!wereRequiredFieldsSubmitted($args, $required, false)) {
             $errors[] = 'Please fill in every required field.';
@@ -105,14 +104,12 @@
             $errors[] = 'Choose a participant status from the list.';
         }
 
-        if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Yes', 'No'))) {
-            $errors[] = 'Choose Yes or No for Alert / Flag.';
+        // Only an admin can flag a participant; a volunteer's choice is ignored
+        if ($accessLevel < 2) {
+            $args['participant_alert'] = 'No';
         }
-
-        if ($args['participant_consent'] !== '' && !valueConstrainedTo($args['participant_consent'], array('Yes', 'No'))) {
-            $errors[] = 'Choose whether the participant agrees.';
-        } else if ($args['participant_consent'] === 'No') {
-            $errors[] = 'The participant must agree to the Pet Pantry program rules before they can be registered.';
+        if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Flagged', 'No'))) {
+            $errors[] = 'Choose Flagged or No for Alert / Flag.';
         }
 
         if (count($errors) == 0) {
@@ -130,39 +127,19 @@
                 $args['participant_location'],
                 $args['registration_date'],
                 $args['participant_status'],
-                $args['participant_alert'] === 'Yes' ? 1 : 0,
+                $args['participant_alert'] === 'Flagged' ? 1 : 0,
                 $args['notes'] === '' ? null : $args['notes'],
-                1
+                null
             );
             $participant_id = add_participant($participant);
 
             if ($participant_id) {
-                $_SESSION['registered_participant'] =
-                    $args['first_name'] . ' ' . $args['last_name'];
-
-                $_SESSION['registered_participant_id'] = $participant_id;
-
-                header('Location: participantRegister.php?registered');
+                // Straight on to that participant's pets
+                header('Location: registerPet.php?participant_id=' . (int) $participant_id . '&registered');
                 die();
             }
             $errors[] = 'The participant could not be saved. Please try again.';
         }
-    }
-
-    // Name shown on the confirmation, once
-    $registeredName = null;
-    $registeredParticipantId = null;
-
-    if (isset($_GET['registered']) && isset($_SESSION['registered_participant'])) {
-
-        $registeredName = $_SESSION['registered_participant'];
-
-    if (isset($_SESSION['registered_participant_id'])) {
-        $registeredParticipantId = $_SESSION['registered_participant_id'];
-    }
-
-    unset($_SESSION['registered_participant']);
-    unset($_SESSION['registered_participant_id']);
     }
 ?>
 
@@ -180,37 +157,6 @@ require_once('header.php');
 </head>
 <body class="relative">
 
-<?php if ($registeredName !== null): ?>
-<header class="hero-header">
-    <div class="center-header">
-        <h1>Pet Pantry Registration</h1>
-    </div>
-</header>
-
-<main>
-    <div class="main-content-box">
-        <div class="happy-toast"><?php echo hsc($registeredName) ?> has been registered as a Pet Pantry participant.</div>
-        <div class="text-center">
-
-    <?php if ($registeredParticipantId !== null): ?>
-        <a href="registerPet.php?participant_id=<?php echo $registeredParticipantId; ?>"
-           class="button">
-            Add Pet
-        </a>
-    <?php endif; ?>
-
-    <a href="participantRegister.php" class="button">
-        Register Another Participant
-    </a>
-
-    <a href="index.php" class="button">
-        Return to Dashboard
-    </a>
-
-    </div>
-    </div>
-</main>
-<?php else: ?>
 <?php require_once('registrationForm.php'); ?>
 
 <?php if (count($errors) > 0): ?>
@@ -241,7 +187,6 @@ require_once('header.php');
         }
     });
 </script>
-<?php endif ?>
 <?php endif ?>
 
 </body>

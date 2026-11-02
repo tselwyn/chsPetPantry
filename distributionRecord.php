@@ -31,6 +31,7 @@
     $maxPets = 50;
     $maxLbs = 999.99;
     $maxNotes = 1000;
+    $maxProcessedBy = 100;
 
     $id = (isset($_GET['id']) && ctype_digit($_GET['id'])) ? (int) $_GET['id'] : 0;
     $participant = $id > 0 ? retrieve_participant($id) : null;
@@ -41,9 +42,11 @@
     if ($participant !== null) {
         // Restrictions the user has to see before the distribution is completed
         if ($participant->get_alert()) {
-            $warnings[] = 'This participant has an alert / flag on their record.';
+            $warnings[] = 'This participant is Flagged (Alert / Flag on their record).';
         }
-        if ($participant->get_status() !== 'Active') {
+        if ($participant->get_status() === 'DND') {
+            $warnings[] = 'This participant is marked DND (Do Not Distribute).';
+        } else if ($participant->get_status() !== 'Active') {
             $warnings[] = 'This participant\'s status is ' . $participant->get_status() . ', not Active.';
         }
 
@@ -59,6 +62,7 @@
             'pets_served' => $petCount > 0 ? (string) $petCount : '',
             'dog_food_lbs' => '',
             'cat_food_lbs' => '',
+            'processed_by_name' => '',
             'notes' => '',
             'acknowledge_warning' => ''
         );
@@ -75,7 +79,8 @@
         $required = array(
             'distribution_date' => 'Distribution date',
             'distribution_location' => 'Distribution location',
-            'pets_served' => 'Number of pets receiving food'
+            'pets_served' => 'Number of pets receiving food',
+            'processed_by_name' => 'Processed By (your name)'
         );
         foreach ($required as $field => $label) {
             if ($args[$field] === '') {
@@ -114,6 +119,10 @@
             $errors[] = 'Enter a dog food quantity, a cat food quantity, or both.';
         }
 
+        if (mb_strlen($args['processed_by_name']) > $maxProcessedBy) {
+            $errors[] = 'Processed By must be ' . $maxProcessedBy . ' characters or fewer.';
+        }
+
         if (mb_strlen($args['notes']) > $maxNotes) {
             $errors[] = 'Notes must be ' . $maxNotes . ' characters or fewer.';
         }
@@ -123,7 +132,8 @@
         }
 
         if (count($errors) == 0) {
-            // The person processing the distribution is always the logged-in user
+            // Logins are shared, so the volunteer types their name; the login's
+            // id is kept as well
             $distribution = new ParticipantDistribution(
                 null,
                 $participant->get_id(),
@@ -133,7 +143,8 @@
                 (float) $args['dog_food_lbs'],
                 (float) $args['cat_food_lbs'],
                 $userID,
-                $args['notes'] === '' ? null : $args['notes']
+                $args['notes'] === '' ? null : $args['notes'],
+                $args['processed_by_name']
             );
             if (add_participant_distribution($distribution)) {
                 // Redirect so refreshing the page doesn't record the distribution again
@@ -149,15 +160,169 @@
 <html>
 <head>
     <title>CCDA | Record Food Distribution</title>
-    <link href="css/base.css" rel="stylesheet">
+    <link href="css/normal_tw.css" rel="stylesheet">
 <!-- BANDAID FIX FOR HEADER BEING WEIRD -->
 <?php
 $tailwind_mode = true;
 require_once('header.php');
 ?>
 <!-- BANDAID END, REMOVE ONCE SOME GENIUS FIXES -->
+    <style>
+        /* CHS colors and layout, copied from participantSearch.php so the
+           pages look the same. normal_tw.css still has the old CCDA blue. */
+        :root {
+            --chs-teal: #1f5968;
+            --chs-teal-dark: #17444f;
+            --chs-accent: #50bfd3;
+            --chs-tint: #eef7f9;
+            --chs-border: #d3e4e8;
+        }
+
+        body, main {
+            background-color: white;
+        }
+
+        .hero-header {
+            background-color: var(--chs-teal);
+        }
+
+        /* Not .main-content-box: normal_tw.css makes that blue with a layered
+           !important, which no rule on this page can override */
+        .search-card {
+            background-color: white;
+            border: 1px solid var(--chs-border);
+            border-radius: 0.75rem;
+            color: #374151;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        .search-card h2,
+        .search-card h3,
+        .search-card label {
+            color: var(--chs-teal);
+        }
+
+        .search-card h3 {
+            margin-top: 0;
+            font-size: 1.35rem;
+            font-weight: 700;
+        }
+
+        .sub-text {
+            color: #4b5563;
+        }
+
+        .search-card .blue-div {
+            background-color: var(--chs-accent);
+        }
+
+        /* Form controls */
+        .search-card input:focus,
+        .search-card select:focus,
+        .search-card textarea:focus {
+            outline: none;
+            border-color: var(--chs-accent);
+            box-shadow: 0 0 0 2px var(--chs-accent);
+        }
+
+        .search-card textarea {
+            display: block;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            border: 2px solid #d1d5db;
+            border-radius: 0.375rem;
+            padding: 0.5rem;
+        }
+
+        .search-card input[readonly] {
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .search-card input[type="checkbox"] {
+            width: auto;
+            margin: 0 0.5rem 0 0;
+            vertical-align: middle;
+        }
+
+        /* Each group of fields */
+        .form-section {
+            border: 1px solid var(--chs-border);
+            border-radius: 0.5rem;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-section .section-help {
+            color: #4b5563;
+            margin-bottom: 0.5rem;
+        }
+
+        .acknowledge-label {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .blue-button {
+            display: inline-block;
+            background-color: var(--chs-teal);
+            font-weight: 600;
+            transition: background-color .3s;
+        }
+
+        .blue-button:hover,
+        .blue-button:focus-visible {
+            background-color: var(--chs-teal-dark);
+        }
+
+        .blue-button:focus-visible,
+        .return-button:focus-visible {
+            outline: 2px solid var(--chs-accent);
+            outline-offset: 2px;
+        }
+
+        .return-button {
+            display: inline-block;
+            margin: 0.25rem;
+            background-color: white;
+            border: 2px solid var(--chs-teal);
+            color: var(--chs-teal);
+            font-weight: 600;
+        }
+
+        .return-button:hover {
+            background-color: var(--chs-tint);
+        }
+
+        .error-block,
+        .warning-block {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: left;
+            font-weight: 500;
+        }
+
+        .error-block {
+            border-left: 4px solid #dc2626;
+            background-color: #fef2f2;
+            color: #991b1b;
+        }
+
+        .warning-block {
+            border-left: 4px solid #d97706;
+            background-color: #fffbeb;
+            color: #92400e;
+        }
+
+        .error-block ul,
+        .warning-block ul {
+            list-style: disc;
+            margin: 0.5rem 0 0.5rem 1.5rem;
+        }
+    </style>
 </head>
-<body class="relative">
+<body>
 
 <header class="hero-header">
     <div class="center-header">
@@ -166,44 +331,38 @@ require_once('header.php');
 </header>
 
 <main>
-  <div class="main-content-box">
+  <div class="search-card w-[80%] p-8">
 <?php if ($participant === null): ?>
     <?php // Reached without a participant: ask who the distribution is for ?>
-    <form class="signup-form" method="get" action="participantSearch.php">
-        <div class="text-center spacing-bottom">
-            <h2 class="mb-8">Find a Participant</h2>
-            <div class="info-box">
-                <p class="sub-text">Search for the participant receiving food, then select Record Distribution beside them in the results.</p>
-            </div>
+    <form class="space-y-6" method="get" action="participantSearch.php">
+        <div class="text-center mb-8">
+            <h2>Find a Participant</h2>
+            <p class="sub-text">Search for the participant receiving food, then select Record Distribution beside them in the results.</p>
         </div>
 
         <?php if (isset($_GET['id'])): ?>
-        <div class="error-toast">That participant could not be found.</div>
+        <div class="error-block">That participant could not be found.</div>
         <?php endif ?>
 
-        <fieldset class="section-box mb-4">
+        <div>
             <label for="q">ID, Name, Address, or Phone Number</label>
-            <input type="text" id="q" name="q" required maxlength="<?php echo PARTICIPANT_SEARCH_MAX_LENGTH ?>" placeholder="Ex. 12, Maria Gonzalez, or 540-555-0101" autofocus>
-        </fieldset>
+            <input type="text" id="q" name="q" class="w-full" required maxlength="<?php echo PARTICIPANT_SEARCH_MAX_LENGTH ?>" placeholder="Ex. 12, Maria Gonzalez, or 540-555-0101" autofocus>
+        </div>
 
-        <input type="submit" value="Search">
+        <div class="text-center pt-4">
+            <input type="submit" value="Search" class="blue-button">
+        </div>
     </form>
-
-    <div class="text-center">
-        <a href="index.php" class="button">Return to Dashboard</a>
-    </div>
 <?php else: ?>
-    <form class="signup-form" method="post">
-        <div class="text-center spacing-bottom">
-            <h2 class="mb-8"><?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name()) ?></h2>
-            <div class="info-box">
-                <p class="sub-text">Record a food distribution for this participant.</p>
-                <p>An asterisk ( <em>*</em> ) indicates a required field.</p>
-            </div>
+    <form method="post">
+        <div class="text-center mb-8">
+            <h2><?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name()) ?></h2>
+            <p class="sub-text">Record a food distribution for this participant.</p>
+            <p class="sub-text">An asterisk ( <em>*</em> ) indicates a required field.</p>
         </div>
 
         <?php if (count($warnings) > 0): ?>
-        <div class="error-toast" role="alert">
+        <div class="warning-block" role="alert">
             <p><strong>Warning: review before completing this distribution.</strong></p>
             <ul>
                 <?php foreach ($warnings as $warning): ?>
@@ -217,7 +376,7 @@ require_once('header.php');
         <?php endif ?>
 
         <?php if (count($errors) > 0): ?>
-        <div class="error-toast">
+        <div class="error-block">
             <p>The distribution was not saved:</p>
             <ul>
                 <?php foreach ($errors as $error): ?>
@@ -227,9 +386,9 @@ require_once('header.php');
         </div>
         <?php endif ?>
 
-        <fieldset class="section-box mb-4">
-            <h3 class="mt-2">Participant</h3>
-            <p class="mb-2">The participant receiving this distribution.</p>
+        <fieldset class="form-section">
+            <h3>Participant</h3>
+            <p class="section-help">The participant receiving this distribution.</p>
             <div class="blue-div"></div>
 
             <label for="participant_id">Participant ID</label>
@@ -242,9 +401,9 @@ require_once('header.php');
             <input type="text" id="participant_status" value="<?php echo hsc($participant->get_status()) ?>" readonly disabled>
         </fieldset>
 
-        <fieldset class="section-box mb-4">
+        <fieldset class="form-section">
             <h3>Distribution</h3>
-            <p class="mb-2">When and where the food was given out.</p>
+            <p class="section-help">When and where the food was given out.</p>
             <div class="blue-div"></div>
 
             <label for="distribution_date"><em>* </em>Distribution Date</label>
@@ -257,13 +416,13 @@ require_once('header.php');
                 <?php endforeach ?>
             </select>
 
-            <label for="processed_by">Processed By</label>
-            <input type="text" id="processed_by" value="<?php echo hsc($userID) ?>" readonly disabled>
+            <label for="processed_by_name"><em>* </em>Processed By (your name)</label>
+            <input type="text" id="processed_by_name" name="processed_by_name" required maxlength="<?php echo $maxProcessedBy ?>" placeholder="Enter your first and last name" autocomplete="off" value="<?php echo hsc($args['processed_by_name']) ?>">
         </fieldset>
 
-        <fieldset class="section-box mb-4">
+        <fieldset class="form-section">
             <h3>Food Given</h3>
-            <p class="mb-2">Enter a dog food quantity, a cat food quantity, or both.</p>
+            <p class="section-help">Enter a dog food quantity, a cat food quantity, or both.</p>
             <div class="blue-div"></div>
 
             <label for="pets_served"><em>* </em>Number of Pets Receiving Food</label>
@@ -280,23 +439,27 @@ require_once('header.php');
         </fieldset>
 
         <?php if (count($warnings) > 0): ?>
-        <fieldset class="section-box mb-4">
-            <label for="acknowledge_warning">
+        <fieldset class="form-section">
+            <label for="acknowledge_warning" class="acknowledge-label">
                 <input type="checkbox" id="acknowledge_warning" name="acknowledge_warning" value="Yes" required<?php if ($args['acknowledge_warning'] === 'Yes') echo ' checked' ?>>
                 <em>* </em>I have reviewed the warning above and this distribution should still be recorded.
             </label>
         </fieldset>
         <?php endif ?>
 
-        <input type="submit" value="Save Distribution">
+        <div class="text-center pt-4">
+            <input type="submit" value="Save Distribution" class="blue-button">
+        </div>
     </form>
-
-    <div class="text-center">
-        <a href="participantEdit.php?id=<?php echo (int) $participant->get_id() ?>" class="button">Back to Participant</a>
-        <a href="participantSearch.php" class="button">Back to Participant Search</a>
-        <a href="index.php" class="button">Return to Dashboard</a>
-    </div>
 <?php endif ?>
+  </div>
+
+  <div class="text-center mt-6">
+<?php if ($participant !== null): ?>
+    <a href="participantEdit.php?id=<?php echo (int) $participant->get_id() ?>" class="return-button">Back to Participant</a>
+    <a href="participantSearch.php" class="return-button">Back to Participant Search</a>
+<?php endif ?>
+    <a href="index.php" class="return-button">Return to Dashboard</a>
   </div>
 </main>
 

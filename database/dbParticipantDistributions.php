@@ -17,6 +17,7 @@ function make_a_participant_distribution($result_row) {
         $result_row['cat_food_lbs'],
         $result_row['processed_by'],
         $result_row['notes'],
+        $result_row['processed_by_name'],
         $result_row['created_at']
     );
 }
@@ -28,8 +29,8 @@ function make_a_participant_distribution($result_row) {
  */
 function add_participant_distribution($distribution) {
     $query = 'INSERT INTO dbparticipantdistributions (participant_id, distribution_date, location, '
-        . 'pets_served, dog_food_lbs, cat_food_lbs, processed_by, notes) '
-        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+        . 'pets_served, dog_food_lbs, cat_food_lbs, processed_by, processed_by_name, notes) '
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
     $args = [
         $distribution->get_participant_id(),
         $distribution->get_distribution_date(),
@@ -38,6 +39,7 @@ function add_participant_distribution($distribution) {
         $distribution->get_dog_food_lbs(),
         $distribution->get_cat_food_lbs(),
         $distribution->get_processed_by(),
+        $distribution->get_processed_by_name(),
         $distribution->get_notes()
     ];
 
@@ -46,17 +48,47 @@ function add_participant_distribution($distribution) {
     try {
         $stmt = mysqli_prepare($con, $query);
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'issiddss', ...$args);
+            mysqli_stmt_bind_param($stmt, 'issiddsss', ...$args);
             if (mysqli_stmt_execute($stmt)) {
                 $id = mysqli_insert_id($con);
+            } else {
+                error_log('add_participant_distribution failed: ' . mysqli_stmt_error($stmt));
             }
             mysqli_stmt_close($stmt);
+        } else {
+            error_log('add_participant_distribution failed: ' . mysqli_error($con));
         }
     } catch (mysqli_sql_exception $e) {
+        // Usually a schema that is behind the code: run the files in sql/migrations
+        error_log('add_participant_distribution failed: ' . $e->getMessage());
         $id = false;
     }
     mysqli_close($con);
     return $id;
+}
+
+/*
+ * One distribution by its id, or null if there is no such distribution
+ */
+function get_participant_distribution($id) {
+    $con = connect();
+    $distribution = null;
+    try {
+        $stmt = mysqli_prepare($con, 'SELECT * FROM dbparticipantdistributions WHERE id = ?');
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'i', $id);
+            mysqli_stmt_execute($stmt);
+            $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+            if ($row) {
+                $distribution = make_a_participant_distribution($row);
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $distribution = null;
+    }
+    mysqli_close($con);
+    return $distribution;
 }
 
 /*
@@ -85,6 +117,41 @@ function get_participant_distributions($participant_id) {
 }
 
 /*
+ * Each participant's most recent distribution date, for the Remove Participant
+ * list. Returns an array of participant id => 'Y-m-d'; participants with no
+ * distributions are left out.
+ */
+function get_last_distribution_dates($participant_ids) {
+    $ids = array_values(array_unique(array_map('intval', $participant_ids)));
+    $dates = array();
+    if (count($ids) == 0) {
+        return $dates;
+    }
+
+    $query = 'SELECT participant_id, MAX(distribution_date) AS last_date FROM dbparticipantdistributions '
+        . 'WHERE participant_id IN (' . implode(', ', array_fill(0, count($ids), '?')) . ') '
+        . 'GROUP BY participant_id';
+
+    $con = connect();
+    try {
+        $stmt = mysqli_prepare($con, $query);
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, str_repeat('i', count($ids)), ...$ids);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            while ($row = mysqli_fetch_assoc($result)) {
+                $dates[(int) $row['participant_id']] = $row['last_date'];
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $dates = array();
+    }
+    mysqli_close($con);
+    return $dates;
+}
+
+/*
  * How many active pets a participant has, used to pre-fill the pets served field
  */
 function count_active_pets($participant_id) {
@@ -106,4 +173,62 @@ function count_active_pets($participant_id) {
     }
     mysqli_close($con);
     return $count;
+}
+
+/*
+ * Get distributions for reports.
+ * Optional filters: location, start date, and end date.
+ * Results are newest first.
+ */
+function get_distribution_report($location = '', $start_date = '', $end_date = '') {
+    $con = connect();
+    $distributions = array();
+
+    $query = 'SELECT * FROM dbparticipantdistributions WHERE 1=1';
+    $types = '';
+    $params = array();
+
+    if ($location !== '') {
+        $query .= ' AND location = ?';
+        $types .= 's';
+        $params[] = $location;
+    }
+
+    if ($start_date !== '') {
+        $query .= ' AND distribution_date >= ?';
+        $types .= 's';
+        $params[] = $start_date;
+    }
+
+    if ($end_date !== '') {
+        $query .= ' AND distribution_date <= ?';
+        $types .= 's';
+        $params[] = $end_date;
+    }
+
+    $query .= ' ORDER BY distribution_date DESC, id DESC';
+
+    try {
+        $stmt = mysqli_prepare($con, $query);
+
+        if ($stmt) {
+            if (!empty($params)) {
+                mysqli_stmt_bind_param($stmt, $types, ...$params);
+            }
+
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+
+            while ($row = mysqli_fetch_assoc($result)) {
+                $distributions[] = make_a_participant_distribution($row);
+            }
+
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $distributions = array();
+    }
+
+    mysqli_close($con);
+    return $distributions;
 }

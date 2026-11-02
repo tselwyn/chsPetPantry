@@ -4124,7 +4124,8 @@ INSERT INTO `dbpalletevent` (`id`, `name`, `personId`, `date`, `notes`) VALUES
 --
 -- One row per food distribution given to a participant (UC-06), recorded
 -- through distributionRecord.php. `processed_by` is the dbpersons id of the
--- user who recorded it.
+-- login that recorded it. Logins are shared, so `processed_by_name` is the
+-- volunteer's name as typed on the form (required since Oct 2026).
 --
 
 CREATE TABLE `dbparticipantdistributions` (
@@ -4136,6 +4137,7 @@ CREATE TABLE `dbparticipantdistributions` (
   `dog_food_lbs` decimal(5,2) NOT NULL DEFAULT '0.00',
   `cat_food_lbs` decimal(5,2) NOT NULL DEFAULT '0.00',
   `processed_by` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `processed_by_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `notes` text COLLATE utf8mb4_unicode_ci,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -4151,7 +4153,7 @@ CREATE TABLE `dbparticipantdistributions` (
 --   first_name, last_name, street_address, city, state, zip, phone (phone1), email,
 --   preferred_language, location (participant_location), registration_date,
 --   status (participant_status), alert (participant_alert), notes,
---   consent (participant_consent)
+--   consent (participant_consent, no longer collected since Oct 2026; new rows keep the default 0)
 -- phone holds digits only, like dbpersons.
 --
 
@@ -4168,7 +4170,7 @@ CREATE TABLE `dbparticipants` (
   `preferred_language` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'English',
   `location` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `registration_date` date NOT NULL,
-  `status` enum('Active','Inactive','Expired','No Service') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Active',
+  `status` enum('Active','Inactive','Expired','DND','Deleted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Active',
   `alert` tinyint(1) NOT NULL DEFAULT '0',
   `notes` text COLLATE utf8mb4_unicode_ci,
   `consent` tinyint(1) NOT NULL DEFAULT '0'
@@ -4189,7 +4191,7 @@ INSERT INTO `dbparticipants` (`id`, `first_name`, `last_name`, `street_address`,
 (5, 'Angela', 'Smith', '15 Kings Hwy', 'Fredericksburg', 'VA', '22405', '5405550223', 'angela.smith@example.com', 'English', 'Senior Center', '2026-06-02', 'Inactive', 0, 'Moved in with family, may come back in the spring.', 1),
 (6, 'Robert', 'Smith', '3302 Plank Rd', 'Fredericksburg', 'VA', '22407', '5405550256', 'rsmith@example.com', 'English', 'Empower', '2026-03-10', 'Expired', 0, NULL, 1),
 (7, 'Keisha', 'Thompson', '601 Caroline St', 'Fredericksburg', 'VA', '22401', '5405550290', 'keisha.t@example.com', 'English', 'Empower', '2026-09-01', 'Active', 0, NULL, 1),
-(8, 'Walter', 'O\'Neil', '44 William St', 'Fredericksburg', 'VA', '22401', '5405550311', 'woneil@example.com', 'English', 'Senior Center', '2026-09-15', 'No Service', 0, 'Outside the service area.', 1);
+(8, 'Walter', 'O\'Neil', '44 William St', 'Fredericksburg', 'VA', '22401', '5405550311', 'woneil@example.com', 'English', 'Senior Center', '2026-09-15', 'DND', 0, 'Outside the service area.', 1);
 
 -- --------------------------------------------------------
 
@@ -4268,6 +4270,11 @@ CREATE TABLE `dbpersons` (
 --
 -- Dumping data for table `dbpersons`
 --
+-- chs_admin and chs_volunteer are the shared Administrator and Volunteer
+-- logins the client asked for. Their password is a placeholder that is not a
+-- password hash, so neither can log in until a password is set (see README,
+-- "Shared Administrator and Volunteer logins").
+--
 
 INSERT INTO `dbpersons` (`personId`, `id`, `first_name`, `last_name`, `email`, `type`, `status`, `password`, `force_password_change`) VALUES
 (1, 'vmsroot', 'vmsroot', '', '', 'superadmin', 'Active', '$2y$10$.3p8xvmUqmxNztEzMJQRBesLDwdiRU3xnt/HOcJtsglwsbUk88VTO', 0),
@@ -4282,7 +4289,9 @@ INSERT INTO `dbpersons` (`personId`, `id`, `first_name`, `last_name`, `email`, `
 (10, 'rbrt', 'Robert', 'Burton', 'rbrt1248@gmail.com', 'admin', 'Inactive', '$2y$10$3gZWuMzmsWZNM3Cvt1j/JOwvDfrRJ2QMbS1BJ35VG4OfVwpIhAvt2', 0),
 (11, 'aconsuegra', 'Allison', 'Consuegra', 'allisonconsuegra0@gmail.com', 'Superadmin', 'Active', '$2y$10$3tWO/ffX7TlUX.qnzAW8vO4rq0ALGXOdsDnbNVq54bByQ.pS1ZIQm', 0),
 (12, 'dev', 'eron', 'hardin', 'eronhardin2002@gmail.com', 'admin', 'Deleted', '$2y$10$Jkl5e1MIk3bnfBEFXfxEC.w0.qBYH7AKzYlyLghvsnLmv9moMSMeq', 0),
-(13, 'jazmyne.bartlett@ccda.net', 'Jazmyne', 'Bartlett', 'Jazmyne.bartlett@ccda.net', 'Admin', 'Active', '$2y$10$udcW6zeb/C1MRGNGRXiy/.Ia4noOL0ZvHL33TiuJ2ociuaSVPrLzC', 0);
+(13, 'jazmyne.bartlett@ccda.net', 'Jazmyne', 'Bartlett', 'Jazmyne.bartlett@ccda.net', 'Admin', 'Active', '$2y$10$udcW6zeb/C1MRGNGRXiy/.Ia4noOL0ZvHL33TiuJ2ociuaSVPrLzC', 0),
+(14, 'chs_admin', 'Administrator', '', '', 'admin', 'Active', 'SET-A-PASSWORD', 0),
+(15, 'chs_volunteer', 'Volunteer', '', '', 'volunteer', 'Active', 'SET-A-PASSWORD', 0);
 
 -- --------------------------------------------------------
 
@@ -4298,6 +4307,10 @@ INSERT INTO `dbpersons` (`personId`, `id`, `first_name`, `last_name`, `email`, `
 -- given free spay/neuter and vaccination service information; counseled_by is
 -- the dbpersons id of the volunteer or admin who recorded it.
 --
+-- age_years is the age entered on the pet form (0.1 to 40, one decimal place).
+-- It replaced date_of_birth and dob_is_estimate in Oct 2026; pets saved before
+-- then without a date of birth have no age until it is entered on Edit Pet.
+--
 
 CREATE TABLE `dbpets` (
   `id` int NOT NULL,
@@ -4306,8 +4319,7 @@ CREATE TABLE `dbpets` (
   `species` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
   `breed` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `sex` enum('Male','Female','Unknown') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Unknown',
-  `date_of_birth` date DEFAULT NULL,
-  `dob_is_estimate` tinyint(1) NOT NULL DEFAULT '1',
+  `age_years` decimal(4,1) DEFAULT NULL,
   `weight_lbs` decimal(5,1) DEFAULT NULL,
   `spay_neuter_status` enum('Yes','No','Unknown') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Unknown',
   `rabies_status` enum('Yes','No','Unknown') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Unknown',
@@ -4325,17 +4337,17 @@ CREATE TABLE `dbpets` (
 -- Dumping data for table `dbpets`
 --
 
-INSERT INTO `dbpets` (`id`, `participant_id`, `name`, `species`, `breed`, `sex`, `date_of_birth`, `dob_is_estimate`, `weight_lbs`, `spay_neuter_status`, `rabies_status`, `status`, `created_at`) VALUES
-(1, 1, 'Canela', 'Dog', 'Chihuahua mix', 'Female', '2020-05-01', 1, 9.5, 'Yes', 'Yes', 'Active', '2026-08-04 10:15:00'),
-(2, 2, 'Duke', 'Dog', 'Labrador Retriever', 'Male', '2018-03-01', 1, 72.0, 'Yes', 'Yes', 'Active', '2026-08-11 11:02:00'),
-(3, 3, 'Mittens', 'Cat', 'Domestic Shorthair', 'Female', '2016-01-01', 1, 10.0, 'Yes', 'Unknown', 'Active', '2026-08-18 13:40:00'),
-(4, 3, 'Socks', 'Cat', 'Domestic Shorthair', 'Male', '2017-06-01', 1, 12.5, 'Yes', 'Yes', 'Active', '2026-08-18 13:41:00'),
-(5, 4, 'Rocky', 'Dog', 'Pit Bull mix', 'Male', '2022-09-01', 1, 55.0, 'No', 'Yes', 'Active', '2026-08-25 09:30:00'),
-(6, 4, 'Luna', 'Cat', NULL, 'Female', NULL, 1, 8.0, 'No', 'Unknown', 'Active', '2026-08-25 09:31:00'),
-(7, 5, 'Biscuit', 'Dog', 'Beagle', 'Male', '2019-04-01', 1, 24.0, 'Yes', 'Yes', 'Inactive', '2026-06-02 14:20:00'),
-(8, 6, 'Shadow', 'Cat', NULL, 'Male', NULL, 1, NULL, 'Yes', 'No', 'Active', '2026-03-10 10:05:00'),
-(9, 7, 'Peanut', 'Dog', 'Dachshund', 'Female', '2021-11-01', 0, 11.0, 'Yes', 'Yes', 'Active', '2026-09-01 15:45:00'),
-(10, 7, 'Oreo', 'Cat', 'Domestic Longhair', 'Male', '2023-02-01', 1, 9.0, 'No', 'No', 'Active', '2026-09-01 15:46:00');
+INSERT INTO `dbpets` (`id`, `participant_id`, `name`, `species`, `breed`, `sex`, `age_years`, `weight_lbs`, `spay_neuter_status`, `rabies_status`, `status`, `created_at`) VALUES
+(1, 1, 'Canela', 'Dog', 'Chihuahua mix', 'Female', 6.5, 9.5, 'Yes', 'Yes', 'Active', '2026-08-04 10:15:00'),
+(2, 2, 'Duke', 'Dog', 'Labrador Retriever', 'Male', 8.7, 72.0, 'Yes', 'Yes', 'Active', '2026-08-11 11:02:00'),
+(3, 3, 'Mittens', 'Cat', 'Domestic Shorthair', 'Female', 10.8, 10.0, 'Yes', 'Unknown', 'Active', '2026-08-18 13:40:00'),
+(4, 3, 'Socks', 'Cat', 'Domestic Shorthair', 'Male', 9.4, 12.5, 'Yes', 'Yes', 'Active', '2026-08-18 13:41:00'),
+(5, 4, 'Rocky', 'Dog', 'Pit Bull mix', 'Male', 4.2, 55.0, 'No', 'Yes', 'Active', '2026-08-25 09:30:00'),
+(6, 4, 'Luna', 'Cat', NULL, 'Female', 3.0, 8.0, 'No', 'Unknown', 'Active', '2026-08-25 09:31:00'),
+(7, 5, 'Biscuit', 'Dog', 'Beagle', 'Male', 7.6, 24.0, 'Yes', 'Yes', 'Inactive', '2026-06-02 14:20:00'),
+(8, 6, 'Shadow', 'Cat', NULL, 'Male', 6.0, NULL, 'Yes', 'No', 'Active', '2026-03-10 10:05:00'),
+(9, 7, 'Peanut', 'Dog', 'Dachshund', 'Female', 5.0, 11.0, 'Yes', 'Yes', 'Active', '2026-09-01 15:45:00'),
+(10, 7, 'Oreo', 'Cat', 'Domestic Longhair', 'Male', 3.7, 9.0, 'No', 'No', 'Active', '2026-09-01 15:46:00');
 
 -- --------------------------------------------------------
 
@@ -5156,7 +5168,7 @@ ALTER TABLE `dbparticipants`
 -- AUTO_INCREMENT for table `dbpersons`
 --
 ALTER TABLE `dbpersons`
-  MODIFY `personId` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `personId` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `dbpets`

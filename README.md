@@ -100,6 +100,33 @@ Below are the steps required to run the project on your local machine for develo
 
 Installation is now complete.
 
+## Shared Administrator and Volunteer logins
+The Culpeper Humane Society shares two logins: one Administrator and one Volunteer.
+`sql/foodpantrydb.sql` (and `sql/migrations/2026-10-29_client_feedback.sql` for an existing
+database) adds them as `chs_admin` (role `admin`) and `chs_volunteer` (role `volunteer`).
+Their password is a placeholder, `SET-A-PASSWORD`, that is not a password hash, so neither
+account can log in until a real password is set. No real password is kept in the repo.
+
+To set a password:
+1. Make a hash of the new password. On Windows with XAMPP:
+   `C:\xampp\php\php.exe -r "echo password_hash('the-new-password', PASSWORD_BCRYPT), PHP_EOL;"`
+2. In phpMyAdmin, select `foodpantrydb`, open the SQL tab and run (pasting the hash from step 1):
+   `UPDATE dbpersons SET password = '<hash>' WHERE id = 'chs_admin';`
+3. Repeat for `chs_volunteer`.
+
+Once the Administrator can log in, the Volunteer password can also be set without phpMyAdmin:
+while logged in as `chs_admin`, open `resetPassword.php?id=chs_volunteer` and select the button to
+reset it. The page shows a temporary 8-digit password; log in as `chs_volunteer` with it and
+change it on the Change Password page.
+
+What each role can do in the Pet Pantry:
+* Administrator (`admin`, and `superadmin`): everything a Volunteer can, plus reports, user
+  management, deleting or deactivating participants, and setting or clearing a participant's
+  Alert / Flag.
+* Volunteer (`volunteer`, and the older `inventory_counter`): search, register and update
+  participants; register, edit and delete pets; record distributions. A Volunteer sees the
+  Alert / Flag but cannot change it.
+
 ## Reset root user credentials
 In the event of being locked out of the root user, the following steps will allow resetting the root user's login credentials:
 1. Using the PHPMyAdmin console, delete the `vmsroot` user row from the `dbPersons` table

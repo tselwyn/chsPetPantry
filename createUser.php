@@ -388,6 +388,7 @@
                                     <option value="superadmin">superadmin</option>
                                 <?php endif;?>
                                 <option value="admin">admin</option>
+                                <option value="volunteer">volunteer</option>
                                 <option value="inventory_counter">inventory_counter</option>
                             </select>
                         </div>

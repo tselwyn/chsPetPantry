@@ -516,21 +516,22 @@
     <h2><b>Pet Pantry Dashboard</b></h2>
     </div>
     <div class="full-width-bar-sub">
-        <?php if ($_SESSION['access_level'] >= 2): ?>
-        <!-- Admin only -->
+        <!--
+        <?php if ($_SESSION['access_level'] >= 2): ?>-->
+        <!-- Admin only --> <!--
         <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'">
             <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
-            </div>
-        
+            </div> -->
+        <!--
             <div class="large-text-sub" style="color:white;">Audit Users</div>
         <div class="graph-text" style="color:white;">Add, edit, and remove user accounts and permissions.</div>
         </div>
         <div class="content-box-test" onclick="window.location.href='createUser.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
-        </div>
-        
+        </div> -->
+        <!--
         <div class="large-text-sub" style="color:white;">Add User</div>
         <div class="graph-text" style="color:white;">Add user and set permissions.</div>
         </div>
@@ -545,7 +546,7 @@
         -->
 
         <!-- Reports (SRS UC-13) -->
-        <div class="content-box-test" onclick="window.location.href='participantReports.php'" >
+        <div class="content-box-test" onclick="window.location.href='reports.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/document-report.svg" alt="Reports Icon">
         </div>
@@ -586,9 +587,8 @@
         </div>
         </div>
 
-        <?php if ($_SESSION['access_level'] >= 2): ?>
-        <!-- Admin only -->
-        <!-- Remove Participant / Pet -->
+        <!-- Remove Participant / Pet: volunteers can remove pets, only admins
+             can remove participants (checked again on deleteParticipantPet.php) -->
         <div class="content-box-test" onclick="window.location.href='deleteParticipantPet.php'">
         <div class="icon-overlay pet-icon">
         <span class="paw-icon">🐾</span>
@@ -596,14 +596,16 @@
         </div>
 
         <div class="large-text-sub" style="color:white;">
-        Remove Participant / Pet
+        <?php echo $_SESSION['access_level'] >= 2 ? 'Remove Participant / Pet' : 'Remove Pet' ?>
         </div>
 
         <div class="graph-text" style="color:white;">
-        Remove a participant or pet from the Pet Pantry system.
+        <?php echo $_SESSION['access_level'] >= 2 ? 'Remove a participant or pet from the Pet Pantry system.' : 'Remove a pet from the Pet Pantry system.' ?>
         </div>
         </div>
 
+        <?php if ($_SESSION['access_level'] >= 2): ?>
+        <!-- Admin only -->
         <!-- Manage Item Categories (hidden for the client demonstration)
         <div class="content-box-test" onclick="window.location.href='viewItemCategories.php'">
         <div class="icon-overlay">
