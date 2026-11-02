@@ -366,7 +366,7 @@ require_once('header.php');
                                         <td>' . hsc($participant->get_status()) . '</td>
                                         <td><button type="button" class="pet-count-toggle" ' . $toggle . ' aria-label="' . (int) $participant->get_pet_count() . ' active pets. Show pets">' . (int) $participant->get_pet_count() . '</button></td>
                                         <td>' . hsc($registered) . '</td>
-                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">View / Update</a><br><a href="distributionRecord.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">Record Distribution</a><br><button type="button" class="view-pets-button" ' . $toggle . '>View Pets</button></td>
+                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">View / Update</a><br><a href="distributionRecord.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">Record Distribution</a><br><a href="distributionHistory.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">Distribution History</a><br><button type="button" class="view-pets-button" ' . $toggle . '>View Pets</button></td>
                                     </tr>';
                             participant_search_pets_row($participantId, $petsByParticipant[$participantId] ?? array());
                         }
