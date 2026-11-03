@@ -46,7 +46,7 @@
 
         $required = array(
             'first_name', 'last_name', 'street_address',
-            'phone1', 'email', 'preferred_language',
+            'phone1', 'preferred_language',
             'participant_location', 'registration_date', 'participant_status'
         );
         if (!wereRequiredFieldsSubmitted($args, $required, false)) {
