@@ -51,14 +51,44 @@ function add_participant_distribution($distribution) {
             mysqli_stmt_bind_param($stmt, 'issiddsss', ...$args);
             if (mysqli_stmt_execute($stmt)) {
                 $id = mysqli_insert_id($con);
+            } else {
+                error_log('add_participant_distribution failed: ' . mysqli_stmt_error($stmt));
             }
             mysqli_stmt_close($stmt);
+        } else {
+            error_log('add_participant_distribution failed: ' . mysqli_error($con));
         }
     } catch (mysqli_sql_exception $e) {
+        // Usually a schema that is behind the code: run the files in sql/migrations
+        error_log('add_participant_distribution failed: ' . $e->getMessage());
         $id = false;
     }
     mysqli_close($con);
     return $id;
+}
+
+/*
+ * One distribution by its id, or null if there is no such distribution
+ */
+function get_participant_distribution($id) {
+    $con = connect();
+    $distribution = null;
+    try {
+        $stmt = mysqli_prepare($con, 'SELECT * FROM dbparticipantdistributions WHERE id = ?');
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'i', $id);
+            mysqli_stmt_execute($stmt);
+            $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+            if ($row) {
+                $distribution = make_a_participant_distribution($row);
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        $distribution = null;
+    }
+    mysqli_close($con);
+    return $distribution;
 }
 
 /*

@@ -494,6 +494,7 @@ require_once('header.php');
 
     <div class="text-center">
         <a href="distributionRecord.php?id=<?php echo (int) $participant->get_id() ?>" class="button">Record Distribution</a>
+        <a href="distributionHistory.php?id=<?php echo (int) $participant->get_id() ?>" class="button">Distribution History</a>
         <a href="participantSearch.php" class="button">Back to Participant Search</a>
         <a href="index.php" class="button">Return to Dashboard</a>
     </div>
