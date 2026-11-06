@@ -22,6 +22,7 @@
     require_once('include/input-validation.php');
     require_once('include/output.php');
     require_once('database/dbParticipants.php');
+    require_once('database/dbParticipantAlerts.php');
     require_once('database/dbParticipantDistributions.php');
 
     // Same choices as the participant location on participantEdit.php
@@ -40,8 +41,15 @@
     $args = array();
     $warnings = array();
     if ($participant !== null) {
-        // Restrictions the user has to see before the distribution is completed
-        if ($participant->get_alert()) {
+        // Read unresolved categorized alerts each time the page is requested,
+        // including POST requests, so acknowledgement is enforced server-side.
+        $activeAlerts = get_participant_alerts($participant->get_id());
+        foreach ($activeAlerts as $alert) {
+            $warnings[] = $alert['alert_type'] . ': ' . $alert['reason'];
+        }
+
+        // Keep a generic warning for any old flag without categorized alerts.
+        if ($participant->get_alert() && count($activeAlerts) === 0) {
             $warnings[] = 'This participant is Flagged (Alert / Flag on their record).';
         }
         if ($participant->get_status() === 'DND') {
