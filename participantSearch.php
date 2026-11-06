@@ -165,6 +165,29 @@ require_once('header.php');
             font-weight: 500;
         }
 
+        /* Shown when a search finds nobody (UC-02 alternate flow) */
+        .no-match-register {
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .no-match-register p {
+            margin-bottom: 0.75rem;
+        }
+
+        .register-new-link {
+            display: inline-block;
+            color: white;
+            padding: 0.6rem 1.25rem;
+            border-radius: 0.375rem;
+            text-decoration: none;
+        }
+
+        .register-new-link:focus-visible {
+            outline: 2px solid var(--chs-accent);
+            outline-offset: 2px;
+        }
+
         .participant-results {
             border: 1px solid var(--chs-border);
             border-radius: 0.5rem;
@@ -375,7 +398,12 @@ require_once('header.php');
                             </table>
                         </div>';
                     } else {
-                        echo '<div class="error-block">No participants match "' . hsc($term) . '".</div>';
+                        // No match: offer registration (UC-02 alternate flow)
+                        echo '<div class="error-block">No participants match "' . hsc($term) . '".</div>
+                        <div class="no-match-register">
+                            <p>If this person is new to the Pet Pantry, register them as a participant.</p>
+                            <a href="participantRegister.php" class="blue-button register-new-link">Register new participant</a>
+                        </div>';
                     }
                     echo '<h3>Search Again</h3>';
                 }

@@ -24,7 +24,8 @@ function make_a_pet($result_row) {
         $result_row['status'],
         $result_row['counseling_status'],
         $result_row['counseling_date'],
-        $result_row['counseled_by']
+        $result_row['counseled_by'],
+        $result_row['special_medical_needs'] ?? null
     );
 }
 
@@ -38,8 +39,8 @@ function add_pet($pet) {
     $query = 'INSERT INTO dbpets '
         . '(participant_id, name, species, breed, sex, age_years, '
         . 'weight_lbs, spay_neuter_status, rabies_status, '
-        . 'food_type, food_restriction, notes, status) '
-        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        . 'food_type, food_restriction, special_medical_needs, notes, status) '
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
     $args = [
         $pet->get_participant_id(),
@@ -53,6 +54,7 @@ function add_pet($pet) {
         $pet->get_rabies_status(),
         $pet->get_food_type(),
         $pet->get_food_restriction(),
+        $pet->get_special_medical_needs(),
         $pet->get_notes(),
         $pet->get_status()
     ];
@@ -66,7 +68,7 @@ function add_pet($pet) {
         if ($stmt) {
             mysqli_stmt_bind_param(
                 $stmt,
-                'issssddssssss',
+                'issssddsssssss',
                 ...$args
             );
 
@@ -116,15 +118,17 @@ function get_pet_by_id($id) {
 }
 
 /*
- * Save the fields of a Pet that petEdit.php changes. The owner, status and
- * counseling record are left as they were. Returns true if the update ran.
+ * Save the fields of a Pet that petEdit.php changes, including its status
+ * (Active, Rehomed or Deceased). The owner and counseling record are left as
+ * they were. Returns true if the update ran.
  */
 function update_pet($pet) {
 
     $query = 'UPDATE dbpets SET name = ?, species = ?, breed = ?, sex = ?, '
         . 'age_years = ?, weight_lbs = ?, '
         . 'spay_neuter_status = ?, rabies_status = ?, food_type = ?, '
-        . 'food_restriction = ?, notes = ? WHERE id = ?';
+        . 'food_restriction = ?, special_medical_needs = ?, notes = ?, status = ? '
+        . 'WHERE id = ?';
 
     $args = [
         $pet->get_name(),
@@ -137,7 +141,9 @@ function update_pet($pet) {
         $pet->get_rabies_status(),
         $pet->get_food_type(),
         $pet->get_food_restriction(),
+        $pet->get_special_medical_needs(),
         $pet->get_notes(),
+        $pet->get_status(),
         $pet->get_id()
     ];
 
@@ -148,7 +154,7 @@ function update_pet($pet) {
         $stmt = mysqli_prepare($con, $query);
 
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'ssssddsssssi', ...$args);
+            mysqli_stmt_bind_param($stmt, 'ssssddsssssssi', ...$args);
             $success = mysqli_stmt_execute($stmt);
             mysqli_stmt_close($stmt);
         }
@@ -378,39 +384,99 @@ function delete_pet($pet_id) {
 }
 
 /*
- * Get all pets for reports.
- * Deleted pets are not included.
+ * Pets for the pet reports (UC-16), each with its owner's name, phone and
+ * location so CHS can follow up. Returns rows of dbpets columns plus
+ * participant_first_name, participant_last_name, participant_phone and
+ * participant_location.
+ *
+ * $location limits the pets to participants at that location (FR-060).
+ * $need picks the pets that need a service (FR-056, FR-057):
+ *   ''            every pet that is not deleted
+ *   'active'      Active pets only (not Rehomed, Deceased or Inactive)
+ *   'spay_neuter' Active pets not known to be spayed/neutered (No or Unknown)
+ *   'rabies'      Active pets without a known current rabies vaccination
+ * Pets of deleted participants are always left out. The date arguments are
+ * accepted so every report has the same fetch signature; pet reports have no
+ * date filter.
  */
-function get_pet_report($location = '', $start_date = '', $end_date = '') {
+function get_pet_report($location = '', $start_date = '', $end_date = '', $need = '') {
 
-    $query = "SELECT * FROM dbpets
-              WHERE status != 'Deleted'
-              ORDER BY participant_id, name";
+    $query = "SELECT pet.*,
+                     p.first_name AS participant_first_name,
+                     p.last_name AS participant_last_name,
+                     p.phone AS participant_phone,
+                     p.location AS participant_location
+              FROM dbpets pet
+              JOIN dbparticipants p ON p.id = pet.participant_id
+              WHERE pet.status != 'Deleted'
+              AND p.status != 'Deleted'";
+    $types = '';
+    $params = array();
+
+    if ($need === 'active') {
+        $query .= " AND pet.status = 'Active'";
+    } else if ($need === 'spay_neuter') {
+        $query .= " AND pet.status = 'Active' AND pet.spay_neuter_status IN ('No', 'Unknown')";
+    } else if ($need === 'rabies') {
+        $query .= " AND pet.status = 'Active' AND pet.rabies_status IN ('No', 'Unknown')";
+    }
+
+    if ($location !== '') {
+        $query .= ' AND p.location = ?';
+        $types .= 's';
+        $params[] = $location;
+    }
+
+    $query .= ' ORDER BY p.last_name, p.first_name, p.id, pet.name';
 
     $con = connect();
-    $pets = array();
+    $rows = array();
 
     try {
         $stmt = mysqli_prepare($con, $query);
 
         if ($stmt) {
+            if ($types !== '') {
+                mysqli_stmt_bind_param($stmt, $types, ...$params);
+            }
             mysqli_stmt_execute($stmt);
             $result = mysqli_stmt_get_result($stmt);
 
             while ($row = mysqli_fetch_assoc($result)) {
-                $pets[] = make_a_pet($row);
+                $rows[] = $row;
             }
 
             mysqli_stmt_close($stmt);
         }
 
     } catch (mysqli_sql_exception $e) {
-        $pets = array();
+        $rows = array();
     }
 
     mysqli_close($con);
 
-    return $pets;
+    return $rows;
+}
+
+/*
+ * Current (Active) pets, for the spay/neuter and rabies status report
+ */
+function get_active_pet_report($location = '', $start_date = '', $end_date = '') {
+    return get_pet_report($location, $start_date, $end_date, 'active');
+}
+
+/*
+ * Pets needing spay/neuter, for the UC-16 report
+ */
+function get_pets_needing_spay_neuter_report($location = '', $start_date = '', $end_date = '') {
+    return get_pet_report($location, $start_date, $end_date, 'spay_neuter');
+}
+
+/*
+ * Pets needing a rabies vaccination, for the UC-16 report
+ */
+function get_pets_needing_rabies_report($location = '', $start_date = '', $end_date = '') {
+    return get_pet_report($location, $start_date, $end_date, 'rabies');
 }
 
 ?>

@@ -46,9 +46,12 @@
             'weight_lbs' => (string) $pet->get_weight_lbs(),
             'food_type' => (string) $pet->get_food_type(),
             'food_restriction' => (string) $pet->get_food_restriction(),
+            'special_medical_needs' => (string) $pet->get_special_medical_needs(),
             'notes' => (string) $pet->get_notes(),
             'spay_neuter' => $pet->get_spay_neuter_status(),
-            'rabies_status' => $pet->get_rabies_status()
+            'rabies_status' => $pet->get_rabies_status(),
+            'pet_status' => $pet->get_status(),
+            'pet_status_current' => $pet->get_status()
         );
     }
 
@@ -56,11 +59,13 @@
         foreach (array_keys($args) as $field) {
             $args[$field] = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim($_POST[$field]) : '';
         }
+        // The saved status decides which statuses can be chosen; it never comes from the form
+        $args['pet_status_current'] = $pet->get_status();
 
         $errors = pet_form_errors($args);
 
         if (count($errors) == 0) {
-            if (update_pet(pet_from_form($pet->get_id(), $pet->get_participant_id(), $args, $pet->get_status()))) {
+            if (update_pet(pet_from_form($pet->get_id(), $pet->get_participant_id(), $args, $args['pet_status']))) {
                 // Back to the participant; the redirect also stops a refresh from saving again
                 header('Location: participantEdit.php?id=' . (int) $pet->get_participant_id() . '&petSaved#pets');
                 die();

@@ -202,19 +202,65 @@ require_once('header.php');
         cursor: not-allowed;
     }
 
-    /* Edit and Delete sit beside SNV / Counseling in each pet row */
-    #pets td.pet-actions {
+    /* A fieldset grows to fit its widest content by default; this lets the
+       pets and distribution tables scroll inside it on a phone instead of
+       widening the page */
+    #pets fieldset,
+    #distribution-history fieldset {
+        min-width: 0;
+    }
+
+    /* Positioned so the hidden "Actions" headings stay inside the scroll area */
+    #pets table {
+        font-size: 1rem;
+        position: relative;
+    }
+
+    /* Room between columns so headings like Name and Species don't run together */
+    #pets th,
+    #pets td {
+        padding: 0.5rem;
+        vertical-align: top;
+    }
+
+    /* Special medical needs, on a full-width line under the pet's row */
+    #pets tr.has-medical td {
+        padding-bottom: 0.25rem;
+    }
+
+    #pets tr.pet-medical-row td {
+        padding-top: 0;
+        padding-bottom: 0.75rem;
+        color: #374151;
+    }
+
+    /* SNV / Counseling, Edit and Delete are stacked so the table fits the
+       page on a laptop without scrolling sideways */
+    #pets td.pet-actions .button,
+    #pets td.pet-actions button {
+        display: block;
+        width: 100%;
+        margin: 0 0 0.25rem 0;
+        padding: 0.35rem 0.6rem;
+        font-size: 1rem;
         white-space: nowrap;
     }
 
-    #pets td.pet-actions .button,
-    #pets td.pet-actions button {
-        width: auto;
-        margin: 0.125rem;
+    #pets td.pet-actions form {
+        display: block;
+        margin: 0;
     }
 
-    #pets td.pet-actions form {
-        display: inline;
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
 
     #pets button.delete-pet-button {
@@ -378,9 +424,15 @@ require_once('header.php');
     </form>
 
     <?php
-    // Only Active pets are listed; Inactive and Deleted pets are managed on deleteParticipantPet.php
-    $pets = array_filter(get_pets_by_participant($participant->get_id()), function ($pet) {
+    // Active pets are listed first. Rehomed, Deceased and Inactive pets are
+    // listed under Former Pets so their records stay reachable; Deleted pets
+    // are left out (get_pets_by_participant skips them).
+    $allPets = get_pets_by_participant($participant->get_id());
+    $pets = array_filter($allPets, function ($pet) {
         return $pet->get_status() === 'Active';
+    });
+    $formerPets = array_filter($allPets, function ($pet) {
+        return $pet->get_status() !== 'Active';
     });
     ?>
     <div class="signup-form" id="pets">
@@ -412,12 +464,13 @@ require_once('header.php');
                             <th>Spay/Neuter</th>
                             <th>Rabies</th>
                             <th>Counseling</th>
-                            <th></th>
+                            <th><span class="sr-only">Actions</span></th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($pets as $pet): ?>
-                        <tr>
+                        <?php $medicalNeeds = (string) $pet->get_special_medical_needs() ?>
+                        <tr<?php if ($medicalNeeds !== '') echo ' class="has-medical"' ?>>
                             <td><?php echo hsc($pet->get_name()) ?></td>
                             <td><?php echo hsc($pet->get_species()) ?></td>
                             <td><?php echo $pet->get_age_years() === null ? 'Unknown' : hsc($pet->get_age_years()) ?></td>
@@ -436,6 +489,40 @@ require_once('header.php');
                                     <input type="hidden" name="pet_id" value="<?php echo (int) $pet->get_id() ?>">
                                     <button type="submit" class="delete-pet-button">Delete</button>
                                 </form>
+                            </td>
+                        </tr>
+                        <?php if ($medicalNeeds !== ''): ?>
+                        <tr class="pet-medical-row">
+                            <td colspan="7"><strong>Special medical needs:</strong> <?php echo nl2br(hsc($medicalNeeds)) ?></td>
+                        </tr>
+                        <?php endif ?>
+                        <?php endforeach ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php endif ?>
+
+            <?php if (count($formerPets) > 0): ?>
+            <h4 class="mt-2">Former Pets</h4>
+            <p class="mb-2">Pets that were rehomed or have died. They are kept for this participant's history and are not counted as current pets.</p>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Species</th>
+                            <th>Status</th>
+                            <th><span class="sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($formerPets as $pet): ?>
+                        <tr>
+                            <td><?php echo hsc($pet->get_name()) ?></td>
+                            <td><?php echo hsc($pet->get_species()) ?></td>
+                            <td><?php echo hsc($pet->get_status()) ?></td>
+                            <td class="pet-actions">
+                                <a href="petEdit.php?id=<?php echo (int) $pet->get_id() ?>" class="button">Edit</a>
                             </td>
                         </tr>
                         <?php endforeach ?>

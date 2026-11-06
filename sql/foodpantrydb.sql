@@ -4120,6 +4120,29 @@ INSERT INTO `dbpalletevent` (`id`, `name`, `personId`, `date`, `notes`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `dbfoodreceived`
+--
+-- Pet food CHS buys or receives (UC-17), recorded by an administrator on
+-- foodReceived.php. Used for the cost per pound report (FR-072, FR-073).
+-- Donated food is entered with a cost of 0.00.
+--
+
+CREATE TABLE `dbfoodreceived` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `received_date` date NOT NULL,
+  `food_type` enum('Dog','Cat') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `pounds` decimal(8,2) NOT NULL,
+  `cost` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `recorded_by` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `received_date` (`received_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `dbparticipantdistributions`
 --
 -- One row per food distribution given to a participant (UC-06), recorded
@@ -4328,8 +4351,9 @@ CREATE TABLE `dbpets` (
   `counseled_by` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `food_type` enum('dry','wet','either') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `food_restriction` text COLLATE utf8mb4_unicode_ci,
+  `special_medical_needs` text COLLATE utf8mb4_unicode_ci,
   `notes` text COLLATE utf8mb4_unicode_ci,
-  `status` enum('Active','Inactive','Deleted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Active',
+  `status` enum('Active','Inactive','Rehomed','Deceased','Deleted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Active',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
