@@ -14,7 +14,7 @@ function make_a_pet($result_row) {
         $result_row['species'],
         $result_row['breed'],
         $result_row['sex'],
-        $result_row['age_years'],
+        $result_row['age_years'] ?? null,
         $result_row['weight_lbs'],
         $result_row['spay_neuter_status'],
         $result_row['rabies_status'],
