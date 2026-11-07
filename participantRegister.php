@@ -22,6 +22,7 @@
     require_once('include/input-validation.php');
     require_once('include/output.php');
     require_once('database/dbParticipants.php');
+    require_once('database/dbParticipantAlerts.php');
 
     // Choices offered on registrationForm.php
     $states = array('VA', 'MD', 'WV', 'DC', 'NC', 'other');
@@ -40,7 +41,7 @@
             'first_name', 'last_name', 'street_address', 'city', 'state', 'zip',
             'phone1', 'email', 'preferred_language',
             'participant_location', 'registration_date', 'participant_status',
-            'participant_alert', 'notes'
+            'participant_alert', 'alert_type', 'alert_reason', 'notes'
         );
         foreach ($fields as $field) {
             $args[$field] = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim($_POST[$field]) : '';
@@ -113,6 +114,17 @@
         if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Flagged', 'No'))) {
             $errors[] = 'Choose Flagged or No for Alert / Flag.';
         }
+        if ($args['participant_alert'] === 'Flagged') {
+            if (!valueConstrainedTo($args['alert_type'], participant_alert_types())) {
+                $errors[] = 'Choose an alert reason for the flagged participant.';
+            }
+            if (mb_strlen($args['alert_reason']) > 2000) {
+                $errors[] = 'Alert details must be 2000 characters or fewer.';
+            }
+        } else {
+            $args['alert_type'] = '';
+            $args['alert_reason'] = '';
+        }
 
         // Check the database only after the entered information is valid.
         if (count($errors) === 0) {
@@ -165,6 +177,15 @@
                 null
             );
             $participant_id = add_participant($participant);
+
+            if ($participant_id && $args['participant_alert'] === 'Flagged') {
+                // The participant stays Flagged even if the alert can't be saved,
+                // so Record Distribution still shows the generic warning
+                $reason = $args['alert_reason'] !== '' ? $args['alert_reason'] : 'Flagged at registration.';
+                if (!add_participant_alert((int) $participant_id, $args['alert_type'], $reason, (string) $userID)) {
+                    error_log('Could not save the registration alert for participant ' . (int) $participant_id);
+                }
+            }
 
             if ($participant_id) {
                 // Straight on to that participant's pets

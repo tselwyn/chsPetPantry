@@ -43,8 +43,15 @@
     if ($participant !== null) {
         // Read unresolved categorized alerts each time the page is requested,
         // including POST requests, so acknowledgement is enforced server-side.
+        // Each warning is shown with its alert reason as a heading
         $activeAlerts = get_participant_alerts($participant->get_id());
+        $alertWarnings = array();
         foreach ($activeAlerts as $alert) {
+            $alertWarnings[] = array(
+                'type' => $alert['alert_type'],
+                'reason' => $alert['reason'],
+                'added' => 'Added ' . date('M j, Y', strtotime($alert['created_at'])) . ' by ' . $alert['created_by']
+            );
             $warnings[] = $alert['alert_type'] . ': ' . $alert['reason'];
         }
 
@@ -323,8 +330,46 @@ require_once('header.php');
             color: #92400e;
         }
 
+        .warning-block .alert-list {
+            list-style: none;
+            margin: 0.5rem 0;
+            padding: 0;
+        }
+
+        .warning-block .alert-list li {
+            margin-bottom: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #fcd34d;
+            border-radius: 0.375rem;
+            background-color: white;
+        }
+
+        .warning-block .alert-type {
+            display: inline-block;
+            margin-bottom: 0.25rem;
+            padding: 0.1rem 0.6rem;
+            border-radius: 999px;
+            background-color: #d97706;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .warning-block .alert-reason {
+            display: block;
+        }
+
+        .warning-block .alert-meta {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: normal;
+            color: #a16207;
+        }
+
         .error-block ul,
-        .warning-block ul {
+        .warning-block ul:not(.alert-list) {
             list-style: disc;
             margin: 0.5rem 0 0.5rem 1.5rem;
         }
@@ -372,11 +417,24 @@ require_once('header.php');
         <?php if (count($warnings) > 0): ?>
         <div class="warning-block" role="alert">
             <p><strong>Warning: review before completing this distribution.</strong></p>
+            <?php if (count($alertWarnings) > 0): ?>
+            <ul class="alert-list">
+                <?php foreach ($alertWarnings as $alertWarning): ?>
+                <li>
+                    <span class="alert-type"><?php echo hsc($alertWarning['type']) ?></span>
+                    <span class="alert-reason"><?php echo nl2br(hsc($alertWarning['reason'])) ?></span>
+                    <span class="alert-meta"><?php echo hsc($alertWarning['added']) ?></span>
+                </li>
+                <?php endforeach ?>
+            </ul>
+            <?php endif ?>
+            <?php if (count($warnings) > count($alertWarnings)): ?>
             <ul>
-                <?php foreach ($warnings as $warning): ?>
+                <?php foreach (array_slice($warnings, count($alertWarnings)) as $warning): ?>
                 <li><?php echo hsc($warning) ?></li>
                 <?php endforeach ?>
             </ul>
+            <?php endif ?>
             <?php if ((string) $participant->get_notes() !== ''): ?>
             <p>Participant notes: <?php echo nl2br(hsc($participant->get_notes())) ?></p>
             <?php endif ?>
