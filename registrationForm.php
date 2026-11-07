@@ -278,6 +278,36 @@
                 <option value="No" selected>No</option>
                 <option value="Flagged">Flagged</option>
             </select>
+
+            <?php // Why the participant is flagged; shown in the warning on Record Distribution ?>
+            <div id="alert-reason-fields" style="display: none;">
+                <label for="alert_type"><em>* </em>Alert Reason</label>
+                <select id="alert_type" name="alert_type">
+                    <option value="">Select a reason</option>
+                    <?php foreach (participant_alert_types() as $alertType): ?>
+                    <option value="<?php echo hsc($alertType) ?>"><?php echo hsc($alertType) ?></option>
+                    <?php endforeach ?>
+                </select>
+
+                <label for="alert_reason">Alert Details</label>
+                <textarea id="alert_reason" name="alert_reason" rows="3" maxlength="2000" placeholder="Optional: what staff should know before distributing food"></textarea>
+            </div>
+            <script>
+                (function () {
+                    const flag = document.getElementById('participant_alert');
+                    const fields = document.getElementById('alert-reason-fields');
+                    const type = document.getElementById('alert_type');
+                    function update() {
+                        const flagged = flag.value === 'Flagged';
+                        fields.style.display = flagged ? '' : 'none';
+                        type.required = flagged;
+                    }
+                    flag.addEventListener('change', update);
+                    // Run again after the page puts back submitted values
+                    document.addEventListener('DOMContentLoaded', update);
+                    update();
+                })();
+            </script>
             <?php else: ?>
             <input type="text" id="participant_alert" value="No" readonly disabled>
             <p class="mb-2">Only an administrator can flag a participant.</p>

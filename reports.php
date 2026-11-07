@@ -169,7 +169,80 @@
                 );
             }
         ),
-        
+
+        // UC-14 totals: participants served by month, dogs and cats served,
+        // and pounds of dog and cat food
+        'distribution_monthly' => array(
+            'title' => 'Distribution Totals by Month',
+            'date_label' => 'Distribution date',
+            'show_filters' => true,
+            'has_total_row' => true,
+            'record_noun' => 'month',
+            'empty_message' => 'No distributions match the selected filters. Participants served: 0, dogs served: 0, cats served: 0, dog food: 0.00 lbs, cat food: 0.00 lbs.',
+            'note' => 'Participants are counted once per month; the Total row counts each participant once for the whole period. Dogs and cats are the Active pets registered to each household on the distribution date, counted once per distribution.',
+            'columns' => array('Month', 'Participants Served', 'Distributions', 'Dogs Served', 'Cats Served', 'Dog Food (lbs)', 'Cat Food (lbs)'),
+            'fetch' => function ($location, $startDate, $endDate) {
+                $totals = get_distribution_monthly_totals($location, $startDate, $endDate);
+                if (count($totals['months']) == 0) {
+                    return array();
+                }
+                return array_merge($totals['months'], array($totals['total']));
+            },
+            'row' => function ($m) {
+                return array(
+                    $m['month'] === 'Total' ? 'Total' : date('F Y', strtotime($m['month'] . '-01')),
+                    $m['participants'],
+                    $m['distributions'],
+                    $m['dogs'],
+                    $m['cats'],
+                    number_format($m['dog_food_lbs'], 2),
+                    number_format($m['cat_food_lbs'], 2)
+                );
+            }
+        ),
+
+        // UC-14 history for one participant
+        'participant_history' => array(
+            'title' => 'Participant Distribution History',
+            'date_label' => 'Distribution date',
+            'show_filters' => true,
+            'needs_participant' => true,
+            'has_total_row' => true,
+            'record_noun' => 'distribution',
+            'empty_message' => 'No distributions match the selected filters for this participant (0 distributions).',
+            'note' => 'Dogs and cats are the Active pets registered to the household on the distribution date.',
+            'columns' => array('Distribution Date', 'Location', 'Pets Served', 'Dogs', 'Cats', 'Dog Food (lbs)', 'Cat Food (lbs)', 'Processed By', 'Notes'),
+            'fetch' => function ($location, $startDate, $endDate, $participantId) {
+                $rows = get_distribution_report_rows($location, $startDate, $endDate, $participantId);
+                if (count($rows) == 0) {
+                    return array();
+                }
+                $total = array('distribution_date' => 'Total', 'location' => count($rows) . ' distribution' . (count($rows) == 1 ? '' : 's'),
+                    'pets_served' => 0, 'dogs' => 0, 'cats' => 0, 'dog_food_lbs' => 0.0, 'cat_food_lbs' => 0.0,
+                    'processed_by_name' => '', 'notes' => '');
+                foreach ($rows as $row) {
+                    foreach (array('pets_served', 'dogs', 'cats', 'dog_food_lbs', 'cat_food_lbs') as $field) {
+                        $total[$field] += $row[$field];
+                    }
+                }
+                $rows[] = $total;
+                return $rows;
+            },
+            'row' => function ($d) {
+                return array(
+                    $d['distribution_date'],
+                    $d['location'],
+                    (int) $d['pets_served'],
+                    (int) $d['dogs'],
+                    (int) $d['cats'],
+                    number_format((float) $d['dog_food_lbs'], 2),
+                    number_format((float) $d['cat_food_lbs'], 2),
+                    (string) $d['processed_by_name'],
+                    (string) $d['notes']
+                );
+            }
+        ),
+
         'registered_pets' => array(
             'title' => 'Registered Pets',
             'date_label' => '',
@@ -245,17 +318,20 @@
     );
 
     $exportFormats = array('csv', 'xlsx', 'pdf');
-    $locations = get_participant_locations();
+    // Participant locations plus any location a distribution was recorded at
+    $locations = array_values(array_unique(array_merge(get_participant_locations(), get_distribution_locations())));
+    sort($locations);
 
     // Filters, kept as text so the form can show back exactly what was entered
     $filters = array();
-    foreach (array('report_type', 'start_date', 'end_date', 'location', 'export') as $field) {
+    foreach (array('report_type', 'start_date', 'end_date', 'location', 'participant_id', 'export') as $field) {
         $filters[$field] = (isset($_GET[$field]) && is_string($_GET[$field])) ? trim($_GET[$field]) : '';
     }
 
     $submitted = isset($_GET['report_type']);
     $errors = array();
     $report = null;
+    $reportParticipant = null;
     $rows = array();
 
     if ($submitted) {
@@ -285,10 +361,27 @@
             $errors[] = 'Choose CSV, Excel, or PDF to export.';
         }
 
+        // The single-participant history needs a participant that exists
+        if (isset($reportTypes[$filters['report_type']]) && !empty($reportTypes[$filters['report_type']]['needs_participant'])) {
+            if ($filters['participant_id'] === '') {
+                $errors[] = 'Enter the participant ID for the participant history report.';
+            } else if (!ctype_digit($filters['participant_id']) || (int) $filters['participant_id'] < 1) {
+                $errors[] = 'The participant ID must be a whole number.';
+            } else {
+                $reportParticipant = retrieve_participant((int) $filters['participant_id']);
+                if (!$reportParticipant) {
+                    $errors[] = 'No participant has ID ' . (int) $filters['participant_id'] . '.';
+                }
+            }
+        } else {
+            // Not used by this report, so it isn't shown or carried into exports
+            $filters['participant_id'] = '';
+        }
+
         if (count($errors) == 0) {
             $report = $reportTypes[$filters['report_type']];
             $fetch = $report['fetch'];
-            foreach ($fetch($filters['location'], $filters['start_date'], $filters['end_date']) as $result) {
+            foreach ($fetch($filters['location'], $filters['start_date'], $filters['end_date'], (int) $filters['participant_id']) as $result) {
                 $rows[] = $report['row']($result);
             }
         }
@@ -299,6 +392,11 @@
 $filterSummary = array();
 
 if ($report !== null && $report['show_filters']) {
+
+    if ($reportParticipant) {
+        $filterSummary[] = 'Participant: ' . trim($reportParticipant->get_first_name() . ' '
+            . $reportParticipant->get_last_name()) . ' (ID ' . (int) $reportParticipant->get_id() . ')';
+    }
 
     $filterSummary[] = 'Location: '
         . ($filters['location'] === '' ? 'All locations' : $filters['location']);
@@ -320,6 +418,13 @@ if ($report !== null && $report['show_filters']) {
     }
 }
     $generatedAt = date('M j, Y g:i A');
+
+    // Reports with totals end in a Total row, which is not a record
+    $hasTotalRow = $report !== null && count($rows) > 0 && !empty($report['has_total_row']);
+    $recordCount = count($rows) - ($hasTotalRow ? 1 : 0);
+    $recordNoun = ($report !== null && isset($report['record_noun'])) ? $report['record_noun'] : 'record';
+    $recordLabel = $recordCount . ' ' . $recordNoun . ($recordCount == 1 ? '' : 's');
+    $emptyMessage = ($report !== null && isset($report['empty_message'])) ? $report['empty_message'] : 'No records match the selected filters.';
 
     // Exports are sent as a download instead of the page (FR-063 to FR-065)
     if ($report !== null && $filters['export'] !== '') {
@@ -381,17 +486,20 @@ if ($report !== null && $report['show_filters']) {
             foreach ($filterSummary as $line) {
                 $html .= '<p>' . hsc($line) . '</p>';
             }
-            $html .= '<p>Generated ' . hsc($generatedAt) . ' &middot; ' . count($rows) . ' record' . (count($rows) == 1 ? '' : 's') . '</p>';
+            $html .= '<p>Generated ' . hsc($generatedAt) . ' &middot; ' . hsc($recordLabel) . '</p>';
+            if (isset($report['note'])) {
+                $html .= '<p><em>' . hsc($report['note']) . '</em></p>';
+            }
             if (count($rows) == 0) {
-                $html .= '<p><strong>No records match the selected filters.</strong></p>';
+                $html .= '<p><strong>' . hsc($emptyMessage) . '</strong></p>';
             } else {
                 $html .= '<table><thead><tr>';
                 foreach ($report['columns'] as $column) {
                     $html .= '<th>' . hsc($column) . '</th>';
                 }
                 $html .= '</tr></thead><tbody>';
-                foreach ($rows as $row) {
-                    $html .= '<tr>';
+                foreach ($rows as $r => $row) {
+                    $html .= ($hasTotalRow && $r == count($rows) - 1) ? '<tr style="font-weight: bold;">' : '<tr>';
                     foreach ($row as $value) {
                         $html .= '<td>' . nl2br(hsc($value)) . '</td>';
                     }
@@ -441,6 +549,7 @@ require_once('header.php');
         .report-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; margin-top: 1rem; }
         .report-actions .button { margin: 0; }
         .print-only { display: none; }
+        .report-table tr.total-row td { font-weight: bold; border-top: 2px solid #2E5E6E; }
 
         /* Printable report (FR-062): only the report itself is printed */
         @media print {
@@ -502,6 +611,11 @@ require_once('header.php');
             <label for="end_date">End Date</label>
             <input type="date" id="end_date" name="end_date" value="<?php echo hsc($filters['end_date']) ?>">
 
+            <div id="participant-filter">
+            <label for="participant_id"><em>* </em>Participant ID</label>
+            <input type="text" id="participant_id" name="participant_id" inputmode="numeric" pattern="[0-9]*" placeholder="Ex. 12 (shown on the participant's record)" value="<?php echo hsc($filters['participant_id']) ?>">
+            </div>
+
             <label for="location">Location</label>
             <select id="location" name="location">
                 <option value="">All locations</option>
@@ -523,12 +637,15 @@ require_once('header.php');
             <?php foreach ($filterSummary as $line): ?>
             <p><?php echo hsc($line) ?></p>
             <?php endforeach ?>
-            <p class="mb-2">Generated <?php echo hsc($generatedAt) ?> &middot; <?php echo count($rows) ?> record<?php echo count($rows) == 1 ? '' : 's' ?></p>
+            <p class="mb-2">Generated <?php echo hsc($generatedAt) ?> &middot; <?php echo hsc($recordLabel) ?></p>
+            <?php if (isset($report['note'])): ?>
+            <p class="mb-2"><em><?php echo hsc($report['note']) ?></em></p>
+            <?php endif ?>
             <div class="blue-div"></div>
 
             <?php if (count($rows) == 0): ?>
             <?php // No matching data is an empty result, not an error (UC-13 alternate flow) ?>
-            <p>No records match the selected filters.</p>
+            <p><strong><?php echo hsc($emptyMessage) ?></strong></p>
             <?php else: ?>
             <div style="overflow-x: auto;">
                 <table class="report-table">
@@ -540,8 +657,8 @@ require_once('header.php');
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($rows as $row): ?>
-                        <tr>
+                        <?php foreach ($rows as $r => $row): ?>
+                        <tr<?php if ($hasTotalRow && $r == count($rows) - 1) echo ' class="total-row"' ?>>
                             <?php foreach ($row as $value): ?>
                             <td><?php echo nl2br(hsc($value)) ?></td>
                             <?php endforeach ?>
@@ -576,8 +693,12 @@ require_once('header.php');
         'participant_list',
         'participant_status',
         'flagged',
-        'distribution_history'
+        'distribution_history',
+        'distribution_monthly',
+        'participant_history'
     ];
+    const participantFilter = document.getElementById('participant-filter');
+    const participantInput = document.getElementById('participant_id');
 
     function updateReportFilters() {
         if (reportsWithFilters.includes(reportType.value)) {
@@ -585,6 +706,9 @@ require_once('header.php');
         } else {
             reportFilters.style.display = 'none';
         }
+        const needsParticipant = reportType.value === 'participant_history';
+        participantFilter.style.display = needsParticipant ? '' : 'none';
+        participantInput.required = needsParticipant;
     }
 
     reportType.addEventListener('change', updateReportFilters);
