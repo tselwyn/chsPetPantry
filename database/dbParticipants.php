@@ -90,6 +90,64 @@ function add_participant($participant) {
     return $id;
 }
 
+
+/*
+ * Find potential duplicates before creating a participant.
+ * Include all statuses, including Deleted, to avoid recreating old records.
+ * Returns matching rows; throws on database errors so registration fails safely.
+ */
+function find_possible_duplicate_participants($firstName, $lastName, $phone, $email, $streetAddress, $limit = 10) {
+    $firstName = trim($firstName);
+    $lastName = trim($lastName);
+    $phoneDigits = preg_replace('/\D/', '', (string) $phone);
+    if (strlen($phoneDigits) === 11 && $phoneDigits[0] === '1') {
+        $phoneDigits = substr($phoneDigits, 1);
+    }
+    $email = trim($email);
+    $streetAddress = trim($streetAddress);
+    $conditions = [];
+    $values = [];
+
+    if (strlen($phoneDigits) === 10) {
+        $conditions[] = "REGEXP_REPLACE(COALESCE(phone, ''), '[^0-9]', '') = ?";
+        $values[] = $phoneDigits;
+    }
+    if ($email !== '') {
+        $conditions[] = "LOWER(TRIM(COALESCE(email, ''))) = LOWER(?)";
+        $values[] = $email;
+    }
+    if ($firstName !== '' && $lastName !== '') {
+        $conditions[] = '(LOWER(TRIM(first_name)) = LOWER(?) AND LOWER(TRIM(last_name)) = LOWER(?))';
+        $values[] = $firstName;
+        $values[] = $lastName;
+        if ($streetAddress !== '') {
+            $conditions[] = '(LOWER(TRIM(last_name)) = LOWER(?) AND LOWER(TRIM(street_address)) = LOWER(?))';
+            $values[] = $lastName;
+            $values[] = $streetAddress;
+        }
+    }
+    if (!$conditions) return [];
+
+    $limit = max(1, min(25, (int) $limit));
+    $query = 'SELECT id, first_name, last_name, street_address, phone, email, status '
+        . 'FROM dbparticipants WHERE ' . implode(' OR ', $conditions)
+        . ' ORDER BY last_name, first_name, id LIMIT ' . $limit;
+    $con = connect();
+    try {
+        $stmt = mysqli_prepare($con, $query);
+        if (!$stmt) throw new RuntimeException('Could not prepare duplicate check');
+        mysqli_stmt_bind_param($stmt, str_repeat('s', count($values)), ...$values);
+        if (!mysqli_stmt_execute($stmt)) throw new RuntimeException('Could not execute duplicate check');
+        $result = mysqli_stmt_get_result($stmt);
+        if ($result === false) throw new RuntimeException('Could not read duplicate check');
+        $matches = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        mysqli_stmt_close($stmt);
+        return $matches;
+    } finally {
+        mysqli_close($con);
+    }
+}
+
 /*
  * The Participant with the given id, or null if there is none
  */

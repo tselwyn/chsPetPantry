@@ -1,3 +1,4 @@
+
 <?php
     // Make session information accessible, allowing us to associate
     // data with the logged-in user.
@@ -12,6 +13,8 @@
         // 0 = not logged in, 1 = standard user, 2 = manager (Admin), 3 super admin (TBI)
         $accessLevel = $_SESSION['access_level'];
         $userID = $_SESSION['_id'];
+
+
     }
     // Volunteers and admins (SRS UC-02 to UC-07)
     if ($accessLevel < 1) {
@@ -22,6 +25,7 @@
     require_once('include/input-validation.php');
     require_once('include/output.php');
     require_once('database/dbParticipants.php');
+    require_once('database/dbParticipantAlerts.php');
     require_once('database/dbParticipantDistributions.php');
     require_once('database/dbPets.php');
 
@@ -35,11 +39,49 @@
     $id = (isset($_GET['id']) && ctype_digit($_GET['id'])) ? (int) $_GET['id'] : 0;
     $participant = $id > 0 ? retrieve_participant($id) : null;
 
-    // Only an admin can set or clear the Alert / Flag; volunteers see it read-only
-    $canChangeAlert = $accessLevel >= 2;
+    // All signed-in users can add alerts; only admins can resolve them.
+    $canResolveAlert = $accessLevel >= 2;
+    if (empty($_SESSION['participant_alert_csrf'])) {
+        $_SESSION['participant_alert_csrf'] = bin2hex(random_bytes(32));
+    }
 
     $errors = array();
+    $alertErrors = array();
     $args = array();
+    if ($participant !== null && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['alert_action'])) {
+        $validToken = isset($_POST['alert_csrf']) && is_string($_POST['alert_csrf'])
+            && hash_equals($_SESSION['participant_alert_csrf'], $_POST['alert_csrf']);
+        if (!$validToken) {
+            $alertErrors[] = 'Your session expired. Reload the page and try again.';
+        } elseif ($_POST['alert_action'] === 'add') {
+            $type = isset($_POST['alert_type']) && is_string($_POST['alert_type']) ? $_POST['alert_type'] : '';
+            $reason = isset($_POST['alert_reason']) && is_string($_POST['alert_reason']) ? trim($_POST['alert_reason']) : '';
+            if (!in_array($type, participant_alert_types(), true) || $reason === '' || mb_strlen($reason) > 2000) {
+                $alertErrors[] = 'Choose an alert type and enter a reason (up to 2000 characters).';
+            } elseif (add_participant_alert($id, $type, $reason, $userID)) {
+                header('Location: participantEdit.php?id=' . $id . '&alertAdded=1#participant-alerts');
+                exit;
+            } else {
+                $alertErrors[] = 'Unable to add the alert. Please try again.';
+            }
+        } elseif ($_POST['alert_action'] === 'resolve') {
+            $alertId = isset($_POST['alert_id']) && is_string($_POST['alert_id']) && ctype_digit($_POST['alert_id']) ? (int) $_POST['alert_id'] : 0;
+            if (!$canResolveAlert) {
+                http_response_code(403);
+                $alertErrors[] = 'Only administrators can resolve alerts.';
+            } elseif ($alertId > 0 && resolve_participant_alert($alertId, $id, $userID)) {
+                header('Location: participantEdit.php?id=' . $id . '&alertResolved=1#participant-alerts');
+                exit;
+            } else {
+                $alertErrors[] = 'Unable to resolve this alert.';
+            }
+        } else {
+            $alertErrors[] = 'Invalid alert action.';
+        }
+    }
+    $activeAlerts = $participant !== null ? get_participant_alerts($id) : [];
+    $allAlerts = $participant !== null ? get_participant_alerts($id, true) : [];
+
     if ($participant !== null) {
         // A value already saved for this participant stays selectable even if
         // it is no longer one of the choices above
@@ -71,12 +113,12 @@
         );
     }
 
-    if ($participant !== null && $_SERVER["REQUEST_METHOD"] == "POST") {
+    if ($participant !== null && $_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['alert_action'])) {
         // Trimmed only, not sanitize()d: update_participant uses prepared statements
         // and pages escape participant data with hsc() when they show it
         foreach (array_keys($args) as $field) {
-            // A volunteer's Alert / Flag stays as saved, whatever is submitted
-            if ($field === 'participant_alert' && !$canChangeAlert) {
+            // Alerts are managed separately, never through the participant edit form.
+            if ($field === 'participant_alert') {
                 continue;
             }
             $args[$field] = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim($_POST[$field]) : '';
@@ -134,9 +176,7 @@
             $errors[] = 'Choose a participant status from the list.';
         }
 
-        if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Flagged', 'No'))) {
-            $errors[] = 'Choose Flagged or No for Alert / Flag.';
-        }
+
 
         if (count($errors) == 0) {
             // The id, registration date and consent are kept as they were
@@ -154,7 +194,7 @@
                 $args['participant_location'],
                 $participant->get_registration_date(),
                 $args['participant_status'],
-                $args['participant_alert'] === 'Flagged' ? 1 : 0,
+                ($participant->get_alert() || count($activeAlerts) > 0) ? 1 : 0,
                 $args['notes'] === '' ? null : $args['notes'],
                 $participant->get_consent()
             );
@@ -407,14 +447,8 @@ require_once('header.php');
             </select>
 
             <label for="participant_alert">Alert / Flag</label>
-            <?php if ($canChangeAlert): ?>
-            <select id="participant_alert" name="participant_alert">
-                <?php participant_options(array('No', 'Flagged'), $args['participant_alert']) ?>
-            </select>
-            <?php else: ?>
-            <input type="text" id="participant_alert" value="<?php echo hsc($args['participant_alert']) ?>" readonly disabled>
-            <p class="mb-2">Only an administrator can change the Alert / Flag.</p>
-            <?php endif ?>
+            <input type="text" id="participant_alert" value="<?php echo ($participant->get_alert() || count($activeAlerts) > 0) ? 'Flagged' : 'No' ?>" readonly disabled>
+            <p class="mb-2">Use the Participant Alerts section below to add or resolve alerts.</p>
 
             <label for="notes">Notes</label>
             <textarea id="notes" name="notes" rows="4" placeholder="Enter any additional notes about the participant..."><?php echo hsc($args['notes']) ?></textarea>
@@ -422,6 +456,64 @@ require_once('header.php');
 
         <input type="submit" value="Save Changes">
     </form>
+
+    <div class="signup-form" id="participant-alerts">
+        <fieldset class="section-box mb-4">
+            <h3>Participant Alerts</h3>
+            <p>Any signed-in user can add an alert. Only administrators can resolve one.</p>
+            <div class="blue-div"></div>
+            <?php if (isset($_GET['alertAdded'])): ?><div class="happy-toast">Alert added.</div><?php endif ?>
+            <?php if (isset($_GET['alertResolved'])): ?><div class="happy-toast">Alert resolved.</div><?php endif ?>
+            <?php foreach ($alertErrors as $message): ?>
+                <div class="error-toast"><?php echo hsc($message) ?></div>
+            <?php endforeach ?>
+            <?php if (count($activeAlerts) === 0): ?>
+                <p>No active categorized alerts.</p>
+            <?php else: ?>
+                <?php foreach ($activeAlerts as $alert): ?>
+                    <div class="info-box" style="margin: 1rem 0; padding: 1rem; border-left: 4px solid #d97706;">
+                        <strong><?php echo hsc($alert['alert_type']) ?></strong>
+                        <p><?php echo nl2br(hsc($alert['reason'])) ?></p>
+                        <small>Added <?php echo hsc($alert['created_at']) ?> by <?php echo hsc($alert['created_by']) ?></small>
+                        <?php if ($canResolveAlert): ?>
+                            <form method="post" onsubmit="return confirm('Resolve this alert?');">
+                                <input type="hidden" name="alert_action" value="resolve">
+                                <input type="hidden" name="alert_id" value="<?php echo (int) $alert['id'] ?>">
+                                <input type="hidden" name="alert_csrf" value="<?php echo hsc($_SESSION['participant_alert_csrf']) ?>">
+                                <button type="submit">Resolve Alert</button>
+                            </form>
+                        <?php endif ?>
+                    </div>
+                <?php endforeach ?>
+            <?php endif ?>
+            <?php if ($participant->get_alert() && count($activeAlerts) === 0): ?>
+                <p><strong>Legacy flag:</strong> This participant is flagged in the original system. The existing flag has been preserved.</p>
+            <?php endif ?>
+            <h4>Add Alert</h4>
+            <form method="post">
+                <input type="hidden" name="alert_action" value="add">
+                <input type="hidden" name="alert_csrf" value="<?php echo hsc($_SESSION['participant_alert_csrf']) ?>">
+                <label for="alert_type">Alert Type</label>
+                <select id="alert_type" name="alert_type" required>
+                    <option value="">Select an alert type</option>
+                    <?php foreach (participant_alert_types() as $type): ?>
+                        <option value="<?php echo hsc($type) ?>"><?php echo hsc($type) ?></option>
+                    <?php endforeach ?>
+                </select>
+                <label for="alert_reason">Reason</label>
+                <textarea id="alert_reason" name="alert_reason" rows="3" maxlength="2000" required></textarea>
+                <button type="submit">Add Alert</button>
+            </form>
+            <?php if (count($allAlerts) > count($activeAlerts)): ?>
+                <h4>Resolved Alert History</h4>
+                <?php foreach ($allAlerts as $alert): ?>
+                    <?php if ($alert['resolved_at'] !== null): ?>
+                        <p><?php echo hsc($alert['alert_type']) ?> — <?php echo hsc($alert['reason']) ?> (resolved <?php echo hsc($alert['resolved_at']) ?>)</p>
+                    <?php endif ?>
+                <?php endforeach ?>
+            <?php endif ?>
+        </fieldset>
+    </div>
 
     <?php
     // Active pets are listed first. Rehomed, Deceased and Inactive pets are

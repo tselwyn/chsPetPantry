@@ -232,3 +232,130 @@ function get_distribution_report($location = '', $start_date = '', $end_date = '
     mysqli_close($con);
     return $distributions;
 }
+
+/*
+ * Distributions for the UC-14 reports, oldest first, each with the number of
+ * dogs and cats in the household when the food was given out.
+ *
+ * Distributions record only a total pets_served, so dogs and cats come from
+ * the participant's Active pet records that were registered on or before the
+ * distribution date.
+ *
+ * Optional filters: location, start date, end date, and participant id.
+ * Returns an array of rows with id, participant_id, first_name, last_name,
+ * distribution_date, location, pets_served, dog_food_lbs, cat_food_lbs,
+ * processed_by_name, notes, dogs and cats.
+ */
+function get_distribution_report_rows($location = '', $start_date = '', $end_date = '', $participant_id = 0) {
+    $query = "SELECT d.id, d.participant_id, p.first_name, p.last_name, d.distribution_date, d.location, "
+        . "d.pets_served, d.dog_food_lbs, d.cat_food_lbs, d.processed_by_name, d.notes, "
+        . "(SELECT COUNT(*) FROM dbpets pet WHERE pet.participant_id = d.participant_id "
+        . "AND pet.species = 'Dog' AND pet.status = 'Active' AND DATE(pet.created_at) <= d.distribution_date) AS dogs, "
+        . "(SELECT COUNT(*) FROM dbpets pet WHERE pet.participant_id = d.participant_id "
+        . "AND pet.species = 'Cat' AND pet.status = 'Active' AND DATE(pet.created_at) <= d.distribution_date) AS cats "
+        . "FROM dbparticipantdistributions d "
+        . "LEFT JOIN dbparticipants p ON p.id = d.participant_id "
+        . "WHERE 1=1";
+    $types = '';
+    $params = array();
+
+    if ($location !== '') {
+        $query .= ' AND d.location = ?';
+        $types .= 's';
+        $params[] = $location;
+    }
+    if ($start_date !== '') {
+        $query .= ' AND d.distribution_date >= ?';
+        $types .= 's';
+        $params[] = $start_date;
+    }
+    if ($end_date !== '') {
+        $query .= ' AND d.distribution_date <= ?';
+        $types .= 's';
+        $params[] = $end_date;
+    }
+    if ((int) $participant_id > 0) {
+        $query .= ' AND d.participant_id = ?';
+        $types .= 'i';
+        $params[] = (int) $participant_id;
+    }
+    $query .= ' ORDER BY d.distribution_date, d.id';
+
+    $con = connect();
+    $rows = array();
+    try {
+        $stmt = mysqli_prepare($con, $query);
+        if ($stmt) {
+            if (count($params) > 0) {
+                mysqli_stmt_bind_param($stmt, $types, ...$params);
+            }
+            mysqli_stmt_execute($stmt);
+            $rows = mysqli_fetch_all(mysqli_stmt_get_result($stmt), MYSQLI_ASSOC);
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        error_log('get_distribution_report_rows failed: ' . $e->getMessage());
+        $rows = array();
+    }
+    mysqli_close($con);
+    return $rows;
+}
+
+/*
+ * UC-14 totals by month: participants served (each participant counted once
+ * per month), distributions, dogs and cats served, and pounds of dog and cat
+ * food. Returns ['months' => [...], 'total' => [...]], months oldest first.
+ * The total counts each participant once across the whole period, so it can
+ * be less than the sum of the months.
+ */
+function get_distribution_monthly_totals($location = '', $start_date = '', $end_date = '') {
+    $blank = function ($label) {
+        return array('month' => $label, 'distributions' => 0, 'participants' => array(),
+            'dogs' => 0, 'cats' => 0, 'dog_food_lbs' => 0.0, 'cat_food_lbs' => 0.0);
+    };
+
+    $add = function (&$bucket, $row) {
+        $bucket['distributions']++;
+        $bucket['participants'][(int) $row['participant_id']] = true;
+        $bucket['dogs'] += (int) $row['dogs'];
+        $bucket['cats'] += (int) $row['cats'];
+        $bucket['dog_food_lbs'] += (float) $row['dog_food_lbs'];
+        $bucket['cat_food_lbs'] += (float) $row['cat_food_lbs'];
+    };
+
+    $months = array();
+    $total = $blank('Total');
+    foreach (get_distribution_report_rows($location, $start_date, $end_date) as $row) {
+        $key = substr($row['distribution_date'], 0, 7);
+        if (!isset($months[$key])) {
+            $months[$key] = $blank($key);
+        }
+        $add($months[$key], $row);
+        $add($total, $row);
+    }
+
+    $finish = function ($bucket) {
+        $bucket['participants'] = count($bucket['participants']);
+        return $bucket;
+    };
+    return array('months' => array_values(array_map($finish, $months)), 'total' => $finish($total));
+}
+
+/*
+ * Locations that distributions have been recorded at, for the report filter
+ */
+function get_distribution_locations() {
+    $con = connect();
+    $locations = array();
+    try {
+        $result = mysqli_query($con, "SELECT DISTINCT location FROM dbparticipantdistributions "
+            . "WHERE location IS NOT NULL AND location != '' ORDER BY location");
+        while ($row = mysqli_fetch_assoc($result)) {
+            $locations[] = $row['location'];
+        }
+    } catch (mysqli_sql_exception $e) {
+        $locations = array();
+    }
+    mysqli_close($con);
+    return $locations;
+}

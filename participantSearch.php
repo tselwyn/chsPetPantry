@@ -22,6 +22,7 @@
     require_once('include/output.php');
     require_once('database/dbParticipants.php');
     require_once('database/dbPets.php');
+    require_once('database/dbParticipantAlerts.php');
 
     // Most results shown at once; type more to narrow the search
     $resultLimit = 100;
@@ -240,6 +241,21 @@ require_once('header.php');
             font-weight: 700;
         }
 
+        .participant-results .alert-category {
+            background-color: #fffbeb;
+            color: #92400e;
+        }
+
+        .participant-results .alert-restriction {
+            background-color: #fef2f2;
+            color: #991b1b;
+        }
+
+        .participant-results .alert-flag {
+            margin-top: 0.25rem;
+            white-space: nowrap;
+        }
+
         .participant-results a.participant-edit-link {
             display: inline-block;
             padding: 0.375rem 0.75rem;
@@ -355,6 +371,12 @@ require_once('header.php');
                         $petsByParticipant = get_pets_by_participants(array_map(function ($participant) {
                             return $participant->get_id();
                         }, $participants));
+                        // Retrieve only active alerts for each participant in the results.
+                        $alertsByParticipant = array();
+                        foreach ($participants as $searchParticipant) {
+                            $searchId = (int) $searchParticipant->get_id();
+                            $alertsByParticipant[$searchId] = get_participant_alerts($searchId);
+                        }
                         echo '
                         <div class="participant-results overflow-x-auto">
                             <table>
@@ -375,7 +397,20 @@ require_once('header.php');
                                 <tbody>';
                         foreach ($participants as $participant) {
                             $participantId = (int) $participant->get_id();
-                            $alert = $participant->get_alert() ? ' <span class="alert-flag">Flagged</span>' : '';
+                            $activeAlerts = $alertsByParticipant[$participantId] ?? array();
+                            $alert = '';
+                            $seenTypes = array();
+                            foreach ($activeAlerts as $activeAlert) {
+                                $type = $activeAlert['alert_type'];
+                                if (in_array($type, $seenTypes, true)) continue;
+                                $seenTypes[] = $type;
+                                $cssClass = $type === 'Distribution Restriction' ? 'alert-restriction' : 'alert-category';
+                                $alert .= ' <span class="alert-flag ' . $cssClass . '">' . hsc($type) . '</span>';
+                            }
+                            // Preserve the legacy flag if no categorized alerts are active.
+                            if (!$activeAlerts && $participant->get_alert()) {
+                                $alert = ' <span class="alert-flag">Flagged</span>';
+                            }
                             $registered = date('M j, Y', strtotime($participant->get_registration_date()));
                             $toggle = 'data-pets-toggle aria-expanded="false" aria-controls="pets-' . $participantId . '"';
                             echo '

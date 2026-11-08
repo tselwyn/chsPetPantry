@@ -14,7 +14,7 @@ function make_a_pet($result_row) {
         $result_row['species'],
         $result_row['breed'],
         $result_row['sex'],
-        $result_row['age_years'],
+        $result_row['age_years'] ?? null,
         $result_row['weight_lbs'],
         $result_row['spay_neuter_status'],
         $result_row['rabies_status'],
@@ -456,6 +456,15 @@ function get_pet_report($location = '', $start_date = '', $end_date = '', $need 
     mysqli_close($con);
 
     return $rows;
+}
+
+/*
+ * Every pet that is not deleted, for the Registered Pets report. Reports
+ * call their fetch function with a fourth argument (a participant id), so
+ * this wrapper keeps it from reaching get_pet_report's $need.
+ */
+function get_all_pet_report($location = '', $start_date = '', $end_date = '') {
+    return get_pet_report($location, $start_date, $end_date, '');
 }
 
 /*

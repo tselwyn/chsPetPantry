@@ -4143,6 +4143,29 @@ CREATE TABLE `dbfoodreceived` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `dbparticipantalerts`
+--
+-- Categorized alerts on a participant (duplicate, distribution restriction,
+-- staff review). Same as sql/migrations/2026-11-06_participant_alerts.sql.
+--
+
+CREATE TABLE IF NOT EXISTS `dbparticipantalerts` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `participant_id` int NOT NULL,
+  `alert_type` enum('Duplicate Participant','Distribution Restriction','Staff Review Required') NOT NULL,
+  `reason` text NOT NULL,
+  `created_by` varchar(100) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `resolved_by` varchar(100) DEFAULT NULL,
+  `resolved_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_participant_active` (`participant_id`,`resolved_at`),
+  KEY `idx_alert_type_active` (`alert_type`,`resolved_at`)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `dbparticipantdistributions`
 --
 -- One row per food distribution given to a participant (UC-06), recorded
