@@ -683,7 +683,7 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
     </form>
 
 
-<?php elseif ($pet->get_status() === 'Inactive'): ?>
+<?php elseif (in_array($pet->get_status(), array('Inactive', 'Rehomed', 'Deceased'), true)): ?>
 
     <!-- Mark Active -->
 <form method="post"
@@ -704,7 +704,7 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
 
 </form>
 
-    <!-- An inactive pet can still be deleted -->
+    <!-- An inactive, rehomed or deceased pet can still be deleted -->
     <form method="post"
           action="deleteParticipantPet.php?participant_id=<?php
               echo urlencode($selectedParticipant->get_id());

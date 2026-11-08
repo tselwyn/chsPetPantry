@@ -554,6 +554,16 @@
         <div class="large-text-sub" style="color:white;">Reports</div>
         <div class="graph-text" style="color:white;">Generate, print, and export Pet Pantry reports.</div>
         </div>
+
+        <!-- Record Food Received (SRS UC-17), admin only -->
+        <div class="content-box-test" onclick="window.location.href='foodReceived.php'" >
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/clipboard-checklist.svg" alt="Record Food Received Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Record Food Received</div>
+        <div class="graph-text" style="color:white;">Record pet food bought or donated, for cost per pound.</div>
+        </div>
         <?php endif ?>
 
         <!-- Volunteers and admins (SRS UC-02 to UC-06) -->
