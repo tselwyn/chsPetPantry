@@ -20,16 +20,17 @@ class Pet {
     private $food_type;
     private $food_restriction;
     private $notes;
-    private $status; // Active, Inactive, or Deleted
+    private $status; // Active, Rehomed, Deceased, Inactive (older records), or Deleted
     private $counseling_status; // Yes once free spay/neuter and vaccination info was given
     private $counseling_date;
     private $counseled_by; // dbpersons id of the user who recorded the counseling
+    private $special_medical_needs;
 
     function __construct($id, $participant_id, $name, $species, $breed,
             $sex, $age_years, $weight_lbs,
             $spay_neuter_status, $rabies_status, $food_type, $food_restriction,
             $notes, $status, $counseling_status = 'No', $counseling_date = null,
-            $counseled_by = null) {
+            $counseled_by = null, $special_medical_needs = null) {
 
         $this->id = $id;
         $this->participant_id = $participant_id;
@@ -48,6 +49,7 @@ class Pet {
         $this->counseling_status = $counseling_status;
         $this->counseling_date = $counseling_date;
         $this->counseled_by = $counseled_by;
+        $this->special_medical_needs = $special_medical_needs;
     }
 
     function get_id() {
@@ -119,6 +121,10 @@ class Pet {
 
     function get_counseled_by() {
         return $this->counseled_by;
+    }
+
+    function get_special_medical_needs() {
+        return $this->special_medical_needs;
     }
 
 }

@@ -83,5 +83,18 @@
         <label for="food_restriction">Food Restrictions</label>
         <textarea id="food_restriction" name="food_restriction" placeholder="Enter any food restrictions"><?php echo hsc($args['food_restriction']) ?></textarea>
 
+        <label for="special_medical_needs">Special Medical Needs</label>
+        <textarea id="special_medical_needs" name="special_medical_needs" maxlength="<?php echo PET_MAX_MEDICAL_NEEDS ?>" placeholder="Enter any medications, conditions, or care the pet needs"><?php echo hsc($args['special_medical_needs']) ?></textarea>
+
+<?php if (array_key_exists('pet_status', $args)): ?>
+        <label for="pet_status">
+            <em>* </em>Pet Status
+        </label>
+        <select id="pet_status" name="pet_status" required aria-describedby="pet_status_help">
+            <?php pet_options(pet_status_choices($args['pet_status_current']), $args['pet_status']) ?>
+        </select>
+        <p id="pet_status_help" class="mb-2">If the pet no longer lives with this participant, choose Rehomed or Deceased instead of deleting it, so its history is kept.</p>
+<?php endif ?>
+
         <label for="notes">Notes</label>
         <textarea id="notes" name="notes" placeholder="Enter any additional notes"><?php echo hsc($args['notes']) ?></textarea>

@@ -28,6 +28,21 @@
     require_once('database/dbItemCategory.php');
     require_once('database/dbParticipantDistributions.php');
     require_once('database/dbPets.php');
+    require_once('database/dbFoodReceived.php');
+
+    // Owner of a pet report row, e.g. "Maria Gonzalez (12)"
+    function report_pet_owner($row) {
+        return trim($row['participant_first_name'] . ' ' . $row['participant_last_name'])
+            . ' (' . (int) $row['participant_id'] . ')';
+    }
+
+    function report_pet_age($row) {
+        return $row['age_years'] === null ? 'Unknown' : (string) $row['age_years'];
+    }
+
+    function report_money($value) {
+        return $value === null ? '' : '$' . number_format($value, 2);
+    }
 
     // Phone numbers are stored as 10 digits; reports show them as (540) 555-0101
     function report_phone($phone) {
@@ -101,16 +116,16 @@
     }
 
     /*
-     * Reports this page can generate. Each one names its columns, the date its
-     * date filter applies to, how to fetch its rows, and how to turn one row
-     * into the column values. Distribution (UC-14) and pet / SNV (UC-16)
-     * reports are added here as they are built.
+     * Reports this page can generate. Each one names its columns, which
+     * filters it supports ('dates' and/or 'location'), the date its date
+     * filter applies to, how to fetch its rows, and how to turn one row into
+     * the column values. A filter a report does not support is ignored.
      */
     $reportTypes = array(
         'participant_list' => array(
             'title' => 'Current Participant List',
             'date_label' => 'Registration date',
-            'show_filters' => true,
+            'filters' => array('dates', 'location'),
             'columns' => array('ID', 'Name', 'Phone', 'Location', 'Registration Date', 'Status'),
             'fetch' => 'get_participant_report',
             'row' => function ($p) {
@@ -121,7 +136,7 @@
         'participant_status' => array(
             'title' => 'Active / Inactive / Expired Participants',
             'date_label' => 'Registration date',
-            'show_filters' => true,
+            'filters' => array('dates', 'location'),
             'columns' => array('ID', 'Name', 'Phone', 'Location', 'Registration Date', 'Status'),
             'fetch' => 'get_participant_status_report',
             'row' => function ($p) {
@@ -132,7 +147,7 @@
         'flagged' => array(
             'title' => 'Flagged Participants',
             'date_label' => 'Registration date',
-            'show_filters' => true,
+            'filters' => array('dates', 'location'),
             'columns' => array('ID', 'Name', 'Phone', 'Location', 'Status', 'Notes'),
             'fetch' => 'get_flagged_participants_report',
             'row' => function ($p) {
@@ -144,7 +159,7 @@
         'distribution_history' => array(
             'title' => 'Food Distribution History',
             'date_label' => 'Distribution date',
-            'show_filters' => true,
+            'filters' => array('dates', 'location'),
             'columns' => array(
                 'Participant',
                 'Distribution Date',
@@ -175,7 +190,7 @@
         'distribution_monthly' => array(
             'title' => 'Distribution Totals by Month',
             'date_label' => 'Distribution date',
-            'show_filters' => true,
+            'filters' => array('dates', 'location'),
             'has_total_row' => true,
             'record_noun' => 'month',
             'empty_message' => 'No distributions match the selected filters. Participants served: 0, dogs served: 0, cats served: 0, dog food: 0.00 lbs, cat food: 0.00 lbs.',
@@ -205,7 +220,7 @@
         'participant_history' => array(
             'title' => 'Participant Distribution History',
             'date_label' => 'Distribution date',
-            'show_filters' => true,
+            'filters' => array('participant', 'dates', 'location'),
             'needs_participant' => true,
             'has_total_row' => true,
             'record_noun' => 'distribution',
@@ -246,7 +261,7 @@
         'registered_pets' => array(
             'title' => 'Registered Pets',
             'date_label' => '',
-            'show_filters' => false,
+            'filters' => array('location'),
             'columns' => array(
                 'Participant',
                 'Pet Name',
@@ -256,28 +271,31 @@
                 'Sex',
                 'Spayed/Neutered',
                 'Rabies',
+                'Special Medical Needs',
                 'Status'
             ),
-            'fetch' => 'get_pet_report',
+            'fetch' => 'get_all_pet_report',
             'row' => function ($pet) {
                 return array(
-                    report_participant_name($pet->get_participant_id()),
-                    $pet->get_name(),
-                    $pet->get_species(),
-                    $pet->get_breed(),
-                    $pet->get_age_years(),
-                    $pet->get_sex(),
-                    $pet->get_spay_neuter_status(),
-                    $pet->get_rabies_status(),
-                    $pet->get_status()
+                    report_pet_owner($pet),
+                    $pet['name'],
+                    $pet['species'],
+                    (string) $pet['breed'],
+                    report_pet_age($pet),
+                    $pet['sex'],
+                    $pet['spay_neuter_status'],
+                    $pet['rabies_status'],
+                    (string) $pet['special_medical_needs'],
+                    $pet['status']
                 );
             }
         ),
 
+        // Current pets only: a rehomed or deceased pet needs no follow-up
         'snv_status' => array(
             'title' => 'Spay/Neuter & Rabies Status',
             'date_label' => '',
-            'show_filters' => false,
+            'filters' => array('location'),
             'columns' => array(
                 'Participant',
                 'Pet Name',
@@ -287,16 +305,84 @@
                 'Counseling Provided',
                 'Counseling Date'
             ),
-            'fetch' => 'get_pet_report',
+            'fetch' => 'get_active_pet_report',
             'row' => function ($pet) {
                 return array(
-                    report_participant_name($pet->get_participant_id()),
-                    $pet->get_name(),
-                    $pet->get_species(),
-                    $pet->get_spay_neuter_status(),
-                    $pet->get_rabies_status(),
-                    $pet->get_counseling_status(),
-                    $pet->get_counseling_date() ?: ''
+                    report_pet_owner($pet),
+                    $pet['name'],
+                    $pet['species'],
+                    $pet['spay_neuter_status'],
+                    $pet['rabies_status'],
+                    $pet['counseling_status'],
+                    (string) $pet['counseling_date']
+                );
+            }
+        ),
+
+        // UC-16: Active pets not known to be spayed/neutered (FR-056), with
+        // the owner's phone so CHS can offer its free services
+        'pets_need_spay_neuter' => array(
+            'title' => 'Pets Needing Spay/Neuter',
+            'date_label' => '',
+            'filters' => array('location'),
+            'columns' => array('Participant', 'Phone', 'Location', 'Pet Name', 'Species',
+                'Sex', 'Age (Years)', 'Spayed/Neutered', 'Counseling Received'),
+            'fetch' => 'get_pets_needing_spay_neuter_report',
+            'row' => function ($pet) {
+                return array(
+                    report_pet_owner($pet),
+                    report_phone($pet['participant_phone']),
+                    $pet['participant_location'],
+                    $pet['name'],
+                    $pet['species'],
+                    $pet['sex'],
+                    report_pet_age($pet),
+                    $pet['spay_neuter_status'],
+                    $pet['counseling_status']
+                );
+            }
+        ),
+
+        // UC-16: Active pets without a known current rabies vaccination (FR-057)
+        'pets_need_rabies' => array(
+            'title' => 'Pets Needing Rabies Vaccination',
+            'date_label' => '',
+            'filters' => array('location'),
+            'columns' => array('Participant', 'Phone', 'Location', 'Pet Name', 'Species',
+                'Age (Years)', 'Rabies Current', 'Counseling Received'),
+            'fetch' => 'get_pets_needing_rabies_report',
+            'row' => function ($pet) {
+                return array(
+                    report_pet_owner($pet),
+                    report_phone($pet['participant_phone']),
+                    $pet['participant_location'],
+                    $pet['name'],
+                    $pet['species'],
+                    report_pet_age($pet),
+                    $pet['rabies_status'],
+                    $pet['counseling_status']
+                );
+            }
+        ),
+
+        // UC-17 / UC-14: cost per pound from food received (FR-073). Food
+        // received has no location, so only the date filter applies.
+        'cost_per_pound' => array(
+            'title' => 'Cost per Pound of Food',
+            'date_label' => 'Date received / distributed',
+            'filters' => array('dates'),
+            'columns' => array('Food', 'Pounds Received', 'Total Cost', 'Cost per Pound',
+                'Pounds Distributed', 'Estimated Cost of Food Distributed'),
+            'fetch' => 'get_cost_per_pound_report',
+            'row' => function ($r) {
+                $none = 'Cannot be calculated: no food received recorded for this period';
+                return array(
+                    $r['food'],
+                    number_format($r['received_lbs'], 2),
+                    report_money($r['cost']),
+                    $r['cost_per_lb'] === null ? $none : report_money($r['cost_per_lb']),
+                    number_format($r['distributed_lbs'], 2),
+                    $r['distributed_cost'] === null ? $none : report_money($r['distributed_cost'])
                 );
             }
         )
@@ -380,6 +466,15 @@
 
         if (count($errors) == 0) {
             $report = $reportTypes[$filters['report_type']];
+            // A filter this report does not support is ignored, so a value
+            // left over from another report cannot narrow it
+            if (!in_array('dates', $report['filters'], true)) {
+                $filters['start_date'] = '';
+                $filters['end_date'] = '';
+            }
+            if (!in_array('location', $report['filters'], true)) {
+                $filters['location'] = '';
+            }
             $fetch = $report['fetch'];
             foreach ($fetch($filters['location'], $filters['start_date'], $filters['end_date'], (int) $filters['participant_id']) as $result) {
                 $rows[] = $report['row']($result);
@@ -391,15 +486,17 @@
     // Lines describing the filters, shown above the report and in the PDF
 $filterSummary = array();
 
-if ($report !== null && $report['show_filters']) {
+if ($report !== null && $reportParticipant) {
+    $filterSummary[] = 'Participant: ' . trim($reportParticipant->get_first_name() . ' '
+        . $reportParticipant->get_last_name()) . ' (ID ' . (int) $reportParticipant->get_id() . ')';
+}
 
-    if ($reportParticipant) {
-        $filterSummary[] = 'Participant: ' . trim($reportParticipant->get_first_name() . ' '
-            . $reportParticipant->get_last_name()) . ' (ID ' . (int) $reportParticipant->get_id() . ')';
-    }
-
+if ($report !== null && in_array('location', $report['filters'], true)) {
     $filterSummary[] = 'Location: '
         . ($filters['location'] === '' ? 'All locations' : $filters['location']);
+}
+
+if ($report !== null && in_array('dates', $report['filters'], true)) {
 
     if ($filters['start_date'] === '' && $filters['end_date'] === '') {
 
@@ -543,6 +640,13 @@ require_once('header.php');
 ?>
 <!-- BANDAID END, REMOVE ONCE SOME GENIUS FIXES -->
     <style>
+        /* Reports are wide tables, so this page's box is wider than the usual
+           48rem; the options form keeps the usual width */
+        .main-content-box { max-width: 80rem; }
+        form.signup-form.no-print { max-width: 44rem; margin-left: auto; margin-right: auto; width: 100%; }
+        /* On a narrow screen a wide report scrolls inside its box instead of
+           widening the page */
+        #report fieldset { min-width: 0; }
         .report-table { width: 100%; border-collapse: collapse; text-align: left; }
         .report-table th { background-color: #2E5E6E; color: #fff; padding: .5rem; }
         .report-table td { border-bottom: 1px solid #ccc; padding: .5rem; vertical-align: top; }
@@ -592,7 +696,7 @@ require_once('header.php');
 
         <fieldset class="section-box mb-4">
             <h3 class="mt-2">Report Options</h3>
-            <p class="mb-2">Dates filter on each report's date field (registration date for participant reports). Leave a filter blank to include everything.</p>
+            <p class="mb-2">Dates filter on each report's date field (registration date for participant reports). Pet reports filter by the owner's location only, and the cost per pound report by date only. Leave a filter blank to include everything.</p>
             <div class="blue-div"></div>
 
             <label for="report_type"><em>* </em>Report Type</label>
@@ -603,19 +707,20 @@ require_once('header.php');
                 <?php endforeach ?>
             </select>
             
-            <div id="report-filters">
-
-            <label for="start_date">Start Date</label>
-            <input type="date" id="start_date" name="start_date" value="<?php echo hsc($filters['start_date']) ?>">
-
-            <label for="end_date">End Date</label>
-            <input type="date" id="end_date" name="end_date" value="<?php echo hsc($filters['end_date']) ?>">
-
             <div id="participant-filter">
             <label for="participant_id"><em>* </em>Participant ID</label>
             <input type="text" id="participant_id" name="participant_id" inputmode="numeric" pattern="[0-9]*" placeholder="Ex. 12 (shown on the participant's record)" value="<?php echo hsc($filters['participant_id']) ?>">
             </div>
 
+            <div id="date-filters">
+            <label for="start_date">Start Date</label>
+            <input type="date" id="start_date" name="start_date" value="<?php echo hsc($filters['start_date']) ?>">
+
+            <label for="end_date">End Date</label>
+            <input type="date" id="end_date" name="end_date" value="<?php echo hsc($filters['end_date']) ?>">
+            </div>
+
+            <div id="location-filter">
             <label for="location">Location</label>
             <select id="location" name="location">
                 <option value="">All locations</option>
@@ -686,29 +791,30 @@ require_once('header.php');
 </main>
 
 <script>
+    // Show only the filters the chosen report supports. Hidden filters are
+    // disabled so they are not sent; the server ignores them anyway.
     const reportType = document.getElementById('report_type');
-    const reportFilters = document.getElementById('report-filters');
-
-    const reportsWithFilters = [
-        'participant_list',
-        'participant_status',
-        'flagged',
-        'distribution_history',
-        'distribution_monthly',
-        'participant_history'
-    ];
-    const participantFilter = document.getElementById('participant-filter');
+    const filterGroups = {
+        participant: document.getElementById('participant-filter'),
+        dates: document.getElementById('date-filters'),
+        location: document.getElementById('location-filter')
+    };
+    const reportFilters = <?php echo json_encode(array_map(function ($type) {
+        return $type['filters'];
+    }, $reportTypes)) ?>;
     const participantInput = document.getElementById('participant_id');
 
     function updateReportFilters() {
-        if (reportsWithFilters.includes(reportType.value)) {
-            reportFilters.style.display = '';
-        } else {
-            reportFilters.style.display = 'none';
-        }
-        const needsParticipant = reportType.value === 'participant_history';
-        participantFilter.style.display = needsParticipant ? '' : 'none';
-        participantInput.required = needsParticipant;
+        const supported = reportFilters[reportType.value] || ['dates', 'location'];
+        Object.keys(filterGroups).forEach(name => {
+            const show = supported.includes(name);
+            filterGroups[name].hidden = !show;
+            filterGroups[name].querySelectorAll('input, select').forEach(control => {
+                control.disabled = !show;
+            });
+        });
+        // The participant history report needs a participant ID
+        participantInput.required = supported.includes('participant');
     }
 
     reportType.addEventListener('change', updateReportFilters);
