@@ -15,7 +15,7 @@ jobs:
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SG_SSH_KEY }}" > ~/.ssh/id_ed25519
+          echo "${{ secrets.SG_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           echo "${{ secrets.SG_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
