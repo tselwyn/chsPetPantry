@@ -1,0 +1,32 @@
+name: Deploy to SiteGround
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # lets you trigger a deploy manually from the Actions tab
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SG_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.SG_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Sync files to SiteGround
+        run: |
+          rsync -avz \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude 'dbinfo.php' \
+            --exclude '.htaccess' \
+            --exclude 'php.ini' \
+            --exclude 'php_errorlog' \
+            -e "ssh -p 18765 -i ~/.ssh/id_ed25519" \
+            ./ "${{ secrets.SG_USER }}@${{ secrets.SG_HOST }}:${{ secrets.SG_PATH }}"
