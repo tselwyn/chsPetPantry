@@ -470,7 +470,7 @@
 <!--BEGIN TEST, UPLOAD AND NOTIFICATIONS CHANGED-->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            document.querySelector(".extra-info").style.maxHeight = "0px"; // Ensure proper initialization
+            document.querySelector(".extra-info")?.style.setProperty("max-height", "0px"); // Ensure proper initialization
         });
         function toggleInfo(event) {
             event.stopPropagation(); // Prevents triggering the main button click
@@ -516,56 +516,6 @@
     <h2><b>Pet Pantry Dashboard</b></h2>
     </div>
     <div class="full-width-bar-sub">
-        <!--
-        <?php if ($_SESSION['access_level'] >= 2): ?>-->
-        <!-- Admin only --> <!--
-        <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'">
-            <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
-            </div> -->
-        <!--
-            <div class="large-text-sub" style="color:white;">Audit Users</div>
-        <div class="graph-text" style="color:white;">Add, edit, and remove user accounts and permissions.</div>
-        </div>
-        <div class="content-box-test" onclick="window.location.href='createUser.php'" >
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="User Icon">
-        </div> -->
-        <!--
-        <div class="large-text-sub" style="color:white;">Add User</div>
-        <div class="graph-text" style="color:white;">Add user and set permissions.</div>
-        </div>
-        <!-- Consumption Rates (hidden for the client demonstration)
-        <div class="content-box-test" onclick="window.location.href='deletePet.php'" >
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="Delete Pet Icon">
-        </div>
-        <div class="large-text-sub" style="color:white;">Consumption Rates</div>
-        <div class="graph-text" style="color:white;">Record and calculate item consumption rates.</div>
-        </div>
-        -->
-
-        <!-- Reports (SRS UC-13) -->
-        <div class="content-box-test" onclick="window.location.href='reports.php'" >
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/document-report.svg" alt="Reports Icon">
-        </div>
-
-        <div class="large-text-sub" style="color:white;">Reports</div>
-        <div class="graph-text" style="color:white;">Generate, print, and export Pet Pantry reports.</div>
-        </div>
-
-        <!-- Record Food Received (SRS UC-17), admin only -->
-        <div class="content-box-test" onclick="window.location.href='foodReceived.php'" >
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/clipboard-checklist.svg" alt="Record Food Received Icon">
-        </div>
-
-        <div class="large-text-sub" style="color:white;">Record Food Received</div>
-        <div class="graph-text" style="color:white;">Record pet food bought or donated, for cost per pound.</div>
-        </div>
-        <?php endif ?>
-
         <!-- Volunteers and admins (SRS UC-02 to UC-06) -->
         <div class="content-box-test" onclick="window.location.href='participantSearch.php'" >
         <div class="icon-overlay">
@@ -575,6 +525,17 @@
         <div class="large-text-sub" style="color:white;">Participant Search</div>
         <div class="graph-text" style="color:white;">Find a participant by ID, name, address, or phone.</div>
         </div>
+        <!-- Record Food Distribution -->
+        <div class="content-box-test" onclick="window.location.href='distributionRecord.php'" >
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/clipboard-checklist.svg" alt="Record Food Distribution Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Record Food Distribution</div>
+        <div class="graph-text" style="color:white;">Record pet food given to a participant.</div>
+        </div>
+
+
         <div class="content-box-test" onclick="window.location.href='participantRegister.php'" >
         <div class="icon-overlay">
             <img style="border-radius: 5px;" src="images/add-person.svg" alt="Register Participant Icon">
@@ -635,15 +596,28 @@
         -->
         <?php endif ?>
 
-        <!-- Record Food Distribution -->
-        <div class="content-box-test" onclick="window.location.href='distributionRecord.php'" >
+        <?php if ($_SESSION['access_level'] >= 2): ?>
+        <!-- Reports (SRS UC-13) -->
+        <div class="content-box-test" onclick="window.location.href='reports.php'" >
         <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/clipboard-checklist.svg" alt="Record Food Distribution Icon">
+            <img style="border-radius: 5px;" src="images/document-report.svg" alt="Reports Icon">
         </div>
 
-        <div class="large-text-sub" style="color:white;">Record Food Distribution</div>
-        <div class="graph-text" style="color:white;">Record pet food given to a participant.</div>
+        <div class="large-text-sub" style="color:white;">Reports</div>
+        <div class="graph-text" style="color:white;">Generate, print, and export Pet Pantry reports.</div>
         </div>
+
+        <!-- Record Food Received (SRS UC-17), admin only -->
+        <div class="content-box-test" onclick="window.location.href='foodReceived.php'" >
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/clipboard-checklist.svg" alt="Record Food Received Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Record Food Received</div>
+        <div class="graph-text" style="color:white;">Record pet food bought or donated, for cost per pound.</div>
+        </div>
+        <?php endif ?>
+
 
         <!--
         <div class="nav-buttons">
@@ -784,12 +758,7 @@
 </div>
     
 
-<div style="width: 90%; /* Stops before page ends */
-            height: 100%;
-            outline: 1px #828282 solid;
-            outline-offset: -0.5px;
-            margin: 70px auto; /* Adds vertical space and centers */
-            padding: 1px 0;"> <!-- Adds spacing inside the div -->
+
 </div>
 
 
@@ -846,67 +815,7 @@
     
     </div> -->
 
-    <div style="margin-top: 50px; padding: 0px 80px;">
-        <h2><b>Inventory Management Dashboard</h2>
-    </div>
-    <div class="full-width-bar-sub">
 
-    <!-- Update Inventory -->
-    <div class="content-box-test" onclick="window.location.href='viewUpdateInventory.php'" >
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/clipboard-checklist.svg" alt="Inventory Icon">
-        </div>
-
-        <div class="large-text-sub" style="color:white;">Update Inventory</div>
-        <div class="graph-text" style="color:white;">Add inventory entry.</div>
-    </div>
-
-    <!-- View Inventory -->
-    <div class="content-box-test" onclick="window.location.href='inventory.php'" >
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/clipboard-list-alt.svg" alt="Inventory Icon">
-        </div>
-        
-        <div class="large-text-sub" style="color:white;">View Inventory</div>
-        <div class="graph-text" style="color:white;">Track inventory changes.</div>
-    </div>
-
-    <!-- Weekly Inventory Report -->
-    <div class="content-box-test" onclick="window.location.href='viewWeeklyReport.php'" >
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/clipboard-arrow-down.svg" alt="Report Icon">
-        </div>
-        <div class="large-text-sub" style="color:white;">Weekly Inventory Report</div>
-        <div class="graph-text" style="color:white;">View updated weekly inventory.</div>
-    </div>
-
-    <!-- Shopping List -->
-    <div class="content-box-test" onclick="window.location.href='viewShoppingList.php'" >
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/clipboard-list-alt.svg" alt="Shopping List Icon">
-        </div>
-        <div class="large-text-sub" style="color:white;">Shopping List</div>
-        <div class="graph-text" style="color:white;">View and manage recommended baskets by family size.</div>
-    </div>
-
-    <!-- Inventory Analytics -->
-    <div class="content-box-test" onclick="window.location.href='generateReport.php'" >
-        <div class="icon-overlay">
-            <img style="border-radius: 5px;" src="images/document-report.svg" alt="Report Icon">
-        </div>
-        
-        <div class="large-text-sub"style="color:white;">Inventory Analytics</div>
-        <div class="graph-text"style="color:white;">Explore visual reports and analytics for inventory data.</div>
-    </div>
-    </div>
-
-<div style="width: 90%; /* Stops before page ends */
-            height: 100%;
-            outline: 1px #828282 solid;
-            outline-offset: -0.5px;
-            margin: 70px auto; /* Adds vertical space and centers */
-            padding: 1px 0;"> <!-- Adds spacing inside the div -->
-</div>
 
     <footer class="footer" style="margin-top: 100px;">
         <!-- Left Side: Logo & Socials -->

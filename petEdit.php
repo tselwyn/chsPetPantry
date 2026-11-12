@@ -63,9 +63,17 @@
         $args['pet_status_current'] = $pet->get_status();
 
         $errors = pet_form_errors($args);
+        // This checkbox records counseling given during this visit, not historical status.
+        $counselingProvided = isset($_POST['counseling_provided']) && $_POST['counseling_provided'] === 'Yes';
+        if (isset($_POST['counseling_provided']) && $_POST['counseling_provided'] !== 'Yes') {
+            $errors[] = 'Invalid counseling selection.';
+        }
+        if ($counselingProvided && ($userID === null || $userID === '')) {
+            $errors[] = 'Your login session could not be verified. Please sign in again.';
+        }
 
         if (count($errors) == 0) {
-            if (update_pet(pet_from_form($pet->get_id(), $pet->get_participant_id(), $args, $args['pet_status']))) {
+            if (update_pet_with_counseling(pet_from_form($pet->get_id(), $pet->get_participant_id(), $args, $args['pet_status']), $counselingProvided, $userID)) {
                 // Back to the participant; the redirect also stops a refresh from saving again
                 header('Location: participantEdit.php?id=' . (int) $pet->get_participant_id() . '&petSaved#pets');
                 die();
@@ -139,7 +147,21 @@ require_once('header.php');
             <?php require('petFormFields.php') ?>
         </fieldset>
 
-        <input type="submit" value="Save Changes">
+        <fieldset class="section-box mb-4">
+            <h3>Spay/Neuter &amp; Vaccination Counseling</h3>
+            <div class="blue-div"></div>
+            <p>Current counseling status: <strong><?php echo hsc($pet->get_counseling_status()) ?></strong>
+            <?php if ($pet->get_counseling_status() === 'Yes' && $pet->get_counseling_date()): ?>
+                (last recorded <?php echo hsc($pet->get_counseling_date()) ?>)
+            <?php endif ?></p>
+            <label for="counseling_provided" style="display:flex;align-items:center;gap:10px;">
+                <input type="checkbox" id="counseling_provided" name="counseling_provided" value="Yes" style="width:auto;"
+                    <?php if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($counselingProvided)) echo 'checked' ?>>
+                Counseling about free spay/neuter and vaccination services was provided today
+            </label>
+            <p>Leave unchecked if no counseling was given today. Previously recorded counseling remains on file.</p>
+        </fieldset>
+        <input type="submit" value="Save All Changes">
     </form>
 
     <div class="text-center">
