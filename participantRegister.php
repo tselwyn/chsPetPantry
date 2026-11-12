@@ -107,10 +107,7 @@
             $errors[] = 'Choose a participant status from the list.';
         }
 
-        // Only an admin can flag a participant; a volunteer's choice is ignored
-        if ($accessLevel < 2) {
-            $args['participant_alert'] = 'No';
-        }
+        // Both volunteers and administrators may create alerts.
         if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Flagged', 'No'))) {
             $errors[] = 'Choose Flagged or No for Alert / Flag.';
         }

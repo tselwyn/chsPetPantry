@@ -126,7 +126,7 @@
 
         $required = array(
             'first_name', 'last_name', 'street_address',
-            'phone1', 'email', 'preferred_language',
+            'phone1', 'preferred_language',
             'participant_location', 'participant_status'
         );
         if (!wereRequiredFieldsSubmitted($args, $required, false)) {
@@ -223,7 +223,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CCDA | Participant Information</title>
+    <title>CHS Pet Pantry | Participant Information</title>
     <link href="css/base.css" rel="stylesheet">
 <!-- BANDAID FIX FOR HEADER BEING WEIRD -->
 <?php
@@ -274,7 +274,7 @@ require_once('header.php');
         color: #374151;
     }
 
-    /* SNV / Counseling, Edit and Delete are stacked so the table fits the
+    /* Edit and Delete are stacked so the table fits the
        page on a laptop without scrolling sideways */
     #pets td.pet-actions .button,
     #pets td.pet-actions button {
@@ -290,6 +290,63 @@ require_once('header.php');
         display: block;
         margin: 0;
     }
+
+
+    /* Compact, responsive participant editing form */
+    .participant-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; }
+    .participant-edit-grid .participant-field { min-width: 0; }
+    .participant-edit-grid .participant-field label { display: block; margin: 0 0 5px; font-weight: 600; }
+    .participant-edit-grid .participant-field input,
+    .participant-edit-grid .participant-field select,
+    .participant-edit-grid .participant-field textarea { box-sizing: border-box; width: 100%; margin: 0; }
+    .participant-edit-grid .participant-field-full { grid-column: 1 / -1; }
+    /* Compact participant summary: override large global .signup-form/.button rules */
+    .signup-form.participant-summary {
+        box-sizing: border-box; padding: 14px 16px; margin-bottom: 14px;
+        border: 1px solid #b9dce3; border-radius: 7px;
+        background: #f7fbfc; text-align: left;
+    }
+    .signup-form.participant-summary h2 {
+        color: #173d50 !important; -webkit-text-fill-color: #173d50 !important;
+        font-size: 1.35rem !important; font-weight: 700; line-height: 1.25;
+        margin: 0 0 5px; text-align: left;
+    }
+    .signup-form.participant-summary .participant-meta {
+        color: #425563; font-size: .88rem; line-height: 1.5; margin: 0;
+    }
+    .signup-form.participant-summary .participant-alert-notice {
+        color: #744b14; background: #fff6e6; border-left: 3px solid #c78c33;
+        border-radius: 3px; padding: 7px 10px; margin: 10px 0 0;
+        font-size: .85rem; line-height: 1.45;
+    }
+    .signup-form.participant-summary .participant-alert-notice a { color: #205b73; text-decoration: underline; }
+    .signup-form.participant-summary .participant-quick-actions {
+        display: flex; align-items: center; justify-content: flex-start;
+        gap: 7px; flex-wrap: wrap; margin-top: 12px;
+        padding: 0; background: transparent; border: 0;
+    }
+    .signup-form.participant-summary .participant-quick-actions a.button {
+        box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
+        width: auto !important; min-width: 0 !important; min-height: 0 !important;
+        max-width: none !important; flex: 0 0 auto;
+        padding: 6px 10px !important; margin: 0 !important;
+        font-size: .83rem !important; font-weight: 600; line-height: 1.25 !important;
+        color: #20566b !important; background: #fff !important;
+        border: 1px solid #a9ccd6 !important; border-radius: 5px;
+        box-shadow: none !important; text-decoration: none; white-space: nowrap;
+    }
+    .signup-form.participant-summary .participant-quick-actions a.button:hover,
+    .signup-form.participant-summary .participant-quick-actions a.button:focus-visible {
+        background: #e6f4f7 !important; border-color: #4e9cae !important;
+    }
+    .signup-form.participant-summary .participant-quick-actions a.primary-action {
+        background: #206b80 !important; color: #fff !important; border-color: #206b80 !important;
+    }
+    .signup-form.participant-summary .participant-quick-actions a.primary-action:hover,
+    .signup-form.participant-summary .participant-quick-actions a.primary-action:focus-visible {
+        background: #155367 !important; color: #fff !important;
+    }
+    @media (max-width: 680px) { .participant-edit-grid { grid-template-columns: 1fr; } }
 
     .sr-only {
         position: absolute;
@@ -310,6 +367,47 @@ require_once('header.php');
     #pets button.delete-pet-button:hover {
         background-color: #660000;
     }
+
+    /* Compact controls in the lower sections; override full-width global buttons. */
+    #participant-alerts .alert-add-form button,
+    #pets .pet-add-action .button,
+    #distribution-history .distribution-empty-action .button,
+    .participant-footer-links .button {
+        display: inline-flex !important; width: auto !important; min-width: 0 !important;
+        max-width: none !important; min-height: 0 !important;
+        padding: 7px 13px !important; margin: 0 !important;
+        font-size: .85rem !important; line-height: 1.3 !important;
+        border-radius: 5px; text-decoration: none; box-shadow: none !important;
+    }
+    #participant-alerts .alert-add-form button,
+    #pets .pet-add-action .button,
+    #distribution-history .distribution-empty-action .button {
+        background: #206b80 !important; color: white !important; border: 1px solid #206b80 !important;
+    }
+    #participant-alerts .alert-add-form button:hover,
+    #pets .pet-add-action .button:hover,
+    #distribution-history .distribution-empty-action .button:hover { background: #155367 !important; }
+    #pets .pet-table-scroll, #distribution-history .distribution-table-scroll { overflow-x: auto; }
+    #pets table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+    #pets th { background: #f2f8fa; color: #23495b; font-weight: 700; white-space: nowrap; }
+    #pets th, #pets td { padding: 9px 7px; border-bottom: 1px solid #e1ebef; vertical-align: middle; }
+    #pets td.pet-actions { min-width: 112px; white-space: nowrap; }
+    #pets td.pet-actions .button,
+    #pets td.pet-actions button {
+        display: inline-flex !important; align-items: center; justify-content: center;
+        width: auto !important; min-width: 0 !important; max-width: none !important;
+        min-height: 0 !important; margin: 0 !important; padding: 5px 8px !important;
+        font-size: .78rem !important; line-height: 1.2 !important;
+        border-radius: 4px; box-shadow: none !important;
+    }
+    #pets td.pet-actions form { display: inline-block !important; margin: 0 0 0 4px !important; }
+    #pets td.pet-actions .button { background: #28546a !important; color: #fff !important; }
+    #pets td.pet-actions .delete-pet-button { background: #8b2020 !important; color: #fff !important; }
+    #pets .pet-add-action { text-align: left; margin-top: 14px; }
+    #distribution-history .distribution-empty-action { margin-top: 12px; }
+    .participant-footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 18px auto; }
+    .participant-footer-links .button { color: #20566b !important; background: #fff !important; border: 1px solid #a9ccd6 !important; }
+    @media (max-width: 560px) { #pets td.pet-actions { min-width: 75px; } #pets td.pet-actions form { margin: 4px 0 0 !important; } }
 </style>
 <!-- BANDAID END, REMOVE ONCE SOME GENIUS FIXES -->
 </head>
@@ -349,14 +447,24 @@ require_once('header.php');
         <a href="index.php" class="button">Return to Dashboard</a>
     </div>
 <?php else: ?>
-    <form class="signup-form" method="post">
-        <div class="text-center spacing-bottom">
-            <h2 class="mb-8"><?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name()) ?></h2>
-            <div class="info-box">
-                <p class="sub-text">View this participant's information and update it below.</p>
-                <p>An asterisk ( <em>*</em> ) indicates a required field.</p>
-            </div>
-        </div>
+    <div class="signup-form participant-summary" aria-label="Participant summary and quick actions">
+        <h2><?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name()) ?></h2>
+        <p class="participant-meta"><strong>Participant ID:</strong> <?php echo (int) $participant->get_id() ?>
+            &nbsp; <strong>Status:</strong> <?php echo hsc($participant->get_status()) ?>
+            &nbsp; <strong>Location:</strong> <?php echo hsc($participant->get_location()) ?></p>
+        <?php if ($participant->get_alert() || count($activeAlerts) > 0): ?>
+        <p class="participant-alert-notice"><strong>Attention:</strong> This participant has an active alert or flag. <a href="#participant-alerts">Review alerts</a> before distribution.</p>
+        <?php endif ?>
+        <nav class="participant-quick-actions" aria-label="Participant quick actions">
+            <a class="button primary-action" href="distributionRecord.php?id=<?php echo (int) $participant->get_id() ?>">Record Distribution</a>
+            <a class="button" href="#pets">Pets</a>
+            <a class="button" href="#participant-alerts">Alerts</a>
+            <a class="button" href="#distribution-history">Distribution History</a>
+            <a class="button" href="#participant-details">Edit Participant</a>
+        </nav>
+    </div>
+    <form class="signup-form" method="post" id="participant-details">
+        <p class="mb-2">Update participant details below. An asterisk (<em>*</em>) indicates a required field.</p>
 
         <?php if (isset($_GET['saved']) && count($errors) == 0): ?>
         <div class="happy-toast">The participant's information has been saved.</div>
@@ -385,73 +493,109 @@ require_once('header.php');
             <h3 class="mt-2">Participant Information</h3>
             <p class="mb-2">The participant ID is assigned automatically and cannot be changed.</p>
             <div class="blue-div"></div>
+            <div class="participant-edit-grid">
 
+                <div class="participant-field">
             <label for="participant_id">Participant ID</label>
             <input type="text" id="participant_id" value="<?php echo (int) $participant->get_id() ?>" readonly disabled>
 
+                </div>
+                <div class="participant-field">
             <label for="first_name"><em>* </em>First Name</label>
             <input type="text" id="first_name" name="first_name" required maxlength="50" placeholder="Enter first name" value="<?php echo hsc($args['first_name']) ?>">
 
+                </div>
+                <div class="participant-field">
             <label for="last_name"><em>* </em>Last Name</label>
             <input type="text" id="last_name" name="last_name" required maxlength="50" placeholder="Enter last name" value="<?php echo hsc($args['last_name']) ?>">
 
+                </div>
+                <div class="participant-field participant-field-full">
             <label for="street_address"><em>* </em>Street Address</label>
             <input type="text" id="street_address" name="street_address" required maxlength="100" placeholder="Enter street address" value="<?php echo hsc($args['street_address']) ?>">
 
+                </div>
+                <div class="participant-field">
             <label for="city">City</label>
             <input type="text" id="city" name="city" maxlength="50" placeholder="Enter city" value="<?php echo hsc($args['city']) ?>">
 
+                </div>
+                <div class="participant-field">
             <label for="state">State</label>
             <select id="state" name="state">
                 <option value=""<?php if ($args['state'] === '') echo ' selected' ?>>Select a state</option>
                 <?php participant_options($states, $args['state']) ?>
             </select>
 
+                </div>
+                <div class="participant-field">
             <label for="zip">ZIP Code</label>
             <input type="text" id="zip" name="zip" pattern="[0-9]{5}" maxlength="5" inputmode="numeric" title="Please enter a 5-digit ZIP code" placeholder="Enter ZIP code" value="<?php echo hsc($args['zip']) ?>">
+                </div>
+            </div>
         </fieldset>
 
         <fieldset class="section-box mb-4">
             <h3>Contact Information</h3>
             <p class="mb-2">The participant's contact information.</p>
             <div class="blue-div"></div>
+            <div class="participant-edit-grid">
 
+                <div class="participant-field">
             <label for="phone1"><em>* </em>Phone Number</label>
             <input type="tel" id="phone1" name="phone1" required pattern="(\D{0,1})\d{3}(\D{0,2})\d{3}(.{0,1})\d{4}" placeholder="Ex. (555) 555-5555" title="Please enter the phone number as 555-555-5555" value="<?php echo hsc($args['phone1']) ?>">
 
-            <label for="email"><em>* </em>E-mail</label>
-            <input type="email" id="email" name="email" required maxlength="100" placeholder="Enter e-mail address" value="<?php echo hsc($args['email']) ?>">
+                </div>
+                <div class="participant-field">
+            <label for="email">E-mail (Optional)</label>
+            <input type="email" id="email" name="email" maxlength="100" placeholder="Enter e-mail address" value="<?php echo hsc($args['email']) ?>">
 
+                </div>
+                <div class="participant-field">
             <label for="preferred_language"><em>* </em>Preferred Language</label>
             <select id="preferred_language" name="preferred_language" required>
                 <?php participant_options($languages, $args['preferred_language']) ?>
             </select>
+                </div>
+            </div>
         </fieldset>
 
         <fieldset class="section-box mb-4">
             <h3>Pet Pantry Information</h3>
             <p class="mb-2">The participant's Pet Pantry registration information.</p>
             <div class="blue-div"></div>
+            <div class="participant-edit-grid">
 
+                <div class="participant-field">
             <label for="registration_date">Registration Date</label>
             <input type="date" id="registration_date" value="<?php echo hsc($participant->get_registration_date()) ?>" readonly disabled>
 
+                </div>
+                <div class="participant-field">
             <label for="participant_status"><em>* </em>Participant Status</label>
             <select id="participant_status" name="participant_status" required>
                 <?php participant_options($statuses, $args['participant_status']) ?>
             </select>
 
+                </div>
+                <div class="participant-field">
             <label for="participant_location"><em>* </em>Participant Location</label>
             <select id="participant_location" name="participant_location" required>
                 <?php participant_options($locations, $args['participant_location']) ?>
             </select>
 
+                </div>
+                <div class="participant-field">
             <label for="participant_alert">Alert / Flag</label>
             <input type="text" id="participant_alert" value="<?php echo ($participant->get_alert() || count($activeAlerts) > 0) ? 'Flagged' : 'No' ?>" readonly disabled>
             <p class="mb-2">Use the Participant Alerts section below to add or resolve alerts.</p>
 
+                </div>
+                <div class="participant-field participant-field-full">
             <label for="notes">Notes</label>
             <textarea id="notes" name="notes" rows="4" placeholder="Enter any additional notes about the participant..."><?php echo hsc($args['notes']) ?></textarea>
+                </div>
+            </div>
         </fieldset>
 
         <input type="submit" value="Save Changes">
@@ -490,7 +634,7 @@ require_once('header.php');
                 <p><strong>Legacy flag:</strong> This participant is flagged in the original system. The existing flag has been preserved.</p>
             <?php endif ?>
             <h4>Add Alert</h4>
-            <form method="post">
+            <form method="post" class="alert-add-form">
                 <input type="hidden" name="alert_action" value="add">
                 <input type="hidden" name="alert_csrf" value="<?php echo hsc($_SESSION['participant_alert_csrf']) ?>">
                 <label for="alert_type">Alert Type</label>
@@ -546,7 +690,7 @@ require_once('header.php');
             <?php if (count($pets) == 0): ?>
             <p>This participant has no active pets.</p>
             <?php else: ?>
-            <div style="overflow-x: auto;">
+            <div class="pet-table-scroll">
                 <table style="width: 100%; border-collapse: collapse; text-align: left;">
                     <thead>
                         <tr>
@@ -575,7 +719,6 @@ require_once('header.php');
                                 <?php endif ?>
                             </td>
                             <td class="pet-actions">
-                                <a href="petSNV.php?id=<?php echo (int) $pet->get_id() ?>" class="button">SNV / Counseling</a>
                                 <a href="petEdit.php?id=<?php echo (int) $pet->get_id() ?>" class="button">Edit</a>
                                 <form method="post" action="petDelete.php" onsubmit="return confirm(<?php echo hsc(json_encode('Delete ' . $pet->get_name() . '? This cannot be undone from this page.')) ?>);">
                                     <input type="hidden" name="pet_id" value="<?php echo (int) $pet->get_id() ?>">
@@ -597,7 +740,7 @@ require_once('header.php');
             <?php if (count($formerPets) > 0): ?>
             <h4 class="mt-2">Former Pets</h4>
             <p class="mb-2">Pets that were rehomed or have died. They are kept for this participant's history and are not counted as current pets.</p>
-            <div style="overflow-x: auto;">
+            <div class="pet-table-scroll">
                 <table style="width: 100%; border-collapse: collapse; text-align: left;">
                     <thead>
                         <tr>
@@ -623,7 +766,7 @@ require_once('header.php');
             </div>
             <?php endif ?>
 
-            <div class="text-center mt-2">
+            <div class="pet-add-action">
                 <a href="registerPet.php?participant_id=<?php echo (int) $participant->get_id() ?>" class="button">Add a Pet</a>
             </div>
         </fieldset>
@@ -638,6 +781,7 @@ require_once('header.php');
 
             <?php if (count($distributions) == 0): ?>
             <p>No distributions have been recorded for this participant.</p>
+            <div class="distribution-empty-action"><a class="button" href="distributionRecord.php?id=<?php echo (int) $participant->get_id() ?>">Record First Distribution</a></div>
             <?php else: ?>
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; text-align: left;">
@@ -671,12 +815,10 @@ require_once('header.php');
         </fieldset>
     </div>
 
-    <div class="text-center">
-        <a href="distributionRecord.php?id=<?php echo (int) $participant->get_id() ?>" class="button">Record Distribution</a>
-        <a href="distributionHistory.php?id=<?php echo (int) $participant->get_id() ?>" class="button">Distribution History</a>
+    <nav class="participant-footer-links" aria-label="Page navigation">
         <a href="participantSearch.php" class="button">Back to Participant Search</a>
         <a href="index.php" class="button">Return to Dashboard</a>
-    </div>
+    </nav>
 <?php endif ?>
   </div>
 </main>

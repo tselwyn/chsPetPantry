@@ -143,6 +143,29 @@ require_once('header.php');
         .food-table form { margin: 0; }
         .delete-food-button { background-color: #b91c1c; color: #fff; border: none; border-radius: .375rem; padding: .35rem .75rem; cursor: pointer; }
         .delete-food-button:hover, .delete-food-button:focus { background-color: #7f1d1d; }
+        /* Compact, scoped layout: does not change save or delete logic. */
+        .main-content-box { max-width: 70rem; }
+        .food-received-page { max-width: 54rem; margin: 0 auto; padding: 0 1rem 2rem; }
+        .food-received-page .signup-form { width: 100%; max-width: none; margin: 0 auto 1rem; box-sizing: border-box; }
+        .food-received-page .section-box { min-width: 0; }
+        .food-received-page .food-intro { margin: 0 0 1rem; font-size: .95rem; }
+        .food-received-page .food-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem 1rem; }
+        .food-received-page .food-field { min-width: 0; }
+        .food-received-page .food-field label { display: block; margin: 0 0 .3rem; font-weight: 600; }
+        .food-received-page .food-field input, .food-received-page .food-field select,
+        .food-received-page .food-field textarea { box-sizing: border-box; width: 100%; margin: 0; }
+        .food-received-page .food-field-full { grid-column: 1 / -1; }
+        .food-received-page .food-help { font-size: .82rem; margin: .35rem 0 0; color: #526777; }
+        .food-received-page .food-submit { display: inline-block; width: auto; min-width: 0; margin: .85rem 0 0; padding: .55rem 1.05rem; border-radius: 4px; border: 0; background: #276b7b; color: #fff; font-weight: 600; cursor: pointer; }
+        .food-received-page .food-submit:hover { background: #205766; }
+        .food-received-page .food-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; margin: 1rem 0; }
+        .food-received-page .food-nav .button { display: inline-block; width: auto; margin: 0; padding: .45rem .8rem; font-size: .88rem; }
+        .food-received-page .food-table { font-size: .88rem; }
+        .food-received-page .food-table tbody tr:nth-child(even) { background: #f5f9fa; }
+        .food-received-page .food-table th { white-space: nowrap; }
+        .food-received-page .food-table td { overflow-wrap: anywhere; }
+        .food-received-page .hero-header h1, .hero-header .center-header h1 { color: #fff; }
+        @media (max-width: 650px) { .food-received-page .food-grid { grid-template-columns: 1fr; } }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     </style>
 </head>
@@ -156,13 +179,9 @@ require_once('header.php');
 
 <main>
   <div class="main-content-box">
+  <div class="food-received-page">
     <form class="signup-form" method="post">
-        <div class="text-center spacing-bottom">
-            <div class="info-box">
-                <p class="sub-text">Record pet food CHS bought or was given. These records are used for the Cost per Pound report.</p>
-                <p>An asterisk ( <em>*</em> ) indicates a required field.</p>
-            </div>
-        </div>
+        <p class="food-intro">Record food CHS purchased or received as a donation for the Cost per Pound report. <em>*</em> indicates a required field.</p>
 
         <?php if (count($errors) > 0): ?>
         <div class="error-toast" role="alert">
@@ -178,30 +197,37 @@ require_once('header.php');
         <fieldset class="section-box mb-4">
             <h3 class="mt-2">Food Received</h3>
             <div class="blue-div"></div>
-
-            <label for="received_date"><em>* </em>Date Received</label>
-            <input type="date" id="received_date" name="received_date" required max="<?php echo date('Y-m-d') ?>" value="<?php echo hsc($args['received_date']) ?>">
-
-            <label for="food_type"><em>* </em>Food Type</label>
-            <select id="food_type" name="food_type" required>
-                <option value="">Select dog or cat food</option>
-                <?php foreach ($foodTypes as $value => $label): ?>
-                <option value="<?php echo hsc($value) ?>"<?php if ($value === $args['food_type']) echo ' selected' ?>><?php echo hsc($label) ?></option>
-                <?php endforeach ?>
-            </select>
-
-            <label for="pounds"><em>* </em>Pounds</label>
-            <input type="number" id="pounds" name="pounds" required min="0.01" max="<?php echo $maxLbs ?>" step="0.01" inputmode="decimal" placeholder="Ex. 500" value="<?php echo hsc($args['pounds']) ?>">
-
-            <label for="cost"><em>* </em>Total Cost ($)</label>
-            <input type="number" id="cost" name="cost" required min="0" max="<?php echo $maxCost ?>" step="0.01" inputmode="decimal" placeholder="Ex. 412.50, or 0 for donated food" aria-describedby="cost_help" value="<?php echo hsc($args['cost']) ?>">
-            <p id="cost_help" class="mb-2">The total paid for this food, not the price per pound. Enter 0 for donated food.</p>
-
-            <label for="notes">Notes</label>
-            <textarea id="notes" name="notes" rows="3" maxlength="<?php echo $maxNotes ?>" placeholder="Ex. supplier, invoice number, or donor"><?php echo hsc($args['notes']) ?></textarea>
+            <div class="food-grid">
+                <div class="food-field">
+                    <label for="received_date"><em>* </em>Date Received</label>
+                    <input type="date" id="received_date" name="received_date" required max="<?php echo date('Y-m-d') ?>" value="<?php echo hsc($args['received_date']) ?>">
+                </div>
+                <div class="food-field">
+                    <label for="food_type"><em>* </em>Food Type</label>
+                    <select id="food_type" name="food_type" required>
+                        <option value="">Select dog or cat food</option>
+                        <?php foreach ($foodTypes as $value => $label): ?>
+                        <option value="<?php echo hsc($value) ?>"<?php if ($value === $args['food_type']) echo ' selected' ?>><?php echo hsc($label) ?></option>
+                        <?php endforeach ?>
+                    </select>
+                </div>
+                <div class="food-field">
+                    <label for="pounds"><em>* </em>Pounds</label>
+                    <input type="number" id="pounds" name="pounds" required min="0.01" max="<?php echo $maxLbs ?>" step="0.01" inputmode="decimal" placeholder="Ex. 500" value="<?php echo hsc($args['pounds']) ?>">
+                </div>
+                <div class="food-field">
+                    <label for="cost"><em>* </em>Total Cost ($)</label>
+                    <input type="number" id="cost" name="cost" required min="0" max="<?php echo $maxCost ?>" step="0.01" inputmode="decimal" placeholder="Ex. 412.50 or 0 for donated food" aria-describedby="cost_help" value="<?php echo hsc($args['cost']) ?>">
+                    <p id="cost_help" class="food-help">Total paid, not price per pound. Enter 0 for donations.</p>
+                </div>
+                <div class="food-field food-field-full">
+                    <label for="notes">Notes (optional)</label>
+                    <textarea id="notes" name="notes" rows="2" maxlength="<?php echo $maxNotes ?>" placeholder="Supplier, invoice number, or donor"><?php echo hsc($args['notes']) ?></textarea>
+                </div>
+            </div>
         </fieldset>
 
-        <input type="submit" value="Save Food Received">
+        <input class="food-submit" type="submit" value="Save Food Received">
     </form>
 
     <div class="signup-form" id="recent">
@@ -258,10 +284,11 @@ require_once('header.php');
         </fieldset>
     </div>
 
-    <div class="text-center">
+    <div class="food-nav">
         <a href="reports.php?report_type=cost_per_pound" class="button">Cost per Pound Report</a>
         <a href="index.php" class="button">Return to Dashboard</a>
     </div>
+  </div>
   </div>
 </main>
 

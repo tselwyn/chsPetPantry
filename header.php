@@ -1,4 +1,4 @@
-<!-- This looks really, really great!  -Thomas -->
+<!-- This looks really, really great! -->
 <?php
 date_default_timezone_set('America/New_York');
 /*
@@ -614,6 +614,29 @@ if (date("H:i:s") > "18:19:59") {
             }
 
         }
+
+/* CHS navigation: scoped to avoid changing forms and dashboard cards */
+.chs-navbar { height: 88px; padding: 0 18px; z-index: 1001; }
+.chs-navbar .left-section { min-width: 0; gap: 18px; }
+.chs-navbar .logo-container { display: block; padding: 5px 9px; flex-shrink: 0; }
+.chs-navbar .logo-container img { width: 185px; max-width: 100%; }
+.chs-menu { position: relative; }
+.chs-menu-toggle { background: #ffffff; border: 2px solid #c4e3e8; color: #205565; font: 800 18px Nunito, sans-serif; cursor: pointer; padding: 11px 17px; border-radius: 9px; display: inline-flex; align-items: center; gap: 10px; box-shadow: 0 2px 6px rgba(0,0,0,.16); transition: background .2s, box-shadow .2s, border-color .2s; }
+.chs-menu-toggle .chs-menu-icon { font-size: 23px; line-height: 1; }
+.chs-menu-toggle .chs-menu-arrow { font-size: 16px; margin-left: 3px; transition: transform .2s; }
+.chs-menu-toggle[aria-expanded="true"] .chs-menu-arrow { transform: rotate(180deg); }
+.chs-menu-toggle:hover, .chs-menu-toggle:focus-visible, .chs-menu-toggle[aria-expanded="true"] { background: #e9f7f9; color: #174653; border-color: #65c5d2; box-shadow: 0 3px 10px rgba(0,0,0,.2); outline: none; }
+.chs-menu-panel { position: absolute; top: calc(100% + 8px); left: 0; width: 285px; max-width: calc(100vw - 24px); max-height: calc(100vh - 112px); overflow-y: auto; padding: 9px; background: white; color: #173e49; border: 1px solid #b8d8df; border-radius: 9px; box-shadow: 0 10px 26px rgba(0,0,0,.2); z-index: 1100; }
+.chs-menu-panel[hidden] { display: none !important; }
+.chs-menu-panel a { display: block; color: #173e49; text-decoration: none; font-size: 15px; font-weight: 700; padding: 10px 12px; border-radius: 6px; }
+.chs-menu-panel a:hover, .chs-menu-panel a:focus-visible { background: #e5f4f6; color: #0c5264; }
+.chs-menu-heading { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; font-weight: 800; color: #607e86; padding: 12px 12px 5px; }
+.chs-account-menu .chs-menu-panel { left: auto; right: 0; width: 190px; }
+.chs-account-toggle { display: flex; align-items: center; justify-content: center; padding: 6px; background: transparent; color: white; border-color: transparent; box-shadow: none; }
+.chs-account-toggle:hover, .chs-account-toggle:focus-visible, .chs-account-toggle[aria-expanded="true"] { background: rgba(255,255,255,.12); border-color: #a5dfe6; }
+.chs-account-toggle img { filter: brightness(0) invert(1); }
+@media (max-width: 600px) { .chs-navbar { padding: 0 9px; } .chs-navbar .left-section { gap: 7px; } .chs-navbar .logo-container img { width: 115px; } .chs-menu-toggle { font-size: 14px; padding: 9px 10px; gap: 5px; } .chs-menu-toggle .chs-menu-icon { font-size: 18px; } .chs-menu-panel { left: -115px; } .chs-account-menu .chs-menu-panel { left: auto; right: 0; } }
+
     </style>
 
     <script>
@@ -849,126 +872,42 @@ if (date("H:i:s") > "18:19:59") {
 	//
 	// HEADER FOR SUPERADMIN, ADMIN, INVENTORY COUNTER
         if ($_SESSION['access_level'] >= 1) {
-		echo('<div class="navbar">
-        <!-- Left Section: Logo & Nav Links -->
-        <div class="left-section">
-            <div class="logo-container">
-                <a href="index.php"><img src="images/chs-logo.svg" alt="Culpeper Humane Society Logo"></a>
+        ?>
+        <nav class="navbar chs-navbar" aria-label="Pet Pantry navigation">
+          <div class="left-section">
+            <a class="logo-container" href="index.php" aria-label="Pet Pantry dashboard"><img src="images/chs-logo.svg" alt="Culpeper Humane Society"></a>
+            <div class="chs-menu" id="chs-main-menu">
+              <button class="chs-menu-toggle" type="button" aria-expanded="false" aria-controls="chs-menu-panel"><span class="chs-menu-icon" aria-hidden="true">☰</span><span>Food Pantry Navigation</span><span class="chs-menu-arrow" aria-hidden="true">▾</span></button>
+              <div class="chs-menu-panel" id="chs-menu-panel" hidden>
+                <div class="chs-menu-heading">Pet Pantry</div>
+                <a href="index.php">Dashboard</a>
+                <a href="participantSearch.php">Participant Search</a>
+                <a href="participantRegister.php">Register Participant</a>
+                <a href="registerPet.php">Register Pet</a>
+                <a href="distributionRecord.php">Record Food Distribution</a>
+                <a href="deleteParticipantPet.php"><?php echo $_SESSION['access_level'] >= 2 ? 'Remove Participant / Pet' : 'Remove Pet'; ?></a>
+                <?php if ($_SESSION['access_level'] >= 2): ?>
+                  <div class="chs-menu-heading">Administrator Tools</div>
+                  <a href="reports.php">Reports</a>
+                  <a href="foodReceived.php">Record Food Received</a>
+                  <a href="viewAuditUsers.php">Audit Users</a>
+                  <a href="createUser.php">Add User</a>
+                <?php endif; ?>
+              </div>
             </div>
-                <!--<a href="viewCheckInOut.php" style="color: white; text-decoration: none;"><div class="date-box">Check In/Out</div></a>-->
-            <div class="nav-links">
-                <div class="nav-item">Food Pantry Navigation
-                    <div class="dropdown">');
-            if ($_SESSION['access_level'] >= 2) {
-                echo('<a href="viewAuditUsers.php" style="text-decoration: none;">
-                <div class="in-nav">
-                    <img src="images/user_group_icon.svg" alt="User Icon">
-                    <span>Audit Users</span>
-                </div>
-                </a>');
-                echo('<a href="createUser.php" style="text-decoration: none;">
-                <div class="in-nav">
-                    <img src="images/user_group_icon.svg" alt="User Icon">
-                    <span>Add User</span>
-                </div>
-                </a>');
-                echo('<a href="viewItemCategories.php" style="text-decoration: none;">
-                <div class="in-nav">
-                    <img src="images/list-solid.svg" alt="User Icon">
-                    <span>Manage Item Categories</span>
-                </div>
-                </a>');
-                echo('<a href="viewConsumptionRates.php" style="text-decoration: none;">
-                <div class="in-nav">
-                    <img src="images/clipboard-list-alt.svg" alt="Report Icon">
-                    <span>Consumption Rates</span>
-                </div>
-                </a>');
-            }
-echo('<a href="viewUpdateInventory.php" style="text-decoration: none;">
-  <div class="in-nav">
-    <img src="images/clipboard-checklist.svg" alt="Inventory Icon">
-    <span>Update Inventory</span>
-  </div>
-</a>
-<a href="inventory.php" style="text-decoration: none;">
-  <div class="in-nav">
-    <img src="images/clipboard-list-alt.svg" alt="Inventory Icon">
-    <span>View Inventory</span>
-  </div>
-</a>
-<a href="viewWeeklyReport.php" style="text-decoration: none;">
-  <div class="in-nav">
-    <img src="images/clipboard-arrow-down.svg" alt="Report Icon">
-    <span>Weekly Inventory Report</span>
-  </div>
-</a>
-<a href="viewShoppingList.php" style="text-decoration: none;">
-  <div class="in-nav">
-    <img src="images/clipboard-list-alt.svg" alt="Report Icon">
-    <span>Shopping List</span>
-  </div>
-</a>
-<a href="generateReport.php" style="text-decoration: none;">
-  <div class="in-nav">
-    <img src="images/document-report.svg" alt="Report Icon">
-    <span>Inventory Analytics</span>
-  </div>
-</a>
-
-                    </div>
-                </div>
-                <div class="nav-item">
-                    <div class="dropdown">
-
-<a href="createGroup.php" style="text-decoration: none;">
-  <div class="in-nav">
-    <img src="images/creategroup.svg">
-    <span>Create Group</span>
-  </div>
-</a>
-
-<a href="showGroups.php" style="text-decoration: none;">
-  <div class="in-nav">
-    <img src="images/group.svg">
-    <span>View Groups</span>
-  </div>
-</a>
-
-<a href="noShows.php" style="text-decoration: none;">
-  <div class="in-nav">
-    <img src="images/group.svg">
-    <span>No Shows</span>
-  </div>
-</a>
-
-                    </div>
-               </div>
+          </div>
+          <div class="right-section">
+            <div class="chs-menu chs-account-menu">
+              <button class="chs-menu-toggle chs-account-toggle" type="button" aria-label="Account menu" aria-expanded="false" aria-controls="chs-account-panel"><img src="images/user-square.svg" alt="" width="34" height="34"></button>
+              <div class="chs-menu-panel" id="chs-account-panel" hidden>
+                <a href="changePassword.php">Change Password</a>
+                <a href="logout.php">Log Out</a>
+              </div>
             </div>
-        </div>
+          </div>
+        </nav>
+        <?php
 
-        <!-- Right Section: Date & Icon -->
-        <div class="right-section">
-<!--<a href="calendar.php">
-<div class="icon-butt">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="#C9AB81" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 4C3 3.44772 3.44772 3 4 3H6V2C6 1.44772 6.44772 1 7 1C7.55228 1 8 1.44772 8 2V3H16V2C16 1.44772 16.4477 1 17 1C17.5523 1 18 1.44772 18 2V3H20C20.5523 3 21 3.44772 21 4V21C21 21.5523 20.5523 22 20 22H4C3.44772 22 3 21.5523 3 21V4ZM5 5V20H19V5H5ZM7 10H9V12H7V10ZM11 10H13V12H11V10ZM15 10H17V12H15V10ZM7 14H9V16H7V14ZM11 14H13V16H11V14ZM15 14H17V16H15V14Z"/>
-        </svg>
-</div>
-</a>-->
-            <div class="nav-links">
-                <div class="nav-item">
-                    <div class="icon">
-                        <img src="images/user-square.svg" alt="User Icon" class="icon-img in-nav-img">
-                        <div class="dropdown">
-                            <a href="changePassword.php" class="dropdown-link"><div>Change Password</div></a>
-                            <a href="logout.php" class="dropdown-link"><div>Log Out</div></a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>');
 	} 
 
         // HEADER FOR ACCESS LEVEL 0
@@ -1209,6 +1148,7 @@ document.querySelectorAll(".icon-butt").forEach(el => {
         function openModal(){ backdrop.style.display = 'flex'; backdrop.setAttribute('aria-hidden','false'); document.getElementById('acc-font-size').focus(); }
         function closeModal(){ backdrop.style.display = 'none'; backdrop.setAttribute('aria-hidden','true'); btn.focus(); }
 
+        if (btn && backdrop && closeBtn && saveBtn && resetBtn) {
         btn.addEventListener('click', function(e){
             e.stopPropagation();
             const s = getSettings();
@@ -1239,12 +1179,41 @@ document.querySelectorAll(".icon-butt").forEach(el => {
             populateUI(s);
         });
 
+        }
+
         // apply on load
         document.addEventListener('DOMContentLoaded', function(){
             const s = getSettings();
             applySettings(s);
         });
     })();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const menus = Array.from(document.querySelectorAll('.chs-menu'));
+  function closeAll(except) {
+    menus.forEach(menu => {
+      if (menu === except) return;
+      const button = menu.querySelector('.chs-menu-toggle');
+      const panel = menu.querySelector('.chs-menu-panel');
+      if (button && panel) { button.setAttribute('aria-expanded', 'false'); panel.hidden = true; }
+    });
+  }
+  menus.forEach(menu => {
+    const button = menu.querySelector('.chs-menu-toggle');
+    const panel = menu.querySelector('.chs-menu-panel');
+    if (!button || !panel) return;
+    button.addEventListener('click', function (event) {
+      event.stopPropagation();
+      const opening = panel.hidden;
+      closeAll(menu);
+      panel.hidden = !opening;
+      button.setAttribute('aria-expanded', String(opening));
+    });
+  });
+  document.addEventListener('click', function (event) { if (!event.target.closest('.chs-menu')) closeAll(); });
+  document.addEventListener('keydown', function (event) { if (event.key === 'Escape') closeAll(); });
+});
 </script>
 </header>
 <!-- Display nav-bar background outside of header to allow it to display on separate z layer -->

@@ -331,6 +331,28 @@ require_once('header.php');
         .participant-results .pets-row td {
             padding: 0.5rem 0.75rem;
         }
+
+        /* Compact search-first layout; existing result and alert logic is unchanged. */
+        .search-card { max-width: 1500px; margin: 0 auto; }
+        .search-card > .text-center { margin-bottom: 1rem; }
+        .search-input-row { display: flex; gap: 0.75rem; align-items: stretch; margin-top: 0.4rem; }
+        .search-input-row input[type="text"] { min-width: 0; flex: 1; }
+        .search-submit { width: auto !important; min-width: 125px; padding: 0.5rem 1.25rem; cursor: pointer; border-radius: 0.375rem; }
+        .search-results { margin-top: 1.5rem; }
+        .search-results:empty { display: none; }
+        .search-results h3 { margin-bottom: 0.75rem; }
+        .participant-results td { vertical-align: middle; }
+        .participant-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; min-width: 250px; }
+        .participant-results .participant-actions .view-pets-button { margin-top: 0; }
+        .participant-results .participant-actions .participant-edit-link { padding: 0.45rem 0.65rem; font-size: 0.85rem; }
+        .participant-results .participant-actions .primary-action { background: #17444f; }
+        .participant-results .participant-actions .primary-action:hover { background: #10343c; }
+        @media (max-width: 700px) {
+            .search-card { width: 96% !important; padding: 1rem !important; }
+            .search-input-row { flex-direction: column; }
+            .search-submit { width: 100% !important; }
+            .participant-actions { min-width: 190px; }
+        }
 </style>
 <!-- BANDAID END, REMOVE ONCE SOME GENIUS FIXES -->
 </head>
@@ -347,11 +369,19 @@ require_once('header.php');
 
         <div class="text-center mb-8">
             <h2>Find a Participant</h2>
-            <p class="sub-text">Search Pet Pantry participants by ID, name, address, or phone number. Select View / Update beside a participant to see or change their information.</p>
+            <p class="sub-text">Search by participant ID, name, address, or phone number.</p>
         </div>
 
         <form id="participant-search" class="space-y-6" method="get">
-
+            <div class="search-controls">
+                <label for="q">ID, Name, Address, or Phone Number</label>
+                <div class="search-input-row">
+                    <input type="text" id="q" name="q" class="w-full" maxlength="<?php echo PARTICIPANT_SEARCH_MAX_LENGTH; ?>" value="<?php if ($term !== null) echo hsc($term); ?>" placeholder="Ex. 12, Maria Gonzalez, 412 Princess Anne St, or 540-555-0101" autofocus>
+                    <input type="submit" value="Search" class="blue-button search-submit">
+                </div>
+            </div>
+        </form>
+        <section class="search-results" aria-label="Participant search results">
         <?php
             if ($term !== null) {
                 if ($term === '') {
@@ -424,7 +454,7 @@ require_once('header.php');
                                         <td>' . hsc($participant->get_status()) . '</td>
                                         <td><button type="button" class="pet-count-toggle" ' . $toggle . ' aria-label="' . (int) $participant->get_pet_count() . ' active pets. Show pets">' . (int) $participant->get_pet_count() . '</button></td>
                                         <td>' . hsc($registered) . '</td>
-                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">View / Update</a><br><a href="distributionRecord.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">Record Distribution</a><br><a href="distributionHistory.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">Distribution History</a><br><button type="button" class="view-pets-button" ' . $toggle . '>View Pets</button></td>
+                                        <td><div class="participant-actions"><a href="distributionRecord.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link primary-action">Record Distribution</a><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">View / Update</a><a href="distributionHistory.php?id=' . (int) $participant->get_id() . '" class="participant-edit-link">Distribution History</a><button type="button" class="view-pets-button" ' . $toggle . '>View Pets</button></div></td>
                                     </tr>';
                             participant_search_pets_row($participantId, $petsByParticipant[$participantId] ?? array());
                         }
@@ -440,21 +470,12 @@ require_once('header.php');
                             <a href="participantRegister.php" class="blue-button register-new-link">Register new participant</a>
                         </div>';
                     }
-                    echo '<h3>Search Again</h3>';
+                    
                 }
             }
         ?>
 
-            <div>
-                <label for="q">ID, Name, Address, or Phone Number</label>
-                <input type="text" id="q" name="q" class="w-full" maxlength="<?php echo PARTICIPANT_SEARCH_MAX_LENGTH; ?>" value="<?php if ($term !== null) echo hsc($term); ?>" placeholder="Ex. 12, Maria Gonzalez, 412 Princess Anne St, or 540-555-0101" autofocus>
-            </div>
-
-            <div class="text-center pt-4">
-                <input type="submit" value="Search" class="blue-button">
-            </div>
-
-        </form>
+        </section>
     </div>
 
     <div class="text-center mt-6">
@@ -478,12 +499,6 @@ require_once('header.php');
         });
     </script>
 
-    <div class="info-section">
-        <div class="blue-div"></div>
-        <p class="info-text">
-            Use this tool to look up a Pet Pantry participant by ID, first or last name, street address, city, zip code, or phone number.
-        </p>
-    </div>
 </main>
 
 </body>
