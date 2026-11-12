@@ -373,6 +373,29 @@ require_once('header.php');
             list-style: disc;
             margin: 0.5rem 0 0.5rem 1.5rem;
         }
+
+        /* Compact distribution layout; scoped to this page */
+        .distribution-card { max-width: 940px; width: calc(100% - 32px); margin: 24px auto; padding: 24px; }
+        .distribution-card .distribution-intro { margin-bottom: 16px; text-align: left; }
+        .distribution-card .distribution-intro h2 { margin-bottom: 4px; }
+        .distribution-card .form-section { padding: 16px 18px; margin-bottom: 16px; }
+        .distribution-card .form-section h3 { font-size: 1.05rem; margin: 0 0 3px; }
+        .distribution-card .form-section .blue-div { margin: 8px 0 12px; }
+        .distribution-card .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; }
+        .distribution-card .field-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .distribution-card .field { min-width: 0; }
+        .distribution-card .field.full { grid-column: 1 / -1; }
+        .distribution-card .field label { display: block; margin: 0 0 4px; font-weight: 600; }
+        .distribution-card .field input, .distribution-card .field select, .distribution-card .field textarea { display: block; width: 100%; box-sizing: border-box; margin: 0; }
+        .distribution-card .field textarea { min-height: 72px; }
+        .distribution-card .participant-summary { background: var(--chs-tint); border: 1px solid var(--chs-border); border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; }
+        .distribution-card .participant-summary strong { color: var(--chs-teal-dark); font-size: 1.15rem; }
+        .distribution-card .participant-summary p { margin: 3px 0 0; color: #425466; font-size: .92rem; }
+        .distribution-card .form-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+        .distribution-card .form-actions .blue-button { width: auto; padding: 9px 16px; margin: 0; }
+        .distribution-card .compact-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
+        .distribution-card .compact-links .return-button { font-size: .85rem; padding: 6px 10px; margin: 0; }
+        @media(max-width: 700px) { .distribution-card { padding: 14px; } .distribution-card .field-grid, .distribution-card .field-grid.three { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -384,7 +407,7 @@ require_once('header.php');
 </header>
 
 <main>
-  <div class="search-card w-[80%] p-8">
+  <div class="search-card distribution-card">
 <?php if ($participant === null): ?>
     <?php // Reached without a participant: ask who the distribution is for ?>
     <form class="space-y-6" method="get" action="participantSearch.php">
@@ -408,10 +431,8 @@ require_once('header.php');
     </form>
 <?php else: ?>
     <form method="post">
-        <div class="text-center mb-8">
-            <h2><?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name()) ?></h2>
-            <p class="sub-text">Record a food distribution for this participant.</p>
-            <p class="sub-text">An asterisk ( <em>*</em> ) indicates a required field.</p>
+        <div class="distribution-intro">
+            <p class="sub-text">Record food provided to this participant. An asterisk ( <em>*</em> ) indicates a required field.</p>
         </div>
 
         <?php if (count($warnings) > 0): ?>
@@ -452,56 +473,57 @@ require_once('header.php');
         </div>
         <?php endif ?>
 
-        <fieldset class="form-section">
-            <h3>Participant</h3>
-            <p class="section-help">The participant receiving this distribution.</p>
-            <div class="blue-div"></div>
-
-            <label for="participant_id">Participant ID</label>
-            <input type="text" id="participant_id" value="<?php echo (int) $participant->get_id() ?>" readonly disabled>
-
-            <label for="participant_name">Name</label>
-            <input type="text" id="participant_name" value="<?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name()) ?>" readonly disabled>
-
-            <label for="participant_status">Participant Status</label>
-            <input type="text" id="participant_status" value="<?php echo hsc($participant->get_status()) ?>" readonly disabled>
-        </fieldset>
+        <div class="participant-summary" aria-label="Selected participant">
+            <strong><?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name()) ?></strong>
+            <p>Participant ID: <?php echo (int) $participant->get_id() ?> &nbsp;·&nbsp; Status: <?php echo hsc($participant->get_status()) ?></p>
+        </div>
 
         <fieldset class="form-section">
-            <h3>Distribution</h3>
-            <p class="section-help">When and where the food was given out.</p>
+            <h3>Distribution Details</h3>
+            <p class="section-help">When and where food was provided.</p>
             <div class="blue-div"></div>
-
-            <label for="distribution_date"><em>* </em>Distribution Date</label>
-            <input type="date" id="distribution_date" name="distribution_date" required max="<?php echo date('Y-m-d') ?>" value="<?php echo hsc($args['distribution_date']) ?>">
-
-            <label for="distribution_location"><em>* </em>Distribution Location</label>
-            <select id="distribution_location" name="distribution_location" required>
-                <?php foreach ($locations as $location): ?>
-                <option value="<?php echo hsc($location) ?>"<?php if ($location === $args['distribution_location']) echo ' selected' ?>><?php echo hsc($location) ?></option>
-                <?php endforeach ?>
-            </select>
-
-            <label for="processed_by_name"><em>* </em>Processed By (your name)</label>
-            <input type="text" id="processed_by_name" name="processed_by_name" required maxlength="<?php echo $maxProcessedBy ?>" placeholder="Enter your first and last name" autocomplete="off" value="<?php echo hsc($args['processed_by_name']) ?>">
+            <div class="field-grid">
+                <div class="field">
+                    <label for="distribution_date"><em>* </em>Distribution Date</label>
+                    <input type="date" id="distribution_date" name="distribution_date" required max="<?php echo date('Y-m-d') ?>" value="<?php echo hsc($args['distribution_date']) ?>">
+                </div>
+                <div class="field">
+                    <label for="distribution_location"><em>* </em>Distribution Location</label>
+                    <select id="distribution_location" name="distribution_location" required>
+                        <?php foreach ($locations as $location): ?>
+                        <option value="<?php echo hsc($location) ?>"<?php if ($location === $args['distribution_location']) echo ' selected' ?>><?php echo hsc($location) ?></option>
+                        <?php endforeach ?>
+                    </select>
+                </div>
+                <div class="field full">
+                    <label for="processed_by_name"><em>* </em>Processed By (your name)</label>
+                    <input type="text" id="processed_by_name" name="processed_by_name" required maxlength="<?php echo $maxProcessedBy ?>" placeholder="Enter your first and last name" autocomplete="off" value="<?php echo hsc($args['processed_by_name']) ?>">
+                </div>
+            </div>
         </fieldset>
 
         <fieldset class="form-section">
             <h3>Food Given</h3>
-            <p class="section-help">Enter a dog food quantity, a cat food quantity, or both.</p>
+            <p class="section-help">Enter dog food, cat food, or both. Confirm how many pets actually received food.</p>
             <div class="blue-div"></div>
-
-            <label for="pets_served"><em>* </em>Number of Pets Receiving Food</label>
-            <input type="number" id="pets_served" name="pets_served" required min="1" max="<?php echo $maxPets ?>" step="1" placeholder="Enter number of pets" value="<?php echo hsc($args['pets_served']) ?>">
-
-            <label for="dog_food_lbs">Dog Food (lbs)</label>
-            <input type="number" id="dog_food_lbs" name="dog_food_lbs" min="0" max="<?php echo $maxLbs ?>" step="0.01" placeholder="Enter pounds of dog food" value="<?php echo hsc($args['dog_food_lbs']) ?>">
-
-            <label for="cat_food_lbs">Cat Food (lbs)</label>
-            <input type="number" id="cat_food_lbs" name="cat_food_lbs" min="0" max="<?php echo $maxLbs ?>" step="0.01" placeholder="Enter pounds of cat food" value="<?php echo hsc($args['cat_food_lbs']) ?>">
-
-            <label for="notes">Notes</label>
-            <textarea id="notes" name="notes" rows="4" maxlength="<?php echo $maxNotes ?>" placeholder="Enter any notes about this distribution..."><?php echo hsc($args['notes']) ?></textarea>
+            <div class="field-grid three">
+                <div class="field">
+                    <label for="pets_served"><em>* </em>Pets Receiving Food</label>
+                    <input type="number" id="pets_served" name="pets_served" required min="1" max="<?php echo $maxPets ?>" step="1" placeholder="Number of pets" value="<?php echo hsc($args['pets_served']) ?>">
+                </div>
+                <div class="field">
+                    <label for="dog_food_lbs">Dog Food (lbs)</label>
+                    <input type="number" id="dog_food_lbs" name="dog_food_lbs" min="0" max="<?php echo $maxLbs ?>" step="0.01" placeholder="Pounds" value="<?php echo hsc($args['dog_food_lbs']) ?>">
+                </div>
+                <div class="field">
+                    <label for="cat_food_lbs">Cat Food (lbs)</label>
+                    <input type="number" id="cat_food_lbs" name="cat_food_lbs" min="0" max="<?php echo $maxLbs ?>" step="0.01" placeholder="Pounds" value="<?php echo hsc($args['cat_food_lbs']) ?>">
+                </div>
+                <div class="field full">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes" rows="3" maxlength="<?php echo $maxNotes ?>" placeholder="Optional notes about this distribution"><?php echo hsc($args['notes']) ?></textarea>
+                </div>
+            </div>
         </fieldset>
 
         <?php if (count($warnings) > 0): ?>
@@ -513,14 +535,14 @@ require_once('header.php');
         </fieldset>
         <?php endif ?>
 
-        <div class="text-center pt-4">
+        <div class="form-actions">
             <input type="submit" value="Save Distribution" class="blue-button">
         </div>
     </form>
 <?php endif ?>
   </div>
 
-  <div class="text-center mt-6">
+  <div class="compact-links">
 <?php if ($participant !== null): ?>
     <a href="participantEdit.php?id=<?php echo (int) $participant->get_id() ?>" class="return-button">Back to Participant</a>
     <a href="participantSearch.php" class="return-button">Back to Participant Search</a>
