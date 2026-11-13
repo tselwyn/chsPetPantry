@@ -20,7 +20,10 @@ date_default_timezone_set('America/New_York');
  *      database/dbconfig.php and fill in the values for that machine.
  *   3. On a laptop opened as http://localhost with no dbconfig.php, the team's
  *      local XAMPP defaults (database, user and password all "foodpantrydb").
- *      SiteGround never uses these; it must have its own dbconfig.php.
+ *      Never used anywhere else.
+ *
+ * SiteGround keeps its own copy of this file with the live database login.
+ * The deploy (.github/workflows/deploy.yml) never overwrites it.
  */
 
 function pfpms_db_settings() {
@@ -67,7 +70,7 @@ function connect() {
     if ($db['name'] === '' || $db['user'] === '') {
         error_log('PFPMS: database settings missing. Create database/dbconfig.php from database/dbconfig.example.php.');
         http_response_code(500);
-        die('The database is not configured. An administrator needs to create database/dbconfig.php.');
+        die('The database is not configured. Create database/dbconfig.php from database/dbconfig.example.php.');
     }
 
     try {

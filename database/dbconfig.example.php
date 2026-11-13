@@ -2,16 +2,13 @@
 /*
  * Template for database/dbconfig.php (SRS NFR-SEC-009).
  *
- * Copy this file to database/dbconfig.php on each machine (your laptop, the
- * SiteGround server) and fill in that machine's values. dbconfig.php is in
- * .gitignore and is skipped by the SiteGround deploy, so the real password
- * never goes into GitHub.
+ * You only need this on a laptop whose local database is NOT the usual
+ * foodpantrydb / foodpantrydb / foodpantrydb. Copy it to database/dbconfig.php
+ * and put your values in. dbconfig.php is in .gitignore, so it never goes to
+ * GitHub.
  *
- * Local XAMPP: you only need this file if your local database is NOT the
- * usual foodpantrydb / foodpantrydb / foodpantrydb. Without it, localhost
- * uses those defaults.
- * SiteGround: Site Tools > Site > MySQL shows the database name and user.
- * Set the password there too.
+ * SiteGround doesn't use this: it keeps its own database/dbinfo.php, which the
+ * deploy never overwrites.
  */
 return array(
     'host' => 'localhost',

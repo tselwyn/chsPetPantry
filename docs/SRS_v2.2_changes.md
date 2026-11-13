@@ -111,7 +111,7 @@ Alternate flow, no counseling given: the checkbox stays unchecked, and any couns
 
 ## 2.7 Dependencies: add
 
-- Each server needs a `database/dbconfig.php` with its database settings. It is not stored in GitHub. Developer laptops use the team's local defaults unless they create one. `[v2.2]`
+- The live server keeps its own database connection file with the live login. It is not stored in GitHub and the deploy never overwrites it. Developer laptops use the team's local defaults. `[v2.2]`
 
 ---
 

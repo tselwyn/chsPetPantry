@@ -2,7 +2,7 @@
 
 **Nothing to set up on your laptop.** The database password moved out of `database/dbinfo.php` (SRS NFR-SEC-009). When you open the app as `http://localhost`, it uses the team's usual local settings (database, user and password all `foodpantrydb`). If your local database uses different values, copy `database/dbconfig.example.php` to `database/dbconfig.php` and put yours in it. That file is in `.gitignore`.
 
-**SiteGround** never uses the local settings. It needs its own `database/dbconfig.php`, and the deploy stops with an error if that file is missing.
+**SiteGround** keeps its own `database/dbinfo.php` with the live database login. The deploy never overwrites it.
 
 The participant deletion audit table is created automatically the first time an admin deletes someone. `sql/migrations/2026-11-13_participant_deletion_audit.sql` is there if you'd rather create it yourself.
 
