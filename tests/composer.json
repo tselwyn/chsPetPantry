@@ -1,0 +1,10 @@
+{
+    "name": "chs/pet-pantry-tests",
+    "description": "Automated tests for the CHS Pet Pantry app (SRS Section 7). Kept separate from the app's vendor/ folder so nothing test-only is deployed.",
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

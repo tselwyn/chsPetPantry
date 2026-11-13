@@ -1215,6 +1215,23 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('keydown', function (event) { if (event.key === 'Escape') closeAll(); });
 });
 </script>
+<!-- Lost-connection warning (NFR-REL-003) and inactivity sign-out warning (NFR-SEC-005) -->
+<style>
+.pfpms-banner { position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px; z-index: 2000;
+    width: min(640px, calc(100vw - 32px)); box-sizing: border-box; padding: 12px 16px; border-radius: 8px;
+    font: 600 15px/1.45 Nunito, sans-serif; box-shadow: 0 6px 20px rgba(0,0,0,.25); border-left: 6px solid; }
+.pfpms-banner[hidden] { display: none !important; }
+.pfpms-banner-offline { background: #fff4e5; color: #5c3200; border-color: #b45309; }
+.pfpms-banner-online { background: #ecfdf3; color: #14532d; border-color: #15803d; }
+.pfpms-banner-timeout { background: #ffffff; color: #173e49; border-color: #206b80; bottom: 84px; }
+.pfpms-banner button { margin-left: 8px; padding: 6px 12px; border: 0; border-radius: 5px; background: #206b80;
+    color: #fff; font: inherit; cursor: pointer; width: auto; }
+.pfpms-banner button:hover, .pfpms-banner button:focus-visible { background: #155367; }
+@media print { .pfpms-banner { display: none !important; } }
+</style>
+<script src="js/pantryGuards.js?v=1" defer
+    data-signed-in="<?php echo isset($_SESSION['_id']) ? '1' : '0' ?>"
+    data-timeout-seconds="<?php echo defined('PFPMS_SESSION_TIMEOUT_SECONDS') ? (int) PFPMS_SESSION_TIMEOUT_SECONDS : 1800 ?>"></script>
 </header>
 <!-- Display nav-bar background outside of header to allow it to display on separate z layer -->
 <div class="navbar-background"></div>

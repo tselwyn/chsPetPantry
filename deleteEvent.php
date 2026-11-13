@@ -1,6 +1,7 @@
 <?php
     session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
     if ($_SESSION['access_level'] < 2) {
         header('Location: index.php');

@@ -1,6 +1,7 @@
 <?php
 session_cache_expire(30);
 session_start();  // Start the session
+require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
 // Check if the user is logged in
 if (!isset($_SESSION['_id']) || empty($_SESSION['_id'])) {

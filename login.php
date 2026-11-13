@@ -6,6 +6,7 @@
     // data with the logged-in user.
     session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
     
     ini_set("display_errors",1);
     error_reporting(E_ALL);
@@ -43,6 +44,7 @@
                 $archivedAccount = true;
             } else if (password_verify($password, $user->get_password())) {
                 $_SESSION['logged_in'] = true;
+                $_SESSION['last_activity'] = time(); // starts the 30-minute clock (NFR-SEC-005)
                 $_SESSION['access_level'] = $user->get_access_level();
                 $role = $user->get_type();
                 /*$roleMap = [
@@ -114,6 +116,9 @@
                     }
                     if ($archivedAccount) {
                         echo '<div role="alert" class="mb-4 p-3 rounded-lg border-l-4 border-red-600 bg-red-50 text-red-800 text-sm font-medium">This account has either been archived or not yet approved by management. For help, notify your administrator.</div>';
+                    }
+                    if (isset($_GET['timeout'])) {
+                        echo '<div role="status" class="mb-4 p-3 rounded-lg border-l-4 border-yellow-500 bg-yellow-50 text-yellow-900 text-sm font-medium">You were signed out after 30 minutes of inactivity. Please log in again.</div>';
                     }
                     if (isset($_GET['registerSuccess'])) {
                         echo '<div role="status" class="mb-4 p-3 rounded-lg border-l-4 border-green-600 bg-green-50 text-green-800 text-sm font-medium">Registration Successful! Please login below.</div>';

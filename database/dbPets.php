@@ -169,54 +169,6 @@ function update_pet($pet) {
 }
 
 /*
- * Save a pet's spay/neuter and rabies vaccination status (UC-08).
- * When $counseling_status is 'Yes', counseling is recorded as given today
- * by $counseled_by. Otherwise the counseling fields are left as they were,
- * so a pet that was already counseled stays Yes.
- * Returns true if the update ran.
- */
-function update_pet_snv($pet_id, $spay_neuter_status, $rabies_status,
-        $counseling_status, $counseled_by) {
-
-    if ($counseling_status === 'Yes') {
-        $query = "UPDATE dbpets
-                  SET spay_neuter_status = ?, rabies_status = ?,
-                      counseling_status = 'Yes', counseling_date = ?,
-                      counseled_by = ?
-                  WHERE id = ?";
-        $types = 'ssssi';
-        $args = [$spay_neuter_status, $rabies_status, date('Y-m-d'),
-            $counseled_by, $pet_id];
-    } else {
-        $query = 'UPDATE dbpets
-                  SET spay_neuter_status = ?, rabies_status = ?
-                  WHERE id = ?';
-        $types = 'ssi';
-        $args = [$spay_neuter_status, $rabies_status, $pet_id];
-    }
-
-    $con = connect();
-    $success = false;
-
-    try {
-        $stmt = mysqli_prepare($con, $query);
-
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, $types, ...$args);
-            $success = mysqli_stmt_execute($stmt);
-            mysqli_stmt_close($stmt);
-        }
-
-    } catch (mysqli_sql_exception $e) {
-        $success = false;
-    }
-
-    mysqli_close($con);
-
-    return $success;
-}
-
-/*
  * Get all pets belonging to one participant.
  */
 function get_pets_by_participant($participant_id, $includeDeleted = false) {

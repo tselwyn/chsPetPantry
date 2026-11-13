@@ -4,6 +4,7 @@
     // data with the logged-in user.
     session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
     $loggedIn = false;
     $accessLevel = 0;
@@ -30,10 +31,10 @@
     require_once('database/dbPets.php');
     require_once('database/dbFoodReceived.php');
 
-    // Owner of a pet report row, e.g. "Maria Gonzalez (12)"
+    // Owner of a pet report row, e.g. "Maria Gonzalez (PP00012)"
     function report_pet_owner($row) {
         return trim($row['participant_first_name'] . ' ' . $row['participant_last_name'])
-            . ' (' . (int) $row['participant_id'] . ')';
+            . ' (' . format_participant_id($row['participant_id']) . ')';
     }
 
     function report_pet_age($row) {
@@ -129,18 +130,18 @@
             'columns' => array('ID', 'Name', 'Phone', 'Location', 'Registration Date', 'Status'),
             'fetch' => 'get_participant_report',
             'row' => function ($p) {
-                return array($p['id'], report_name($p), report_phone($p['phone']),
+                return array(format_participant_id($p['id']), report_name($p), report_phone($p['phone']),
                     $p['location'], $p['registration_date'], $p['status']);
             }
         ),
         'participant_status' => array(
-            'title' => 'Active / Inactive / Expired Participants',
+            'title' => 'Participants by Status (Active / Inactive / Expired / DND)',
             'date_label' => 'Registration date',
             'filters' => array('dates', 'location'),
             'columns' => array('ID', 'Name', 'Phone', 'Location', 'Registration Date', 'Status'),
             'fetch' => 'get_participant_status_report',
             'row' => function ($p) {
-                return array($p['id'], report_name($p), report_phone($p['phone']),
+                return array(format_participant_id($p['id']), report_name($p), report_phone($p['phone']),
                     $p['location'], $p['registration_date'], $p['status']);
             }
         ),
@@ -151,7 +152,7 @@
             'columns' => array('ID', 'Name', 'Phone', 'Location', 'Status', 'Notes'),
             'fetch' => 'get_flagged_participants_report',
             'row' => function ($p) {
-                return array($p['id'], report_name($p), report_phone($p['phone']),
+                return array(format_participant_id($p['id']), report_name($p), report_phone($p['phone']),
                     $p['location'], $p['status'], (string) $p['notes']);
             }
         ),
@@ -418,6 +419,7 @@
     $errors = array();
     $report = null;
     $reportParticipant = null;
+    $reportParticipantId = 0;
     $rows = array();
 
     if ($submitted) {
@@ -451,12 +453,16 @@
         if (isset($reportTypes[$filters['report_type']]) && !empty($reportTypes[$filters['report_type']]['needs_participant'])) {
             if ($filters['participant_id'] === '') {
                 $errors[] = 'Enter the participant ID for the participant history report.';
-            } else if (!ctype_digit($filters['participant_id']) || (int) $filters['participant_id'] < 1) {
-                $errors[] = 'The participant ID must be a whole number.';
+            } else if (parse_participant_id($filters['participant_id']) === null) {
+                $errors[] = 'Enter the participant ID as shown on their record, for example PP00012.';
             } else {
-                $reportParticipant = retrieve_participant((int) $filters['participant_id']);
+                $reportParticipantId = parse_participant_id($filters['participant_id']);
+                $reportParticipant = retrieve_participant($reportParticipantId);
                 if (!$reportParticipant) {
-                    $errors[] = 'No participant has ID ' . (int) $filters['participant_id'] . '.';
+                    $errors[] = 'No participant has ID ' . format_participant_id($reportParticipantId) . '.';
+                } else {
+                    // Shown and exported in the PP00012 form
+                    $filters['participant_id'] = format_participant_id($reportParticipantId);
                 }
             }
         } else {
@@ -476,7 +482,7 @@
                 $filters['location'] = '';
             }
             $fetch = $report['fetch'];
-            foreach ($fetch($filters['location'], $filters['start_date'], $filters['end_date'], (int) $filters['participant_id']) as $result) {
+            foreach ($fetch($filters['location'], $filters['start_date'], $filters['end_date'], $reportParticipantId) as $result) {
                 $rows[] = $report['row']($result);
             }
         }
@@ -488,7 +494,7 @@ $filterSummary = array();
 
 if ($report !== null && $reportParticipant) {
     $filterSummary[] = 'Participant: ' . trim($reportParticipant->get_first_name() . ' '
-        . $reportParticipant->get_last_name()) . ' (ID ' . (int) $reportParticipant->get_id() . ')';
+        . $reportParticipant->get_last_name()) . ' (' . $reportParticipant->get_display_id() . ')';
 }
 
 if ($report !== null && in_array('location', $report['filters'], true)) {
@@ -742,7 +748,7 @@ require_once('header.php');
                 </div>
                 <div id="participant-filter" class="reports-field reports-field-full">
                     <label for="participant_id"><em>* </em>Participant ID</label>
-                    <input type="text" id="participant_id" name="participant_id" inputmode="numeric" pattern="[0-9]*" placeholder="Ex. 12 (shown on the participant's record)" value="<?php echo hsc($filters['participant_id']) ?>">
+                    <input type="text" id="participant_id" name="participant_id" autocomplete="off" placeholder="Ex. PP00012 (shown on the participant's record)" value="<?php echo hsc($filters['participant_id']) ?>">
                 </div>
                 <div id="date-filters" class="reports-field reports-field-full reports-date-grid">
                     <div class="reports-field">

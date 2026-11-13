@@ -19,14 +19,41 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           echo "${{ secrets.SG_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
+      # SiteGround keeps its own database/dbinfo.php (it holds the live
+      # database login), so the deploy never overwrites it.
+      # Only the running app goes to the web folder. Database dumps, docs,
+      # tests, seeds, archives and logs stay out of public_html so they can't
+      # be downloaded from the site.
       - name: Sync files to SiteGround
         run: |
           rsync -avz \
             --exclude '.git/' \
             --exclude '.github/' \
+            --exclude '.gitignore' \
             --exclude 'dbinfo.php' \
+            --exclude 'database/dbconfig.php' \
             --exclude '.htaccess' \
+            --exclude '.user.ini' \
             --exclude 'php.ini' \
             --exclude 'php_errorlog' \
+            --exclude '*.log' \
+            --exclude '*.zip' \
+            --exclude '*.sql' \
+            --exclude '*.md' \
+            --exclude '*.txt' \
+            --exclude '*.drawio' \
+            --exclude '*.docx' \
+            --exclude '*.csv' \
+            --exclude '/sql/' \
+            --exclude '/docs/' \
+            --exclude '/tests/' \
+            --exclude '/seeds/' \
+            --exclude '/src/' \
+            --exclude 'phpunit.xml' \
+            --exclude 'composer.json' \
+            --exclude 'composer.lock' \
+            --exclude 'package.json' \
+            --exclude 'package-lock.json' \
+            --exclude 'node_modules/' \
             -e "ssh -p 18765 -i ~/.ssh/id_ed25519" \
             ./ "${{ secrets.SG_USER }}@${{ secrets.SG_HOST }}:${{ secrets.SG_PATH }}"
