@@ -3,6 +3,7 @@
     // data with the logged-in user.
     session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
     $loggedIn = false;
     $accessLevel = 0;
@@ -475,7 +476,7 @@ require_once('header.php');
 
         <div class="participant-summary" aria-label="Selected participant">
             <strong><?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name()) ?></strong>
-            <p>Participant ID: <?php echo (int) $participant->get_id() ?> &nbsp;·&nbsp; Status: <?php echo hsc($participant->get_status()) ?></p>
+            <p>Participant ID: <?php echo hsc($participant->get_display_id()) ?> &nbsp;·&nbsp; Status: <?php echo hsc($participant->get_status()) ?></p>
         </div>
 
         <fieldset class="form-section">

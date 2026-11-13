@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 header('Content-Type: application/json');
 include_once "database/dbShifts.php";
 
