@@ -1,13 +1,10 @@
 # CHS Pet Pantry: setup after pulling Sprint 5
 
-**Database settings moved out of `database/dbinfo.php`** (SRS NFR-SEC-009). After you pull, do this once on your laptop:
+**Nothing to set up on your laptop.** The database password moved out of `database/dbinfo.php` (SRS NFR-SEC-009). When you open the app as `http://localhost`, it uses the team's usual local settings (database, user and password all `foodpantrydb`). If your local database uses different values, copy `database/dbconfig.example.php` to `database/dbconfig.php` and put yours in it. That file is in `.gitignore`.
 
-1. Copy `database/dbconfig.example.php` to `database/dbconfig.php`.
-2. Put your local database name, user and password in it (the same values that used to be in `dbinfo.php`).
+**SiteGround** never uses the local settings. It needs its own `database/dbconfig.php`, and the deploy stops with an error if that file is missing.
 
-`dbconfig.php` is in `.gitignore`, so it never goes to GitHub. SiteGround has its own copy, and the deploy stops with an error if that copy is missing.
-
-**Run the new migration** `sql/migrations/2026-11-13_participant_deletion_audit.sql` in phpMyAdmin.
+The participant deletion audit table is created automatically the first time an admin deletes someone. `sql/migrations/2026-11-13_participant_deletion_audit.sql` is there if you'd rather create it yourself.
 
 **Tests:** see `tests/README.md`.
 

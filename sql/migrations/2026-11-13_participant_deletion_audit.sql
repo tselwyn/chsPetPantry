@@ -6,8 +6,10 @@
 -- the shared account, not a person) and when. Deleting a participant only sets
 -- dbparticipants.status to 'Deleted'; the participant row itself is kept.
 --
--- Run once in phpMyAdmin (SQL tab) on each database after merging. Safe to run
--- again: it does nothing if the table already exists.
+-- Optional: the app creates this table itself the first time a participant is
+-- deleted (ensure_participant_audit_table in database/dbParticipants.php).
+-- Running it in phpMyAdmin first is also fine. Safe to run again: it does
+-- nothing if the table already exists.
 
 CREATE TABLE IF NOT EXISTS `dbparticipantaudit` (
   `id` int NOT NULL AUTO_INCREMENT,

@@ -111,7 +111,7 @@ Alternate flow, no counseling given: the checkbox stays unchecked, and any couns
 
 ## 2.7 Dependencies: add
 
-- Each server (and each developer's laptop) needs a `database/dbconfig.php` with that machine's database settings. It is not stored in GitHub. `[v2.2]`
+- Each server needs a `database/dbconfig.php` with its database settings. It is not stored in GitHub. Developer laptops use the team's local defaults unless they create one. `[v2.2]`
 
 ---
 
@@ -156,7 +156,7 @@ Automated tests live in `tests/` and run on every pull request into `dev` and `m
 | FR-049 DND in status report | Done | |
 | FR-074 PP00001 IDs | Done | Shown on search, participant, pet, distribution, removal, and report pages; search and the history report accept PP IDs |
 | NFR-SEC-005 30-minute sign-out | Done | Server-side check on every page, plus the 2-minute warning |
-| NFR-SEC-007 Deletion audit | Done | Migration `2026-11-13_participant_deletion_audit.sql` |
+| NFR-SEC-007 Deletion audit | Done | Table is created automatically on first delete |
 | NFR-SEC-009 No passwords in code | Done in code | SiteGround database password still has to be changed (it is in old Git history) |
 | NFR-REL-003 Lost connection | Done | |
 | UC-17 Record Food Received | Done | Specified in v2.2 |

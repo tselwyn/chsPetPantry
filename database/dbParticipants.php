@@ -427,6 +427,26 @@ function activate_participant($participant_id) {
 
 
 /*
+ * Create the deletion audit table if this database doesn't have it yet, so
+ * nobody has to run sql/migrations/2026-11-13_participant_deletion_audit.sql
+ * by hand. Same definition as that migration. Runs outside any transaction
+ * because CREATE TABLE ends one.
+ */
+function ensure_participant_audit_table($con) {
+    return mysqli_query($con, "CREATE TABLE IF NOT EXISTS `dbparticipantaudit` (
+          `id` int NOT NULL AUTO_INCREMENT,
+          `participant_id` int NOT NULL,
+          `action` varchar(30) NOT NULL,
+          `previous_status` varchar(20) DEFAULT NULL,
+          `account_id` varchar(100) NOT NULL,
+          `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (`id`),
+          KEY `idx_participant` (`participant_id`),
+          KEY `idx_created_at` (`created_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci") !== false;
+}
+
+/*
  * Mark a participant as Deleted and record who did it (UC-09, NFR-SEC-007).
  * The participant row stays in the database for history. The status change
  * and the audit record are saved together or not at all, so a deletion can
@@ -444,6 +464,7 @@ function delete_participant($participant_id, $account_id) {
 
     $con = connect();
     try {
+        if (!ensure_participant_audit_table($con)) throw new RuntimeException('Could not create audit table');
         mysqli_begin_transaction($con);
 
         // Lock the row so two admins deleting at once log it only once
@@ -490,6 +511,7 @@ function delete_participant($participant_id, $account_id) {
 function get_participant_deletion_audit($participant_id) {
     $con = connect();
     try {
+        ensure_participant_audit_table($con);
         $stmt = mysqli_prepare($con, 'SELECT id, participant_id, action, previous_status, account_id, created_at '
             . 'FROM dbparticipantaudit WHERE participant_id = ? ORDER BY created_at DESC, id DESC');
         if (!$stmt) return array();

@@ -18,6 +18,9 @@ date_default_timezone_set('America/New_York');
  *   2. database/dbconfig.php, a file that exists only on each machine and is
  *      never committed (see .gitignore). Copy database/dbconfig.example.php to
  *      database/dbconfig.php and fill in the values for that machine.
+ *   3. On a laptop opened as http://localhost with no dbconfig.php, the team's
+ *      local XAMPP defaults (database, user and password all "foodpantrydb").
+ *      SiteGround never uses these; it must have its own dbconfig.php.
  */
 
 function pfpms_db_settings() {
@@ -33,6 +36,11 @@ function pfpms_db_settings() {
         if (is_array($fromFile)) {
             $settings = array_merge($settings, array_intersect_key($fromFile, $settings));
         }
+    } else if (pfpms_is_local_machine()) {
+        // A teammate's laptop with no dbconfig.php: use the team's local XAMPP
+        // defaults so nobody has to set anything up. These only ever work on
+        // a local database; a real server must have its own dbconfig.php.
+        $settings = array('host' => 'localhost', 'name' => 'foodpantrydb', 'user' => 'foodpantrydb', 'pass' => 'foodpantrydb');
     }
     foreach (array('host', 'name', 'user', 'pass') as $key) {
         $value = getenv('PFPMS_DB_' . strtoupper($key));
@@ -41,6 +49,17 @@ function pfpms_db_settings() {
         }
     }
     return $settings;
+}
+
+/*
+ * True when the app is opened as localhost on the machine it runs on (XAMPP
+ * on a laptop), never on SiteGround.
+ */
+function pfpms_is_local_machine() {
+    $host = isset($_SERVER['SERVER_NAME']) ? strtolower((string) $_SERVER['SERVER_NAME']) : '';
+    $addr = isset($_SERVER['SERVER_ADDR']) ? (string) $_SERVER['SERVER_ADDR'] : '';
+    return in_array($host, array('localhost', '127.0.0.1', '::1', '[::1]'), true)
+        && in_array($addr, array('', '127.0.0.1', '::1'), true);
 }
 
 function connect() {

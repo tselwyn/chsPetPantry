@@ -47,6 +47,17 @@ final class ParticipantDeletionAuditTest extends DatabaseTestCase
         $this->assertCount(0, $this->rows('SELECT id FROM dbparticipantaudit'));
     }
 
+    public function testTheAuditTableIsCreatedIfTheMigrationWasNeverRun(): void
+    {
+        $con = $this->db();
+        $con->query('DROP TABLE dbparticipantaudit');
+        $con->close();
+
+        $id = $this->participant();
+        $this->assertTrue(delete_participant($id, 'chsadmin'));
+        $this->assertCount(1, $this->rows('SELECT id FROM dbparticipantaudit'));
+    }
+
     public function testTheAuditIsReadBackNewestFirst(): void
     {
         $id = $this->participant();
