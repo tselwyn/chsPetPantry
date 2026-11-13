@@ -4,6 +4,7 @@
     // data with the logged-in user.
     session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
     $loggedIn = false;
     $accessLevel = 0;
@@ -121,7 +122,7 @@ require_once('header.php');
             <div class="info-box">
                 <p class="sub-text">
                     <?php if ($owner !== null): ?>
-                    Owned by <?php echo hsc($owner->get_first_name() . ' ' . $owner->get_last_name()) ?> (participant ID <?php echo (int) $owner->get_id() ?>).
+                    Owned by <?php echo hsc($owner->get_first_name() . ' ' . $owner->get_last_name()) ?> (participant ID <?php echo hsc($owner->get_display_id()) ?>).
                     <?php endif ?>
                     Update the pet's information below.
                 </p>

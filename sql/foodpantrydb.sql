@@ -4166,6 +4166,28 @@ CREATE TABLE IF NOT EXISTS `dbparticipantalerts` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `dbparticipantaudit`
+--
+-- One row per participant deletion: participant, previous status, account
+-- used and time (NFR-SEC-007). Same as
+-- sql/migrations/2026-11-13_participant_deletion_audit.sql.
+--
+
+CREATE TABLE IF NOT EXISTS `dbparticipantaudit` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `participant_id` int NOT NULL,
+  `action` varchar(30) NOT NULL,
+  `previous_status` varchar(20) DEFAULT NULL,
+  `account_id` varchar(100) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_participant` (`participant_id`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `dbparticipantdistributions`
 --
 -- One row per food distribution given to a participant (UC-06), recorded

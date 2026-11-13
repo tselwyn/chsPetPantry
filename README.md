@@ -1,3 +1,18 @@
+# CHS Pet Pantry: setup after pulling Sprint 5
+
+**Database settings moved out of `database/dbinfo.php`** (SRS NFR-SEC-009). After you pull, do this once on your laptop:
+
+1. Copy `database/dbconfig.example.php` to `database/dbconfig.php`.
+2. Put your local database name, user and password in it (the same values that used to be in `dbinfo.php`).
+
+`dbconfig.php` is in `.gitignore`, so it never goes to GitHub. SiteGround has its own copy, and the deploy stops with an error if that copy is missing.
+
+**Run the new migration** `sql/migrations/2026-11-13_participant_deletion_audit.sql` in phpMyAdmin.
+
+**Tests:** see `tests/README.md`.
+
+---
+
 ### Student Names
 Meredith Alty,
 Aiden Thompson,

@@ -3,6 +3,7 @@
     // data with the logged-in user.
     session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
     $loggedIn = false;
     $accessLevel = 0;
@@ -333,7 +334,9 @@ require_once('header.php');
         }
 
         /* Compact search-first layout; existing result and alert logic is unchanged. */
+        /* Use the screen width so the action buttons fit without scrolling the table */
         .search-card { max-width: 1500px; margin: 0 auto; }
+        main .search-card.w-\[80\%\] { width: calc(100% - 32px); }
         .search-card > .text-center { margin-bottom: 1rem; }
         .search-input-row { display: flex; gap: 0.75rem; align-items: stretch; margin-top: 0.4rem; }
         .search-input-row input[type="text"] { min-width: 0; flex: 1; }
@@ -342,7 +345,21 @@ require_once('header.php');
         .search-results:empty { display: none; }
         .search-results h3 { margin-bottom: 0.75rem; }
         .participant-results td { vertical-align: middle; }
-        .participant-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; min-width: 250px; }
+        /* Tighter cells so the whole table fits on a laptop; on a tablet the
+           action buttons stay pinned to the right while the rest scrolls */
+        .participant-results th, .participant-results td { padding: 0.6rem 0.65rem; }
+        .participant-results table { font-size: 0.95rem; }
+        .participant-results > table > thead > tr > th:last-child,
+        .participant-results > table > tbody > tr:not(.pets-row) > td:last-child {
+            position: sticky; right: 0; z-index: 1;
+        }
+        .participant-results > table > tbody > tr:not(.pets-row) > td:last-child {
+            background: #fff; box-shadow: -6px 0 8px -6px rgb(0 0 0 / 0.25);
+        }
+        .participant-results > table > tbody > tr:not(.pets-row):hover > td:last-child { background: var(--chs-tint); }
+        /* Stacked so the table fits; Record Distribution stays on top */
+        .participant-actions { display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; min-width: 150px; }
+        .participant-actions > * { text-align: center; white-space: nowrap; }
         .participant-results .participant-actions .view-pets-button { margin-top: 0; }
         .participant-results .participant-actions .participant-edit-link { padding: 0.45rem 0.65rem; font-size: 0.85rem; }
         .participant-results .participant-actions .primary-action { background: #17444f; }
@@ -351,7 +368,7 @@ require_once('header.php');
             .search-card { width: 96% !important; padding: 1rem !important; }
             .search-input-row { flex-direction: column; }
             .search-submit { width: 100% !important; }
-            .participant-actions { min-width: 190px; }
+            .participant-actions { min-width: 140px; }
         }
 </style>
 <!-- BANDAID END, REMOVE ONCE SOME GENIUS FIXES -->
@@ -445,7 +462,7 @@ require_once('header.php');
                             $toggle = 'data-pets-toggle aria-expanded="false" aria-controls="pets-' . $participantId . '"';
                             echo '
                                     <tr>
-                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-link">' . (int) $participant->get_id() . '</a></td>
+                                        <td><a href="participantEdit.php?id=' . (int) $participant->get_id() . '" class="participant-link">' . hsc($participant->get_display_id()) . '</a></td>
                                         <td>' . hsc($participant->get_first_name()) . $alert . '</td>
                                         <td>' . hsc($participant->get_last_name()) . '</td>
                                         <td>' . hsc($participant->get_full_address()) . '</td>

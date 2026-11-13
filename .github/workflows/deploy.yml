@@ -19,14 +19,49 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           echo "${{ secrets.SG_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
+      # dbinfo.php no longer holds the password (NFR-SEC-009); it reads
+      # database/dbconfig.php, which lives only on the server. Stop before
+      # copying anything if that file is missing, so the site never goes down.
+      - name: Check the server has database/dbconfig.php
+        run: |
+          if ! ssh -p 18765 -i ~/.ssh/id_ed25519 "${{ secrets.SG_USER }}@${{ secrets.SG_HOST }}" \
+               "test -f '${{ secrets.SG_PATH }}/database/dbconfig.php'"; then
+            echo "::error::database/dbconfig.php is missing on SiteGround. Create it from database/dbconfig.example.php in Site Tools > File Manager, then run this deploy again."
+            exit 1
+          fi
+
+      # Only the running app goes to the web folder. Database dumps, docs,
+      # tests, seeds, archives and logs stay out of public_html so they can't
+      # be downloaded from the site.
       - name: Sync files to SiteGround
         run: |
           rsync -avz \
             --exclude '.git/' \
             --exclude '.github/' \
-            --exclude 'dbinfo.php' \
+            --exclude '.gitignore' \
+            --exclude 'database/dbconfig.php' \
             --exclude '.htaccess' \
+            --exclude '.user.ini' \
             --exclude 'php.ini' \
             --exclude 'php_errorlog' \
+            --exclude '*.log' \
+            --exclude '*.zip' \
+            --exclude '*.sql' \
+            --exclude '*.md' \
+            --exclude '*.txt' \
+            --exclude '*.drawio' \
+            --exclude '*.docx' \
+            --exclude '*.csv' \
+            --exclude '/sql/' \
+            --exclude '/docs/' \
+            --exclude '/tests/' \
+            --exclude '/seeds/' \
+            --exclude '/src/' \
+            --exclude 'phpunit.xml' \
+            --exclude 'composer.json' \
+            --exclude 'composer.lock' \
+            --exclude 'package.json' \
+            --exclude 'package-lock.json' \
+            --exclude 'node_modules/' \
             -e "ssh -p 18765 -i ~/.ssh/id_ed25519" \
             ./ "${{ secrets.SG_USER }}@${{ secrets.SG_HOST }}:${{ secrets.SG_PATH }}"

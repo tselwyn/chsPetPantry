@@ -223,7 +223,7 @@ function find_participants($term, $limit = 100, $includeDeleted = false) {
     $term = trim($term);
     $words = participant_search_words($term);
     $phone = participant_phone_digits($term);
-    $id = preg_match('/^#?(\d{1,9})$/', $term, $idMatch) ? (int) $idMatch[1] : null;
+    $id = parse_participant_id($term); // PP00012, 12 or #12 (FR-008, FR-074)
     if (count($words) == 0 && $phone === null && $id === null) {
         return [];
     }
@@ -427,32 +427,81 @@ function activate_participant($participant_id) {
 
 
 /*
- * Mark a participant as Deleted.
- * The record remains in the database for historical purposes.
+ * Mark a participant as Deleted and record who did it (UC-09, NFR-SEC-007).
+ * The participant row stays in the database for history. The status change
+ * and the audit record are saved together or not at all, so a deletion can
+ * never happen without its audit record. $account_id is the account signed in
+ * ($_SESSION['_id']); with shared logins that is the shared Administrator.
+ * Returns false if the participant doesn't exist, is already Deleted, or the
+ * save fails.
  */
-function delete_participant($participant_id) {
-
-    $query = "UPDATE dbparticipants
-              SET status = 'Deleted'
-              WHERE id = ?";
-
-    $con = connect();
-
-    $stmt = mysqli_prepare($con, $query);
-
-    if (!$stmt) {
-        mysqli_close($con);
+function delete_participant($participant_id, $account_id) {
+    $participant_id = (int) $participant_id;
+    $account_id = trim((string) $account_id);
+    if ($participant_id < 1 || $account_id === '') {
         return false;
     }
 
-    mysqli_stmt_bind_param($stmt, 'i', $participant_id);
+    $con = connect();
+    try {
+        mysqli_begin_transaction($con);
 
-    $success = mysqli_stmt_execute($stmt);
+        // Lock the row so two admins deleting at once log it only once
+        $stmt = mysqli_prepare($con, 'SELECT status FROM dbparticipants WHERE id = ? FOR UPDATE');
+        if (!$stmt) throw new RuntimeException('Could not prepare participant lookup');
+        mysqli_stmt_bind_param($stmt, 'i', $participant_id);
+        if (!mysqli_stmt_execute($stmt)) throw new RuntimeException('Could not look up participant');
+        $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        mysqli_stmt_close($stmt);
+        if (!$row || $row['status'] === 'Deleted') {
+            mysqli_rollback($con);
+            return false;
+        }
 
-    mysqli_stmt_close($stmt);
-    mysqli_close($con);
+        $stmt = mysqli_prepare($con, "UPDATE dbparticipants SET status = 'Deleted' WHERE id = ?");
+        if (!$stmt) throw new RuntimeException('Could not prepare participant delete');
+        mysqli_stmt_bind_param($stmt, 'i', $participant_id);
+        if (!mysqli_stmt_execute($stmt)) throw new RuntimeException('Could not delete participant');
+        mysqli_stmt_close($stmt);
 
-    return $success;
+        // Time from PHP (America/New_York) so it reads back the same whatever
+        // time zone the MySQL server uses
+        $now = date('Y-m-d H:i:s');
+        $stmt = mysqli_prepare($con, "INSERT INTO dbparticipantaudit (participant_id, action, previous_status, account_id, created_at) VALUES (?, 'Deleted', ?, ?, ?)");
+        if (!$stmt) throw new RuntimeException('Could not prepare audit record');
+        mysqli_stmt_bind_param($stmt, 'isss', $participant_id, $row['status'], $account_id, $now);
+        if (!mysqli_stmt_execute($stmt)) throw new RuntimeException('Could not save audit record');
+        mysqli_stmt_close($stmt);
+
+        mysqli_commit($con);
+        return true;
+    } catch (Throwable $e) {
+        mysqli_rollback($con);
+        error_log('Participant delete failed: ' . $e->getMessage());
+        return false;
+    } finally {
+        mysqli_close($con);
+    }
+}
+
+/*
+ * Deletion audit records for a participant, newest first (NFR-SEC-007).
+ */
+function get_participant_deletion_audit($participant_id) {
+    $con = connect();
+    try {
+        $stmt = mysqli_prepare($con, 'SELECT id, participant_id, action, previous_status, account_id, created_at '
+            . 'FROM dbparticipantaudit WHERE participant_id = ? ORDER BY created_at DESC, id DESC');
+        if (!$stmt) return array();
+        $participant_id = (int) $participant_id;
+        mysqli_stmt_bind_param($stmt, 'i', $participant_id);
+        mysqli_stmt_execute($stmt);
+        $rows = mysqli_fetch_all(mysqli_stmt_get_result($stmt), MYSQLI_ASSOC);
+        mysqli_stmt_close($stmt);
+        return $rows;
+    } finally {
+        mysqli_close($con);
+    }
 }
 
 /*
@@ -528,7 +577,7 @@ function get_participant_locations() {
 
 /*
  * Get participants for the Participant Status report.
- * Shows Active, Inactive, and Expired participants.
+ * Shows Active, Inactive, Expired, and DND participants (SRS FR-049).
  */
 function get_participant_status_report($location = '', $startDate = '', $endDate = '') {
 
@@ -536,7 +585,7 @@ function get_participant_status_report($location = '', $startDate = '', $endDate
 
     $query = "SELECT *
               FROM dbparticipants
-              WHERE status IN ('Active', 'Inactive', 'Expired')";
+              WHERE status IN ('Active', 'Inactive', 'Expired', 'DND')";
 
     // Filter by location
     if ($location != '') {

@@ -4,6 +4,7 @@
     // data with the logged-in user.
     session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
     $loggedIn = false;
     $accessLevel = 0;
@@ -449,7 +450,7 @@ require_once('header.php');
 <?php else: ?>
     <div class="signup-form participant-summary" aria-label="Participant summary and quick actions">
         <h2><?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name()) ?></h2>
-        <p class="participant-meta"><strong>Participant ID:</strong> <?php echo (int) $participant->get_id() ?>
+        <p class="participant-meta"><strong>Participant ID:</strong> <?php echo hsc($participant->get_display_id()) ?>
             &nbsp; <strong>Status:</strong> <?php echo hsc($participant->get_status()) ?>
             &nbsp; <strong>Location:</strong> <?php echo hsc($participant->get_location()) ?></p>
         <?php if ($participant->get_alert() || count($activeAlerts) > 0): ?>
@@ -474,10 +475,6 @@ require_once('header.php');
         <div class="happy-toast">The food distribution has been recorded.</div>
         <?php endif ?>
 
-        <?php if (isset($_GET['snv']) && count($errors) == 0): ?>
-        <div class="happy-toast">Spay/neuter and vaccination information updated.</div>
-        <?php endif ?>
-
         <?php if (count($errors) > 0): ?>
         <div class="error-toast">
             <p>The participant was not saved:</p>
@@ -497,7 +494,7 @@ require_once('header.php');
 
                 <div class="participant-field">
             <label for="participant_id">Participant ID</label>
-            <input type="text" id="participant_id" value="<?php echo (int) $participant->get_id() ?>" readonly disabled>
+            <input type="text" id="participant_id" value="<?php echo hsc($participant->get_display_id()) ?>" readonly disabled>
 
                 </div>
                 <div class="participant-field">
