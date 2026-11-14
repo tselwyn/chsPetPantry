@@ -2,6 +2,7 @@
 ob_start();
 
 session_start();
+require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 include_once "database/dbDiscussionReplies.php";
 include_once "database/dbDiscussions.php";
 

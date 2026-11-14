@@ -4,6 +4,7 @@
     // deleteParticipantPet.php does, so distribution history still adds up.
     session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
     $accessLevel = isset($_SESSION['_id']) ? $_SESSION['access_level'] : 0;
     if ($accessLevel < 1) {

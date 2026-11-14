@@ -2,6 +2,7 @@
 // Start the session so we can access the logged-in user's information
 session_cache_expire(30);
 session_start();
+require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
 $loggedIn = false;
 $accessLevel = 0;
@@ -200,7 +201,7 @@ $existingPets = $selectedParticipant !== null ? get_pets_by_participant($selecte
             <input type="text" id="participant_name" value="<?php echo hsc($selectedParticipant->get_first_name() . ' ' . $selectedParticipant->get_last_name()) ?>" readonly disabled>
 
             <label for="participant_number">Participant ID</label>
-            <input type="text" id="participant_number" value="<?php echo (int) $selectedParticipant->get_id() ?>" readonly disabled>
+            <input type="text" id="participant_number" value="<?php echo hsc($selectedParticipant->get_display_id()) ?>" readonly disabled>
 
             <input type="hidden" name="participant_id" value="<?php echo (int) $selectedParticipant->get_id() ?>">
 
@@ -235,7 +236,7 @@ $existingPets = $selectedParticipant !== null ? get_pets_by_participant($selecte
                 <option value="">Select Participant</option>
                 <?php foreach ($participants as $participant): ?>
                 <option value="<?php echo (int) $participant->get_id() ?>">
-                    <?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name() . ' (ID ' . $participant->get_id() . ')') ?>
+                    <?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name() . ' (' . $participant->get_display_id() . ')') ?>
                 </option>
                 <?php endforeach ?>
             </select>

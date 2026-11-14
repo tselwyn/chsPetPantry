@@ -1,0 +1,11 @@
+# Machine-specific database settings: never commit (SRS NFR-SEC-009)
+database/dbconfig.php
+
+# Test tooling (installed with: composer --working-dir=tests install)
+tests/vendor/
+.phpunit.cache/
+.phpunit.result.cache
+
+# Logs written by the app
+*.log
+php_errorlog

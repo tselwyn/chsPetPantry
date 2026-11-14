@@ -7,6 +7,7 @@
 
   session_cache_expire(30);
   session_start();
+  require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
   ini_set("display_errors",1);
   error_reporting(E_ALL);
   $loggedIn = false;

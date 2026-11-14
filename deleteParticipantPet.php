@@ -2,6 +2,7 @@
 
 session_cache_expire(30);
 session_start();
+require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
 $loggedIn = false;
 $accessLevel = 0;
@@ -142,11 +143,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_participant'])
 
     if ($participantID !== '') {
 
-        delete_participant($participantID);
+        // Saves the audit record with the deletion (NFR-SEC-007)
+        $deleted = delete_participant($participantID, $userID);
 
         header(
             'Location: deleteParticipantPet.php?participant_id=' .
-            urlencode($participantID)
+            urlencode($participantID) . ($deleted ? '' : '&deleteFailed')
         );
 
         die();
@@ -423,6 +425,9 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
         <?php if (isset($_GET['notAllowed'])): ?>
         <p class="not-allowed">Only an administrator can deactivate or delete a participant.</p>
         <?php endif; ?>
+        <?php if (isset($_GET['deleteFailed'])): ?>
+        <p class="not-allowed" role="alert">The participant could not be deleted. Please try again.</p>
+        <?php endif; ?>
 
         <form class="search-form"
               method="get"
@@ -485,7 +490,7 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
                             </strong>
                         </td>
                         <td><?php echo htmlspecialchars(last_distribution_label($lastDistributionDates, (int) $participant->get_id())); ?></td>
-                        <td><?php echo htmlspecialchars($participant->get_id()); ?></td>
+                        <td><?php echo htmlspecialchars($participant->get_display_id()); ?></td>
                         <td><?php echo htmlspecialchars($participant->get_street_address()); ?></td>
                         <td><?php echo htmlspecialchars($participant->get_status()); ?></td>
                         <td>
@@ -525,7 +530,7 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
 
             <p>
                 Participant ID:
-                <?php echo htmlspecialchars($selectedParticipant->get_id()); ?>
+                <?php echo htmlspecialchars($selectedParticipant->get_display_id()); ?>
             </p>
 
             <p>
@@ -544,6 +549,13 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
             <?php if ($selectedParticipant->get_status() === 'Deleted'): ?>
 
     <p><strong>This participant has been deleted.</strong></p>
+    <?php if ($canManageParticipants): ?>
+    <?php foreach (get_participant_deletion_audit((int) $selectedParticipant->get_id()) as $auditRow): ?>
+    <p>Deleted <?php echo htmlspecialchars(date('M j, Y g:i A', strtotime($auditRow['created_at']))); ?>
+        by the <?php echo htmlspecialchars($auditRow['account_id']); ?> account
+        (status before: <?php echo htmlspecialchars((string) $auditRow['previous_status']); ?>).</p>
+    <?php endforeach; ?>
+    <?php endif; ?>
 
 <?php elseif (!$canManageParticipants): ?>
 

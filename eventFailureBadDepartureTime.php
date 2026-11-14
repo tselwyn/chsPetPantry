@@ -1,6 +1,7 @@
 <?php
     session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
     header("refresh:2; url=index.php"); 
 ?>
     <!DOCTYPE html>

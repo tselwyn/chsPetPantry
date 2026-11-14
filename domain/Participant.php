@@ -121,4 +121,33 @@ class Participant {
         return implode(', ', array_filter([$this->street_address, $cityLine]));
     }
 
+    // Participant ID as CHS sees it, e.g. PP00012 (SRS FR-074)
+    function get_display_id() {
+        return format_participant_id($this->id);
+    }
+
+}
+
+/*
+ * Participant IDs are stored as plain numbers and shown as PP followed by five
+ * digits, e.g. 12 is shown as PP00012 (SRS FR-074). IDs past 99999 keep all
+ * their digits (PP100000).
+ */
+function format_participant_id($id) {
+    return 'PP' . str_pad((string) (int) $id, 5, '0', STR_PAD_LEFT);
+}
+
+/*
+ * The numeric ID in a typed Participant ID, or null if it isn't one.
+ * Accepts PP00012, pp12, PP-00012, #12 and 12.
+ */
+function parse_participant_id($text) {
+    if (!is_string($text) && !is_int($text)) {
+        return null;
+    }
+    if (!preg_match('/^\s*(?:PP\s*-?\s*|#)?0*(\d{1,9})\s*$/i', (string) $text, $match)) {
+        return null;
+    }
+    $id = (int) $match[1];
+    return $id > 0 ? $id : null;
 }

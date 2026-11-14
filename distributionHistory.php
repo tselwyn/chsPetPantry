@@ -3,6 +3,7 @@
     // data with the logged-in user.
     session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
     $loggedIn = false;
     $accessLevel = 0;
@@ -396,7 +397,7 @@ require_once('header.php');
             <div class="participant-card-details">
                 <div class="participant-detail">
                     <span class="participant-detail-label">Participant ID</span>
-                    <span class="participant-detail-value"><?php echo (int) $participant->get_id() ?></span>
+                    <span class="participant-detail-value"><?php echo hsc($participant->get_display_id()) ?></span>
                 </div>
                 <div class="participant-detail">
                     <span class="participant-detail-label">Status</span>
@@ -424,7 +425,7 @@ require_once('header.php');
         <?php if ($selected !== null): ?>
         <section class="history-section" id="distribution-detail">
             <h3>Distribution on <?php echo hsc(history_date($selected->get_distribution_date())) ?></h3>
-            <p class="mb-2"><strong>Participant:</strong> <?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name()) ?> (ID <?php echo (int) $participant->get_id() ?>)</p>
+            <p class="mb-2"><strong>Participant:</strong> <?php echo hsc($participant->get_first_name() . ' ' . $participant->get_last_name()) ?> (ID <?php echo hsc($participant->get_display_id()) ?>)</p>
             <p class="mb-2">Full details of this distribution.</p>
             <div class="blue-div"></div>
 

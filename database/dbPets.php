@@ -169,54 +169,6 @@ function update_pet($pet) {
 }
 
 /*
- * Save a pet's spay/neuter and rabies vaccination status (UC-08).
- * When $counseling_status is 'Yes', counseling is recorded as given today
- * by $counseled_by. Otherwise the counseling fields are left as they were,
- * so a pet that was already counseled stays Yes.
- * Returns true if the update ran.
- */
-function update_pet_snv($pet_id, $spay_neuter_status, $rabies_status,
-        $counseling_status, $counseled_by) {
-
-    if ($counseling_status === 'Yes') {
-        $query = "UPDATE dbpets
-                  SET spay_neuter_status = ?, rabies_status = ?,
-                      counseling_status = 'Yes', counseling_date = ?,
-                      counseled_by = ?
-                  WHERE id = ?";
-        $types = 'ssssi';
-        $args = [$spay_neuter_status, $rabies_status, date('Y-m-d'),
-            $counseled_by, $pet_id];
-    } else {
-        $query = 'UPDATE dbpets
-                  SET spay_neuter_status = ?, rabies_status = ?
-                  WHERE id = ?';
-        $types = 'ssi';
-        $args = [$spay_neuter_status, $rabies_status, $pet_id];
-    }
-
-    $con = connect();
-    $success = false;
-
-    try {
-        $stmt = mysqli_prepare($con, $query);
-
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, $types, ...$args);
-            $success = mysqli_stmt_execute($stmt);
-            mysqli_stmt_close($stmt);
-        }
-
-    } catch (mysqli_sql_exception $e) {
-        $success = false;
-    }
-
-    mysqli_close($con);
-
-    return $success;
-}
-
-/*
  * Get all pets belonging to one participant.
  */
 function get_pets_by_participant($participant_id, $includeDeleted = false) {
@@ -486,6 +438,49 @@ function get_pets_needing_spay_neuter_report($location = '', $start_date = '', $
  */
 function get_pets_needing_rabies_report($location = '', $start_date = '', $end_date = '') {
     return get_pet_report($location, $start_date, $end_date, 'rabies');
+}
+
+
+/* Save pet edits and optional counseling together in one transaction.
+ * Existing counseling is never cleared by an ordinary edit.
+ */
+function update_pet_with_counseling($pet, $counseling_provided, $user_id) {
+    $con = connect();
+    try {
+        mysqli_begin_transaction($con);
+        $query = 'UPDATE dbpets SET name = ?, species = ?, breed = ?, sex = ?, '
+            . 'age_years = ?, weight_lbs = ?, spay_neuter_status = ?, rabies_status = ?, '
+            . 'food_type = ?, food_restriction = ?, special_medical_needs = ?, notes = ?, status = ? '
+            . 'WHERE id = ?';
+        $stmt = mysqli_prepare($con, $query);
+        if (!$stmt) throw new RuntimeException('Unable to prepare pet update');
+        $args = [
+            $pet->get_name(), $pet->get_species(), $pet->get_breed(), $pet->get_sex(),
+            $pet->get_age_years(), $pet->get_weight_lbs(), $pet->get_spay_neuter_status(),
+            $pet->get_rabies_status(), $pet->get_food_type(), $pet->get_food_restriction(),
+            $pet->get_special_medical_needs(), $pet->get_notes(), $pet->get_status(), $pet->get_id()
+        ];
+        mysqli_stmt_bind_param($stmt, 'ssssddsssssssi', ...$args);
+        if (!mysqli_stmt_execute($stmt)) throw new RuntimeException('Pet update failed');
+        mysqli_stmt_close($stmt);
+        if ($counseling_provided) {
+            $stmt = mysqli_prepare($con, "UPDATE dbpets SET counseling_status = 'Yes', counseling_date = ?, counseled_by = ? WHERE id = ?");
+            if (!$stmt) throw new RuntimeException('Unable to prepare counseling update');
+            $date = date('Y-m-d');
+            $pet_id = $pet->get_id();
+            mysqli_stmt_bind_param($stmt, 'ssi', $date, $user_id, $pet_id);
+            if (!mysqli_stmt_execute($stmt)) throw new RuntimeException('Counseling update failed');
+            mysqli_stmt_close($stmt);
+        }
+        mysqli_commit($con);
+        return true;
+    } catch (Throwable $e) {
+        mysqli_rollback($con);
+        error_log('Pet and counseling update failed: ' . $e->getMessage());
+        return false;
+    } finally {
+        mysqli_close($con);
+    }
 }
 
 ?>

@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 include_once('database/dbinfo.php');
 include_once('email.php'); // must contain sendEmails()
 

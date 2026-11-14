@@ -4,6 +4,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 session_cache_expire(30);
 session_start();
+require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
 if (!isset($_SESSION['access_level']) || $_SESSION['access_level'] < 1) {
     header('Location: login.php');

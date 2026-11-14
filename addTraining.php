@@ -1,5 +1,6 @@
 <?php session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
     // Make session information accessible, allowing us to associate
     // data with the logged-in user.
 

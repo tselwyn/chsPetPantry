@@ -1,0 +1,58 @@
+name: Tests
+
+# Runs the automated tests (SRS Section 7) on every pull request into dev or
+# main, and on pushes to dev. A red X on the PR means a test failed: open the
+# run's log to see which one.
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+
+    services:
+      # MariaDB, the same database XAMPP uses on our laptops
+      mysql:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      PFPMS_DB_HOST: 127.0.0.1
+      PFPMS_DB_NAME: foodpantrydb_test
+      PFPMS_DB_USER: root
+      PFPMS_DB_PASS: ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli
+          coverage: none
+
+      - name: Install PHPUnit
+        run: composer --working-dir=tests install --no-interaction --no-progress
+
+      # dbEditLog.php and InventoryEvent.php came broken with the starter
+      # inventory app and nothing includes them, so they're skipped.
+      - name: Check PHP syntax
+        run: |
+          find . -name '*.php' -not -path './vendor/*' -not -path './tests/vendor/*' -not -path './email/*' \
+            -not -path './database/dbEditLog.php' -not -path './database/InventoryEvent.php' -print0 \
+            | xargs -0 -n1 -P4 php -l > /dev/null
+
+      - name: Run tests
+        run: tests/vendor/bin/phpunit -c tests/phpunit.xml

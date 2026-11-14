@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    CHS Pet Pantry automated tests (SRS Section 7). See tests/README.md.
+
+    Run from the repository root:
+        composer (working dir tests) install, once
+        tests/vendor/bin/phpunit -c tests/phpunit.xml
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="bootstrap.php"
+         colors="true"
+         cacheDirectory="../.phpunit.cache"
+         failOnWarning="true"
+         failOnRisky="true"
+         beStrictAboutOutputDuringTests="true">
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>Integration</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <!-- Integration tests rebuild this database from sql/foodpantrydb.sql
+             on every run. The name must end in _test so a real database is
+             never touched. Override any of these with environment variables. -->
+        <env name="PFPMS_DB_HOST" value="127.0.0.1"/>
+        <env name="PFPMS_DB_NAME" value="foodpantrydb_test"/>
+        <env name="PFPMS_DB_USER" value="root"/>
+        <env name="PFPMS_DB_PASS" value=""/>
+    </php>
+</phpunit>

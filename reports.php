@@ -4,6 +4,7 @@
     // data with the logged-in user.
     session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
     $loggedIn = false;
     $accessLevel = 0;
@@ -30,10 +31,10 @@
     require_once('database/dbPets.php');
     require_once('database/dbFoodReceived.php');
 
-    // Owner of a pet report row, e.g. "Maria Gonzalez (12)"
+    // Owner of a pet report row, e.g. "Maria Gonzalez (PP00012)"
     function report_pet_owner($row) {
         return trim($row['participant_first_name'] . ' ' . $row['participant_last_name'])
-            . ' (' . (int) $row['participant_id'] . ')';
+            . ' (' . format_participant_id($row['participant_id']) . ')';
     }
 
     function report_pet_age($row) {
@@ -129,18 +130,18 @@
             'columns' => array('ID', 'Name', 'Phone', 'Location', 'Registration Date', 'Status'),
             'fetch' => 'get_participant_report',
             'row' => function ($p) {
-                return array($p['id'], report_name($p), report_phone($p['phone']),
+                return array(format_participant_id($p['id']), report_name($p), report_phone($p['phone']),
                     $p['location'], $p['registration_date'], $p['status']);
             }
         ),
         'participant_status' => array(
-            'title' => 'Active / Inactive / Expired Participants',
+            'title' => 'Participants by Status (Active / Inactive / Expired / DND)',
             'date_label' => 'Registration date',
             'filters' => array('dates', 'location'),
             'columns' => array('ID', 'Name', 'Phone', 'Location', 'Registration Date', 'Status'),
             'fetch' => 'get_participant_status_report',
             'row' => function ($p) {
-                return array($p['id'], report_name($p), report_phone($p['phone']),
+                return array(format_participant_id($p['id']), report_name($p), report_phone($p['phone']),
                     $p['location'], $p['registration_date'], $p['status']);
             }
         ),
@@ -151,7 +152,7 @@
             'columns' => array('ID', 'Name', 'Phone', 'Location', 'Status', 'Notes'),
             'fetch' => 'get_flagged_participants_report',
             'row' => function ($p) {
-                return array($p['id'], report_name($p), report_phone($p['phone']),
+                return array(format_participant_id($p['id']), report_name($p), report_phone($p['phone']),
                     $p['location'], $p['status'], (string) $p['notes']);
             }
         ),
@@ -418,6 +419,7 @@
     $errors = array();
     $report = null;
     $reportParticipant = null;
+    $reportParticipantId = 0;
     $rows = array();
 
     if ($submitted) {
@@ -451,12 +453,16 @@
         if (isset($reportTypes[$filters['report_type']]) && !empty($reportTypes[$filters['report_type']]['needs_participant'])) {
             if ($filters['participant_id'] === '') {
                 $errors[] = 'Enter the participant ID for the participant history report.';
-            } else if (!ctype_digit($filters['participant_id']) || (int) $filters['participant_id'] < 1) {
-                $errors[] = 'The participant ID must be a whole number.';
+            } else if (parse_participant_id($filters['participant_id']) === null) {
+                $errors[] = 'Enter the participant ID as shown on their record, for example PP00012.';
             } else {
-                $reportParticipant = retrieve_participant((int) $filters['participant_id']);
+                $reportParticipantId = parse_participant_id($filters['participant_id']);
+                $reportParticipant = retrieve_participant($reportParticipantId);
                 if (!$reportParticipant) {
-                    $errors[] = 'No participant has ID ' . (int) $filters['participant_id'] . '.';
+                    $errors[] = 'No participant has ID ' . format_participant_id($reportParticipantId) . '.';
+                } else {
+                    // Shown and exported in the PP00012 form
+                    $filters['participant_id'] = format_participant_id($reportParticipantId);
                 }
             }
         } else {
@@ -476,7 +482,7 @@
                 $filters['location'] = '';
             }
             $fetch = $report['fetch'];
-            foreach ($fetch($filters['location'], $filters['start_date'], $filters['end_date'], (int) $filters['participant_id']) as $result) {
+            foreach ($fetch($filters['location'], $filters['start_date'], $filters['end_date'], $reportParticipantId) as $result) {
                 $rows[] = $report['row']($result);
             }
         }
@@ -488,7 +494,7 @@ $filterSummary = array();
 
 if ($report !== null && $reportParticipant) {
     $filterSummary[] = 'Participant: ' . trim($reportParticipant->get_first_name() . ' '
-        . $reportParticipant->get_last_name()) . ' (ID ' . (int) $reportParticipant->get_id() . ')';
+        . $reportParticipant->get_last_name()) . ' (' . $reportParticipant->get_display_id() . ')';
 }
 
 if ($report !== null && in_array('location', $report['filters'], true)) {
@@ -655,17 +661,54 @@ require_once('header.php');
         .print-only { display: none; }
         .report-table tr.total-row td { font-weight: bold; border-top: 2px solid #2E5E6E; }
 
+
+        /* Compact CHS Reports redesign; scoped to this page. */
+        .reports-page .main-content-box { max-width: 80rem; padding-top: 1.25rem; }
+        .reports-page .reports-options { max-width: 48rem; margin: 0 auto 1.5rem; width: 100%; }
+        .reports-page .reports-options .section-box { padding: 1rem 1.15rem; margin-bottom: .75rem; }
+        .reports-page .reports-intro { margin: 0 0 .75rem; font-size: .94rem; }
+        .reports-page .reports-help { font-size: .87rem; line-height: 1.45; margin: .35rem 0 .75rem; color: #425969; }
+        .reports-page .reports-filter-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .8rem 1rem; align-items: end; }
+        .reports-page .reports-field { min-width: 0; }
+        .reports-page .reports-field-full { grid-column: 1 / -1; }
+        .reports-page .reports-field label { display: block; margin: 0 0 .3rem; font-weight: 600; }
+        .reports-page .reports-field input, .reports-page .reports-field select { width: 100%; box-sizing: border-box; margin: 0; }
+        .reports-page .reports-date-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .8rem 1rem; }
+        .reports-page .reports-date-grid .reports-field { min-width: 0; }
+        .reports-page .reports-filter-grid [hidden] { display: none !important; }
+        .reports-page .reports-button-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .9rem; }
+        .reports-page .reports-button { display: inline-flex; align-items: center; justify-content: center; width: auto !important; min-height: 2.35rem; padding: .48rem .95rem !important; margin: 0 !important; border-radius: 4px; font-size: .9rem; font-weight: 600; line-height: 1.2; text-decoration: none; cursor: pointer; background: #286e80; color: #fff; border: 1px solid #286e80; box-shadow: none; }
+        .reports-page .reports-button:hover { background: #205969; color: #fff; }
+        .reports-page .reports-button-secondary { background: #fff; color: #205969; border-color: #9bc8d3; }
+        .reports-page .reports-button-secondary:hover { background: #eef7f9; color: #205969; }
+        .reports-page .reports-dashboard { display: flex; justify-content: center; margin: 1rem auto; }
+        .reports-page .reports-results { max-width: 100%; }
+        .reports-page .reports-results .section-box { min-width: 0; }
+        .reports-page .reports-table-wrap { overflow-x: auto; max-width: 100%; }
+        .reports-page .report-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; }
+        .reports-page .report-table th { background: #2e5e6e; color: #fff; padding: .6rem .7rem; white-space: nowrap; }
+        .reports-page .report-table td { padding: .55rem .7rem; border-bottom: 1px solid #dce7eb; vertical-align: top; }
+        .reports-page .report-table tbody tr:nth-child(even) { background: #f3f8fa; }
+        .reports-page .report-table tbody tr:hover { background: #eaf4f7; }
+        .reports-page .report-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: .5rem; margin-top: .9rem; }
+        .reports-page .report-table tr.total-row td { font-weight: 700; border-top: 2px solid #2e5e6e; }
+        .reports-page .hero-header h1 { color: #fff !important; }
+        @media (max-width: 650px) {
+            .reports-page .reports-filter-grid, .reports-page .reports-date-grid { grid-template-columns: 1fr; }
+            .reports-page .reports-options .section-box { padding: .85rem; }
+        }
+
         /* Printable report (FR-062): only the report itself is printed */
         @media print {
             .navbar, .navbar-background, .accessibility-btn, .accessibility-modal-backdrop,
-            .hero-header, .no-print, .report-actions { display: none !important; }
+            .hero-header, .no-print, .report-actions, .reports-dashboard { display: none !important; }
             .print-only { display: block !important; }
             body, .main-content-box, .signup-form, .section-box { background: #fff !important; box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: none !important; }
             .report-table th { background-color: #2E5E6E !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
-<body class="relative">
+<body class="relative reports-page">
 
 <header class="hero-header">
     <div class="center-header">
@@ -675,13 +718,8 @@ require_once('header.php');
 
 <main>
   <div class="main-content-box">
-    <form class="signup-form no-print" method="get">
-        <div class="text-center spacing-bottom">
-            <div class="info-box">
-                <p class="sub-text">Choose a report and any filters, then generate it to view, print, or export.</p>
-                <p>An asterisk ( <em>*</em> ) indicates a required field.</p>
-            </div>
-        </div>
+    <form class="signup-form no-print reports-options" method="get">
+        <p class="reports-intro">Choose a report, apply any optional filters, and generate it to view, print, or export. <em>*</em> indicates a required field.</p>
 
         <?php if (count($errors) > 0): ?>
         <div class="error-toast">
@@ -696,46 +734,50 @@ require_once('header.php');
 
         <fieldset class="section-box mb-4">
             <h3 class="mt-2">Report Options</h3>
-            <p class="mb-2">Dates filter on each report's date field (registration date for participant reports). Pet reports filter by the owner's location only, and the cost per pound report by date only. Leave a filter blank to include everything.</p>
+            <p class="reports-help">Leave filters blank to include all records. Available filters change based on the report selected.</p>
             <div class="blue-div"></div>
-
-            <label for="report_type"><em>* </em>Report Type</label>
-            <select id="report_type" name="report_type" required>
-                <option value="">Select a report</option>
-                <?php foreach ($reportTypes as $key => $type): ?>
-                <option value="<?php echo hsc($key) ?>"<?php if ($key === $filters['report_type']) echo ' selected' ?>><?php echo hsc($type['title']) ?></option>
-                <?php endforeach ?>
-            </select>
-            
-            <div id="participant-filter">
-            <label for="participant_id"><em>* </em>Participant ID</label>
-            <input type="text" id="participant_id" name="participant_id" inputmode="numeric" pattern="[0-9]*" placeholder="Ex. 12 (shown on the participant's record)" value="<?php echo hsc($filters['participant_id']) ?>">
-            </div>
-
-            <div id="date-filters">
-            <label for="start_date">Start Date</label>
-            <input type="date" id="start_date" name="start_date" value="<?php echo hsc($filters['start_date']) ?>">
-
-            <label for="end_date">End Date</label>
-            <input type="date" id="end_date" name="end_date" value="<?php echo hsc($filters['end_date']) ?>">
-            </div>
-
-            <div id="location-filter">
-            <label for="location">Location</label>
-            <select id="location" name="location">
-                <option value="">All locations</option>
-                <?php foreach ($locations as $location): ?>
-                <option value="<?php echo hsc($location) ?>"<?php if ($location === $filters['location']) echo ' selected' ?>><?php echo hsc($location) ?></option>
-                <?php endforeach ?>
-            </select>
+            <div class="reports-filter-grid">
+                <div class="reports-field reports-field-full">
+                    <label for="report_type"><em>* </em>Report Type</label>
+                    <select id="report_type" name="report_type" required>
+                        <option value="">Select a report</option>
+                        <?php foreach ($reportTypes as $key => $type): ?>
+                        <option value="<?php echo hsc($key) ?>"<?php if ($key === $filters['report_type']) echo ' selected' ?>><?php echo hsc($type['title']) ?></option>
+                        <?php endforeach ?>
+                    </select>
+                </div>
+                <div id="participant-filter" class="reports-field reports-field-full">
+                    <label for="participant_id"><em>* </em>Participant ID</label>
+                    <input type="text" id="participant_id" name="participant_id" autocomplete="off" placeholder="Ex. PP00012 (shown on the participant's record)" value="<?php echo hsc($filters['participant_id']) ?>">
+                </div>
+                <div id="date-filters" class="reports-field reports-field-full reports-date-grid">
+                    <div class="reports-field">
+                        <label for="start_date">Start Date</label>
+                        <input type="date" id="start_date" name="start_date" value="<?php echo hsc($filters['start_date']) ?>">
+                    </div>
+                    <div class="reports-field">
+                        <label for="end_date">End Date</label>
+                        <input type="date" id="end_date" name="end_date" value="<?php echo hsc($filters['end_date']) ?>">
+                    </div>
+                </div>
+                <div id="location-filter" class="reports-field reports-field-full">
+                    <label for="location">Location</label>
+                    <select id="location" name="location">
+                        <option value="">All locations</option>
+                        <?php foreach ($locations as $location): ?>
+                        <option value="<?php echo hsc($location) ?>"<?php if ($location === $filters['location']) echo ' selected' ?>><?php echo hsc($location) ?></option>
+                        <?php endforeach ?>
+                    </select>
+                </div>
             </div>
         </fieldset>
-
-        <input type="submit" value="Generate Report">
+        <div class="reports-button-row">
+            <button type="submit" class="reports-button">Generate Report</button>
+        </div>
     </form>
 
     <?php if ($report !== null): ?>
-    <div class="signup-form" id="report">
+    <div class="signup-form reports-results" id="report">
         <fieldset class="section-box mb-4">
             <p class="print-only">Culpeper Humane Society Pet Pantry</p>
             <h3><?php echo hsc($report['title']) ?></h3>
@@ -752,7 +794,7 @@ require_once('header.php');
             <?php // No matching data is an empty result, not an error (UC-13 alternate flow) ?>
             <p><strong><?php echo hsc($emptyMessage) ?></strong></p>
             <?php else: ?>
-            <div style="overflow-x: auto;">
+            <div class="reports-table-wrap">
                 <table class="report-table">
                     <thead>
                         <tr>
@@ -775,17 +817,17 @@ require_once('header.php');
             <?php endif ?>
 
             <div class="report-actions">
-                <button type="button" class="button" onclick="window.print()">Print</button>
-                <a href="<?php echo hsc(report_export_url($filters, 'csv')) ?>" class="button">Export CSV</a>
-                <a href="<?php echo hsc(report_export_url($filters, 'xlsx')) ?>" class="button">Export Excel</a>
-                <a href="<?php echo hsc(report_export_url($filters, 'pdf')) ?>" class="button">Export PDF</a>
+                <button type="button" class="reports-button reports-button-secondary" onclick="window.print()">Print</button>
+                <a href="<?php echo hsc(report_export_url($filters, 'csv')) ?>" class="reports-button reports-button-secondary">Export CSV</a>
+                <a href="<?php echo hsc(report_export_url($filters, 'xlsx')) ?>" class="reports-button reports-button-secondary">Export Excel</a>
+                <a href="<?php echo hsc(report_export_url($filters, 'pdf')) ?>" class="reports-button reports-button-secondary">Export PDF</a>
             </div>
         </fieldset>
     </div>
     <?php endif ?>
 
-    <div class="text-center no-print">
-        <a href="index.php" class="button">Return to Dashboard</a>
+    <div class="reports-dashboard no-print">
+        <a href="index.php" class="reports-button reports-button-secondary">Return to Dashboard</a>
     </div>
   </div>
 </main>

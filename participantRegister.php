@@ -3,6 +3,7 @@
     // data with the logged-in user.
     session_cache_expire(30);
     session_start();
+    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
 
     $loggedIn = false;
     $accessLevel = 0;
@@ -107,10 +108,7 @@
             $errors[] = 'Choose a participant status from the list.';
         }
 
-        // Only an admin can flag a participant; a volunteer's choice is ignored
-        if ($accessLevel < 2) {
-            $args['participant_alert'] = 'No';
-        }
+        // Both volunteers and administrators may create alerts.
         if ($args['participant_alert'] !== '' && !valueConstrainedTo($args['participant_alert'], array('Flagged', 'No'))) {
             $errors[] = 'Choose Flagged or No for Alert / Flag.';
         }
