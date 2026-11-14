@@ -24,11 +24,16 @@
             <?php pet_options(array('' => 'Select Species', 'Dog' => 'Dog', 'Cat' => 'Cat', 'Other' => 'Other'), $args['species']) ?>
         </select>
 
-        <label for="breed">Breed</label>
+        <label for="breed">
+            <em>* </em>Breed
+        </label>
         <input
             type="text"
             id="breed"
             name="breed"
+            required
+            pattern=".*\S.*"
+            title="Please enter the pet's breed."
             placeholder="Enter breed"
             value="<?php echo hsc($args['breed']) ?>"
         >
@@ -49,12 +54,15 @@
             value="<?php echo hsc($args['age_years']) ?>"
         >
 
-        <label for="weight_lbs">Weight(lbs)</label>
+        <label for="weight_lbs">
+            <em>* </em>Weight (lbs)
+        </label>
         <input
             type="number"
             id="weight_lbs"
             name="weight_lbs"
-            min="0"
+            required
+            min="0.1"
             step="0.1"
             placeholder="Enter weight"
             value="<?php echo hsc($args['weight_lbs']) ?>"

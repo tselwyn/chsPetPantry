@@ -39,8 +39,8 @@
     $id = (isset($_GET['id']) && ctype_digit($_GET['id'])) ? (int) $_GET['id'] : 0;
     $participant = $id > 0 ? retrieve_participant($id) : null;
 
-    // All signed-in users can add alerts; only admins can resolve them.
-    $canResolveAlert = $accessLevel >= 2;
+    // Only admins can add or resolve alerts (FR-022, FR-023); volunteers see them read-only.
+    $canManageAlerts = $accessLevel >= 2;
     if (empty($_SESSION['participant_alert_csrf'])) {
         $_SESSION['participant_alert_csrf'] = bin2hex(random_bytes(32));
     }
@@ -53,6 +53,9 @@
             && hash_equals($_SESSION['participant_alert_csrf'], $_POST['alert_csrf']);
         if (!$validToken) {
             $alertErrors[] = 'Your session expired. Reload the page and try again.';
+        } elseif (!$canManageAlerts) {
+            http_response_code(403);
+            $alertErrors[] = 'Only administrators can add or resolve alerts.';
         } elseif ($_POST['alert_action'] === 'add') {
             $type = isset($_POST['alert_type']) && is_string($_POST['alert_type']) ? $_POST['alert_type'] : '';
             $reason = isset($_POST['alert_reason']) && is_string($_POST['alert_reason']) ? trim($_POST['alert_reason']) : '';
@@ -66,10 +69,7 @@
             }
         } elseif ($_POST['alert_action'] === 'resolve') {
             $alertId = isset($_POST['alert_id']) && is_string($_POST['alert_id']) && ctype_digit($_POST['alert_id']) ? (int) $_POST['alert_id'] : 0;
-            if (!$canResolveAlert) {
-                http_response_code(403);
-                $alertErrors[] = 'Only administrators can resolve alerts.';
-            } elseif ($alertId > 0 && resolve_participant_alert($alertId, $id, $userID)) {
+            if ($alertId > 0 && resolve_participant_alert($alertId, $id, $userID)) {
                 header('Location: participantEdit.php?id=' . $id . '&alertResolved=1#participant-alerts');
                 exit;
             } else {
@@ -448,7 +448,7 @@ require_once('header.php');
 
             <label for="participant_alert">Alert / Flag</label>
             <input type="text" id="participant_alert" value="<?php echo ($participant->get_alert() || count($activeAlerts) > 0) ? 'Flagged' : 'No' ?>" readonly disabled>
-            <p class="mb-2">Use the Participant Alerts section below to add or resolve alerts.</p>
+            <p class="mb-2"><?php echo $canManageAlerts ? 'Use the Participant Alerts section below to add or resolve alerts.' : 'See the Participant Alerts section below.' ?></p>
 
             <label for="notes">Notes</label>
             <textarea id="notes" name="notes" rows="4" placeholder="Enter any additional notes about the participant..."><?php echo hsc($args['notes']) ?></textarea>
@@ -460,7 +460,11 @@ require_once('header.php');
     <div class="signup-form" id="participant-alerts">
         <fieldset class="section-box mb-4">
             <h3>Participant Alerts</h3>
-            <p>Any signed-in user can add an alert. Only administrators can resolve one.</p>
+            <?php if ($canManageAlerts): ?>
+                <p>Only administrators can add or resolve alerts.</p>
+            <?php else: ?>
+                <p>Alerts are read-only. Ask an administrator to add or resolve an alert.</p>
+            <?php endif ?>
             <div class="blue-div"></div>
             <?php if (isset($_GET['alertAdded'])): ?><div class="happy-toast">Alert added.</div><?php endif ?>
             <?php if (isset($_GET['alertResolved'])): ?><div class="happy-toast">Alert resolved.</div><?php endif ?>
@@ -475,7 +479,7 @@ require_once('header.php');
                         <strong><?php echo hsc($alert['alert_type']) ?></strong>
                         <p><?php echo nl2br(hsc($alert['reason'])) ?></p>
                         <small>Added <?php echo hsc($alert['created_at']) ?> by <?php echo hsc($alert['created_by']) ?></small>
-                        <?php if ($canResolveAlert): ?>
+                        <?php if ($canManageAlerts): ?>
                             <form method="post" onsubmit="return confirm('Resolve this alert?');">
                                 <input type="hidden" name="alert_action" value="resolve">
                                 <input type="hidden" name="alert_id" value="<?php echo (int) $alert['id'] ?>">
@@ -489,6 +493,7 @@ require_once('header.php');
             <?php if ($participant->get_alert() && count($activeAlerts) === 0): ?>
                 <p><strong>Legacy flag:</strong> This participant is flagged in the original system. The existing flag has been preserved.</p>
             <?php endif ?>
+            <?php if ($canManageAlerts): ?>
             <h4>Add Alert</h4>
             <form method="post">
                 <input type="hidden" name="alert_action" value="add">
@@ -504,6 +509,7 @@ require_once('header.php');
                 <textarea id="alert_reason" name="alert_reason" rows="3" maxlength="2000" required></textarea>
                 <button type="submit">Add Alert</button>
             </form>
+            <?php endif ?>
             <?php if (count($allAlerts) > count($activeAlerts)): ?>
                 <h4>Resolved Alert History</h4>
                 <?php foreach ($allAlerts as $alert): ?>
