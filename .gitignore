@@ -9,3 +9,7 @@ tests/vendor/
 # Logs written by the app
 *.log
 php_errorlog
+
+/email/.env
+/generateSetupLinks.php
+/petpantry-review.txt
