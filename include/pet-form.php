@@ -61,6 +61,17 @@ function pet_form_errors($args) {
         $errors[] = 'Please select a species.';
     }
 
+    // Breed and weight are required (FR-027)
+    if ($args['breed'] === '') {
+        $errors[] = 'Please enter the pet\'s breed.';
+    }
+
+    if ($args['weight_lbs'] === '') {
+        $errors[] = 'Please enter the pet\'s weight in pounds.';
+    } else if (!is_numeric($args['weight_lbs']) || (float) $args['weight_lbs'] <= 0) {
+        $errors[] = 'Weight must be a number of pounds greater than 0.';
+    }
+
     // Years with at most one decimal place, e.g. 0.5 for a six-month-old
     if ($args['age_years'] === '') {
         $errors[] = 'Please enter the pet\'s age in years.';

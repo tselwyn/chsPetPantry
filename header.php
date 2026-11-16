@@ -170,6 +170,15 @@ if (date("H:i:s") > "18:19:59") {
             margin-bottom: 80px;
         }
 
+        /* The <header> wraps the fixed navbar and forms its stacking context.
+         * Stylesheets like base.css give it z-index: 10, which traps the navbar's
+         * z-index: 1000 and lets scrolled page content (e.g. z-index: 999 widgets)
+         * cover the logo/links and swallow clicks. Keep the header above content.
+         * Targets only this nav header so page banners (e.g. .hero-header) stay below. */
+        #site-nav-header {
+            z-index: 1500 !important;
+        }
+
         /* Navbar Container */
         .navbar,
         .navbar-background {
@@ -671,7 +680,7 @@ if (date("H:i:s") > "18:19:59") {
     </script>
 </head>
 
-<header>
+<header id="site-nav-header">
 
     <?php
     //Log-in security
