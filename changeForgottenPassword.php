@@ -1,54 +1,161 @@
 <?php
+session_start();
 
-    session_start();
-    require_once(__DIR__ . '/include/sessionTimeout.php'); // 30-minute inactivity sign-out (NFR-SEC-005)
-    ini_set("display_errors",1);
-    error_reporting(E_ALL);
+require_once('include/input-validation.php');
+require_once('database/dbinfo.php');
 
-    require_once('include/input-validation.php');
-    require_once('domain/Person.php');
-    require_once('database/dbPersons.php');
-    require_once('emailEncryption.php');
+$error = '';
+$token = $_GET['token'] ?? '';
 
-    if (!isset($_GET['email'])) {
-        die('Invalid Link');
-    }
+if (!is_string($token) ||
+    !preg_match('/^[a-f0-9]{64}$/', $token)) {
+    http_response_code(400);
+    exit('Invalid or expired password reset link.');
+}
 
-    $email = decryptEmail($_GET['email']);
-    $user = retrieve_person_by_email($email);
+$tokenHash = hash('sha256', $token);
+$con = connect();
 
-    if(!$user) {
-        die("invalid user");
-    }
+// Check that the token exists and is still valid.
+$stmt = $con->prepare(
+    "SELECT person_id, token_type
+     FROM dbpasswordresets
+     WHERE token_hash = ?
+       AND used_at IS NULL
+       AND expires_at > NOW()
+     LIMIT 1"
+);
 
-    $userID = $user->get_id();
-    $error = "";
-    
-    if ($_SERVER["REQUEST_METHOD"] == "POST") {        
-            if (!wereRequiredFieldsSubmitted($_POST, array('new-password', 'new-password-reenter'))) {
-                echo "Args missing";
-                die();
+$stmt->bind_param('s', $tokenHash);
+$stmt->execute();
+$result = $stmt->get_result();
+$reset = $result->fetch_assoc();
+$stmt->close();
+
+if (!$reset) {
+    http_response_code(400);
+    exit('Invalid or expired password reset link.');
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $newPassword = $_POST['new-password'] ?? '';
+    $confirmPassword = $_POST['new-password-reenter'] ?? '';
+
+    if (!is_string($newPassword) ||
+        !is_string($confirmPassword)) {
+        $error = 'Invalid password input.';
+    } elseif ($newPassword !== $confirmPassword) {
+        $error = 'Passwords do not match.';
+    } elseif (!isSecurePassword($newPassword)) {
+        $error = 'Password must have at least 8 characters, '
+               . 'including uppercase, lowercase, and a number.';
+    } else {
+        $passwordHash = password_hash(
+            $newPassword,
+            PASSWORD_DEFAULT
+        );
+
+        try {
+            $con->begin_transaction();
+
+            // Lock the reset record to prevent reuse.
+            $stmt = $con->prepare(
+                "SELECT person_id, token_type
+                 FROM dbpasswordresets
+                 WHERE token_hash = ?
+                   AND used_at IS NULL
+                   AND expires_at > NOW()
+                 FOR UPDATE"
+            );
+            $stmt->bind_param('s', $tokenHash);
+            $stmt->execute();
+            $lockedReset = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            if (!$lockedReset) {
+                throw new RuntimeException(
+                    'Invalid or expired password reset link.'
+                );
             }
-            $newPassword = $_POST['new-password'];
-            $reenteredPassword = $_POST['new-password-reenter'];
-            $securePassword = isSecurePassword($newPassword);
 
-            if ($newPassword !== $reenteredPassword) {
-                $error = "Passwords you entered do not match";
-            } elseif(!$securePassword) {
-                $error = "Password needs to be at least 8 characters long, contain at least one number, one uppercase letter, and one lowercase letter!";
+            $personId = (int)$lockedReset['person_id'];
 
-            }else {
-                $hash = password_hash($newPassword, PASSWORD_BCRYPT);
-                change_password($userID, $hash);
-                header('Location: index.php?pcSuccess');
-                echo "Success";
-                exit();
+            // Initial setup links can only be used before
+// the account has established its first password.
+if ($lockedReset['token_type'] === 'setup') {
+    $stmt = $con->prepare(
+        "SELECT password
+         FROM dbpersons
+         WHERE personId = ?
+           AND status = 'Active'
+         FOR UPDATE"
+    );
+    $stmt->bind_param('i', $personId);
+    $stmt->execute();
+    $person = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$person || $person['password'] !== 'SET-A-PASSWORD') {
+        throw new RuntimeException(
+            'This account has already been set up.'
+        );
+    }
+}
+
+            // Update the account password.
+            $stmt = $con->prepare(
+                "UPDATE dbpersons
+                 SET password = ?,
+                     force_password_change = 0
+                 WHERE personId = ?
+                   AND status = 'Active'"
+            );
+            $stmt->bind_param(
+                'si',
+                $passwordHash,
+                $personId
+            );
+            $stmt->execute();
+            $updated = $stmt->affected_rows;
+            $stmt->close();
+
+            if ($updated !== 1) {
+                throw new RuntimeException(
+                    'Unable to update this account.'
+                );
             }
+
+            // Invalidate every outstanding reset
+            // token for this account.
+            $stmt = $con->prepare(
+                "UPDATE dbpasswordresets
+                 SET used_at = NOW()
+                 WHERE person_id = ?
+                   AND used_at IS NULL"
+            );
+            $stmt->bind_param('i', $personId);
+            $stmt->execute();
+            $stmt->close();
+
+            $con->commit();
+
+            header('Location: login.php?pcSuccess');
+            exit();
+
+        } catch (Throwable $e) {
+            $con->rollback();
+            error_log('Password reset failed: ' . $e->getMessage());
+            $error = 'Unable to reset password. '
+                   . 'Please request a new link.';
         }
-    
+    }
+}
 
+$con->close();
 ?>
+
+
+
 <!DOCTYPE html>
 <html>
     <?php require_once('universal.inc') ?>
@@ -178,7 +285,7 @@
     <body>
         <?php require_once('header.php') ?>
 
-        <a href="https://jenniferp231.sg-host.com/login.php" class="back-btn">← Back</a>
+        <a href="login.php" class="back-btn">← Back</a>
 
         <h1>Change Password</h1>
         <main class="login">
