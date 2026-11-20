@@ -44,6 +44,22 @@
         'notes' => ''
     );
 
+    // Editing is selected by a numeric record ID in the URL.
+    $editId = 0;
+    $editing = false;
+    if (isset($_GET['edit'])) {
+        $editId = is_string($_GET['edit']) && ctype_digit($_GET['edit']) ? (int) $_GET['edit'] : 0;
+        $existing = $editId > 0 ? get_food_received_by_id($editId) : null;
+        if ($existing) {
+            $editing = true;
+            foreach (array_keys($args) as $field) {
+                $args[$field] = (string) ($existing[$field] ?? '');
+            }
+        } else {
+            $errors[] = 'The selected food received record could not be found.';
+        }
+    }
+
     // Remove a record entered by mistake
     if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_id'])) {
         $deleteId = (is_string($_POST['delete_id']) && ctype_digit($_POST['delete_id'])) ? (int) $_POST['delete_id'] : 0;
@@ -52,7 +68,18 @@
         die();
     }
 
-    if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['delete_id'])) {
+        $postedEditId = isset($_POST['edit_id']) && is_string($_POST['edit_id'])
+            && ctype_digit($_POST['edit_id']) ? (int) $_POST['edit_id'] : 0;
+        // Do not trust a hidden form field without checking the record exists.
+        if (isset($_POST['edit_id'])) {
+            if ($postedEditId <= 0 || !get_food_received_by_id($postedEditId)) {
+                $errors[] = 'The food received record to edit could not be found.';
+            } else {
+                $editId = $postedEditId;
+                $editing = true;
+            }
+        }
         // Trimmed only: add_food_received uses a prepared statement and the
         // page escapes values with hsc() when it shows them
         foreach (array_keys($args) as $field) {
@@ -100,18 +127,26 @@
         }
 
         if (count($errors) == 0) {
-            $id = add_food_received(
-                $args['received_date'],
-                $args['food_type'],
-                (float) $args['pounds'],
-                (float) $args['cost'],
-                $args['notes'] === '' ? null : $args['notes'],
-                $userID
-            );
-            if ($id !== false) {
-                // Redirect so refreshing the page doesn't record the food again
-                header('Location: foodReceived.php?saved#recent');
-                die();
+            if ($editing) {
+                $saved = update_food_received(
+                    $editId, $args['received_date'], $args['food_type'],
+                    (float) $args['pounds'], (float) $args['cost'],
+                    $args['notes'] === '' ? null : $args['notes']
+                );
+                if ($saved) {
+                    header('Location: foodReceived.php?updated#recent');
+                    die();
+                }
+            } else {
+                $id = add_food_received(
+                    $args['received_date'], $args['food_type'],
+                    (float) $args['pounds'], (float) $args['cost'],
+                    $args['notes'] === '' ? null : $args['notes'], $userID
+                );
+                if ($id !== false) {
+                    header('Location: foodReceived.php?saved#recent');
+                    die();
+                }
             }
             $errors[] = 'The food received could not be saved. Please try again.';
         }
@@ -142,6 +177,9 @@ require_once('header.php');
         .food-table td { border-bottom: 1px solid #ccc; padding: .5rem; vertical-align: top; }
         .food-table td.number { text-align: right; white-space: nowrap; }
         .food-table form { margin: 0; }
+        .edit-food-button { display: inline-block; background: #276b7b; color: #fff; text-decoration: none; border-radius: .375rem; padding: .35rem .75rem; margin: 0 0 .35rem; }
+        .edit-food-button:hover, .edit-food-button:focus { background: #205766; color: #fff; }
+        .food-cancel { display: inline-block; margin-left: .8rem; color: #205766; }
         .delete-food-button { background-color: #b91c1c; color: #fff; border: none; border-radius: .375rem; padding: .35rem .75rem; cursor: pointer; }
         .delete-food-button:hover, .delete-food-button:focus { background-color: #7f1d1d; }
         /* Compact, scoped layout: does not change save or delete logic. */
@@ -181,12 +219,15 @@ require_once('header.php');
 <main>
   <div class="main-content-box">
   <div class="food-received-page">
-    <form class="signup-form" method="post">
+    <form class="signup-form" method="post" id="food-form">
+        <?php if ($editing): ?>
+        <input type="hidden" name="edit_id" value="<?php echo (int) $editId ?>">
+        <?php endif ?>
         <p class="food-intro">Record food CHS purchased or received as a donation for the Cost per Pound report. <em>*</em> indicates a required field.</p>
 
         <?php if (count($errors) > 0): ?>
         <div class="error-toast" role="alert">
-            <p>The food received was not saved:</p>
+            <p><?php echo $editing ? 'The changes were not saved:' : 'The food received was not saved:' ?></p>
             <ul>
                 <?php foreach ($errors as $error): ?>
                 <li><?php echo hsc($error) ?></li>
@@ -196,7 +237,7 @@ require_once('header.php');
         <?php endif ?>
 
         <fieldset class="section-box mb-4">
-            <h3 class="mt-2">Food Received</h3>
+            <h3 class="mt-2"><?php echo $editing ? 'Edit Food Received' : 'Food Received' ?></h3>
             <div class="blue-div"></div>
             <div class="food-grid">
                 <div class="food-field">
@@ -228,7 +269,10 @@ require_once('header.php');
             </div>
         </fieldset>
 
-        <input class="food-submit" type="submit" value="Save Food Received">
+        <input class="food-submit" type="submit" value="<?php echo $editing ? 'Save Changes' : 'Save Food Received' ?>">
+        <?php if ($editing): ?>
+        <a href="foodReceived.php#recent" class="food-cancel">Cancel Editing</a>
+        <?php endif ?>
     </form>
 
     <div class="signup-form" id="recent">
@@ -239,6 +283,8 @@ require_once('header.php');
 
             <?php if (isset($_GET['saved'])): ?>
             <div class="happy-toast" role="status">The food received has been saved.</div>
+            <?php elseif (isset($_GET['updated'])): ?>
+            <div class="happy-toast" role="status">The food received record has been updated.</div>
             <?php elseif (isset($_GET['deleted'])): ?>
             <div class="happy-toast" role="status">The food received record has been deleted.</div>
             <?php elseif (isset($_GET['notDeleted'])): ?>
@@ -271,6 +317,7 @@ require_once('header.php');
                             <td class="number">$<?php echo hsc(number_format((float) $row['cost'] / (float) $row['pounds'], 2)) ?></td>
                             <td><?php echo nl2br(hsc((string) $row['notes'])) ?></td>
                             <td>
+                                <a class="edit-food-button" href="foodReceived.php?edit=<?php echo (int) $row['id'] ?>#food-form">Edit</a>
                                 <form method="post" onsubmit="return confirm('Delete this food received record? This cannot be undone.');">
                                     <input type="hidden" name="delete_id" value="<?php echo (int) $row['id'] ?>">
                                     <button type="submit" class="delete-food-button">Delete</button>

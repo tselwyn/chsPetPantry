@@ -84,6 +84,50 @@ function get_food_received($start_date = '', $end_date = '', $limit = 0) {
     return $rows;
 }
 
+
+/*
+ * Retrieve one food received entry for editing, or null if not found.
+ */
+function get_food_received_by_id($id) {
+    $con = connect();
+    $row = null;
+    try {
+        $stmt = mysqli_prepare($con, 'SELECT * FROM dbfoodreceived WHERE id = ?');
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'i', $id);
+            mysqli_stmt_execute($stmt);
+            $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt)) ?: null;
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        error_log('get_food_received_by_id failed: ' . $e->getMessage());
+    }
+    mysqli_close($con);
+    return $row;
+}
+
+/*
+ * Update an existing entry without replacing its ID or recorded_by user.
+ * Returns true only if the record exists and the update succeeded.
+ */
+function update_food_received($id, $received_date, $food_type, $pounds, $cost, $notes) {
+    $con = connect();
+    $success = false;
+    try {
+        $stmt = mysqli_prepare($con,
+            'UPDATE dbfoodreceived SET received_date = ?, food_type = ?, pounds = ?, cost = ?, notes = ? WHERE id = ?');
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'ssddsi', $received_date, $food_type, $pounds, $cost, $notes, $id);
+            $success = mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
+    } catch (mysqli_sql_exception $e) {
+        error_log('update_food_received failed: ' . $e->getMessage());
+    }
+    mysqli_close($con);
+    return $success;
+}
+
 /*
  * Remove a food received record that was entered by mistake.
  * Returns true if a record was removed.

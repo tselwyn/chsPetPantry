@@ -31,6 +31,24 @@
     $locations = array('Empower', 'Senior Center', 'Home Delivery');
     $statuses = array_keys(participant_statuses());
 
+    // Normalize plain uppercase/lowercase words without overwriting intentional
+    // mixed capitalization such as McDonald, MacLeod, or iPhone.
+    // Apostrophes and hyphens remain in place (O'BRIEN -> O'Brien).
+    function participant_registration_capitalize($value) {
+        if ($value === '') {
+            return $value;
+        }
+        return preg_replace_callback('/[\p{L}]+/u', function ($match) {
+            $word = $match[0];
+            $lower = mb_strtolower($word, 'UTF-8');
+            $upper = mb_strtoupper($word, 'UTF-8');
+            if ($word !== $lower && $word !== $upper) {
+                return $word; // Keep deliberate mixed-case spelling.
+            }
+            return mb_convert_case($lower, MB_CASE_TITLE, 'UTF-8');
+        }, $value);
+    }
+
     $errors = array();
     $args = array();
     $duplicateMatches = array();
@@ -46,6 +64,11 @@
         );
         foreach ($fields as $field) {
             $args[$field] = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim($_POST[$field]) : '';
+        }
+
+        // Format these fields before validation, duplicate detection, and saving.
+        foreach (array('first_name', 'last_name', 'street_address', 'city') as $field) {
+            $args[$field] = participant_registration_capitalize($args[$field]);
         }
 
         $required = array(

@@ -53,6 +53,24 @@ $errors = array();
 // What the form shows until something is submitted
 $args = pet_form_defaults();
 
+// Match participant registration capitalization: format plain lower/uppercase
+// words, but preserve intentional mixed-case spelling in pet names and breeds.
+function pet_registration_capitalize($value) {
+    if ($value === '') {
+        return $value;
+    }
+    return preg_replace_callback('/[\p{L}]+/u', function ($match) {
+        $word = $match[0];
+        $lower = mb_strtolower($word, 'UTF-8');
+        $upper = mb_strtoupper($word, 'UTF-8');
+        if ($word !== $lower && $word !== $upper) {
+            return $word;
+        }
+        return mb_convert_case($lower, MB_CASE_TITLE, 'UTF-8');
+    }, $value);
+}
+
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // "Save & Add Another Pet" or "Done"
@@ -61,6 +79,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Get information submitted by the form
     foreach (array_keys($args) as $field) {
         $args[$field] = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim($_POST[$field]) : '';
+    }
+
+    // Capitalize before validation and saving; leave all other fields unchanged.
+    foreach (array('name', 'breed') as $field) {
+        $args[$field] = pet_registration_capitalize($args[$field]);
     }
 
     // "Done" with nothing typed in just finishes; there is no pet to save

@@ -56,10 +56,32 @@
         );
     }
 
+    // Match participant registration capitalization: format plain lower/uppercase
+    // words, but preserve intentional mixed-case spelling in pet names and breeds.
+    function pet_edit_capitalize($value) {
+        if ($value === '') {
+            return $value;
+        }
+        return preg_replace_callback('/[\p{L}]+/u', function ($match) {
+            $word = $match[0];
+            $lower = mb_strtolower($word, 'UTF-8');
+            $upper = mb_strtoupper($word, 'UTF-8');
+            if ($word !== $lower && $word !== $upper) {
+                return $word;
+            }
+            return mb_convert_case($lower, MB_CASE_TITLE, 'UTF-8');
+        }, $value);
+    }
+
     if ($pet !== null && $_SERVER["REQUEST_METHOD"] == "POST") {
         foreach (array_keys($args) as $field) {
             $args[$field] = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim($_POST[$field]) : '';
         }
+        // Match pet registration: capitalize name and breed before validation and saving.
+        foreach (array('name', 'breed') as $field) {
+            $args[$field] = pet_edit_capitalize($args[$field]);
+        }
+
         // The saved status decides which statuses can be chosen; it never comes from the form
         $args['pet_status_current'] = $pet->get_status();
 
