@@ -45,6 +45,25 @@
         return $value === null ? '' : '$' . number_format($value, 2);
     }
 
+    // Display report dates in MM/DD/YYYY format.
+// Keep database dates in their original YYYY-MM-DD format.
+function report_date($value) {
+    if ($value === null || $value === '' || $value === 'Total') {
+        return $value ?? '';
+    }
+
+    $value = (string) $value;
+    foreach (array('!Y-m-d', '!Y-m-d H:i:s') as $format) {
+        $date = DateTimeImmutable::createFromFormat($format, $value);
+        if ($date && $date->format(substr($format, 1)) === $value) {
+            return $date->format('m/d/Y');
+        }
+    }
+
+    // Preserve unexpected values rather than displaying an incorrect date.
+    return $value;
+}
+
     // Phone numbers are stored as 10 digits; reports show them as (540) 555-0101
     function report_phone($phone) {
         $phone = (string) $phone;
@@ -124,16 +143,22 @@
      */
     $reportTypes = array(
         'participant_list' => array(
-            'title' => 'Current Participant List',
-            'date_label' => 'Registration date',
-            'filters' => array('dates', 'location'),
-            'columns' => array('ID', 'Name', 'Phone', 'Location', 'Registration Date', 'Status'),
-            'fetch' => 'get_participant_report',
-            'row' => function ($p) {
-                return array(format_participant_id($p['id']), report_name($p), report_phone($p['phone']),
-                    $p['location'], $p['registration_date'], $p['status']);
-            }
-        ),
+    'title' => 'Current Participant List',
+    'date_label' => 'Registration date',
+    'filters' => array('dates', 'location'),
+    'columns' => array('ID', 'Name', 'Phone', 'Location', 'Registration Date', 'Status'),
+    'fetch' => 'get_participant_report',
+    'row' => function ($p) {
+        return array(
+            format_participant_id($p['id']),
+            report_name($p),
+            report_phone($p['phone']),
+            $p['location'],
+            report_date($p['registration_date']),
+            $p['status']
+        );
+    }
+),
         'participant_status' => array(
             'title' => 'Participants by Status (Active / Inactive / Expired / DND)',
             'date_label' => 'Registration date',
@@ -142,7 +167,7 @@
             'fetch' => 'get_participant_status_report',
             'row' => function ($p) {
                 return array(format_participant_id($p['id']), report_name($p), report_phone($p['phone']),
-                    $p['location'], $p['registration_date'], $p['status']);
+                    $p['location'], report_date($p['registration_date']), $p['status']);
             }
         ),
         'flagged' => array(
@@ -175,13 +200,37 @@
             'row' => function ($d) {
                 return array(
                     report_participant_name($d->get_participant_id()),
-                    $d->get_distribution_date(),
+                    report_date($d->get_distribution_date()),
                     $d->get_location(),
                     $d->get_pets_served(),
                     $d->get_dog_food_lbs(),
                     $d->get_cat_food_lbs(),
                     $d->get_processed_by_name(),
                     $d->get_notes()
+                );
+            }
+        ),
+
+        // Client request: one row per food distribution across all participants.
+        // Reuse the existing UC-14 query; no schema changes are required.
+        'all_participant_history' => array(
+            'title' => 'All Participant Distribution History',
+            'date_label' => 'Distribution date',
+            'filters' => array('dates', 'location'),
+            'record_noun' => 'distribution',
+            'empty_message' => 'No participant food distributions match the selected filters.',
+            'note' => 'Each row represents one recorded food distribution. Participants without a recorded distribution are not included.',
+            'columns' => array('Participant ID', 'Participant Name', 'Distribution Date', 'Location'),
+            'fetch' => function ($location, $startDate, $endDate) {
+                return get_distribution_report_rows($location, $startDate, $endDate);
+            },
+            'row' => function ($d) {
+                $name = trim((string) ($d['first_name'] ?? '') . ' ' . (string) ($d['last_name'] ?? ''));
+                return array(
+                    format_participant_id($d['participant_id']),
+                    $name !== '' ? $name : 'Unknown Participant',
+                    report_date($d['distribution_date']),
+                    (string) $d['location']
                 );
             }
         ),
@@ -246,7 +295,7 @@
             },
             'row' => function ($d) {
                 return array(
-                    $d['distribution_date'],
+                    report_date($d['distribution_date']),
                     $d['location'],
                     (int) $d['pets_served'],
                     (int) $d['dogs'],
@@ -315,7 +364,7 @@
                     $pet['spay_neuter_status'],
                     $pet['rabies_status'],
                     $pet['counseling_status'],
-                    (string) $pet['counseling_date']
+                    report_date($pet['counseling_date'])
                 );
             }
         ),
@@ -404,6 +453,45 @@
         ) */
     );
 
+    // Sort report rows on the server so the screen, printout, and exports match.
+    function report_sort_value($value, $column) {
+        $value = trim((string) $value);
+        if ($value === '') return array(0, '');
+
+        // Dates are displayed in US format but must sort by actual date.
+        if (stripos($column, 'date') !== false) {
+            $date = DateTimeImmutable::createFromFormat('!m/d/Y', $value);
+            if ($date && $date->format('m/d/Y') === $value) {
+                return array(1, $date->getTimestamp());
+            }
+        }
+        if (strcasecmp($column, 'Month') === 0) {
+            $date = DateTimeImmutable::createFromFormat('!F Y', $value);
+            if ($date && $date->format('F Y') === $value) {
+                return array(1, $date->getTimestamp());
+            }
+        }
+        // Numeric columns include pounds, totals, ages, and currency amounts.
+        if (preg_match('/(?:lbs|pounds|cost|served|distributions|dogs|cats|pets|age|quantity)/i', $column)) {
+            $number = preg_replace('/[$,]/', '', $value);
+            if (is_numeric($number)) return array(1, (float) $number);
+        }
+        if (strcasecmp($column, 'Pounds Received') === 0 || strcasecmp($column, 'Pounds Distributed') === 0) {
+            $number = str_replace(',', '', $value);
+            if (is_numeric($number)) return array(1, (float) $number);
+        }
+        return array(2, strtolower($value));
+    }
+
+    function report_sort_url($filters, $columnIndex) {
+        $params = $filters;
+        $params['export'] = '';
+        $params['sort_col'] = (string) $columnIndex;
+        $params['sort_dir'] = ($filters['sort_col'] === (string) $columnIndex
+            && $filters['sort_dir'] === 'asc') ? 'desc' : 'asc';
+        return 'reports.php?' . http_build_query($params);
+    }
+
     $exportFormats = array('csv', 'xlsx', 'pdf');
     // Participant locations plus any location a distribution was recorded at
     $locations = array_values(array_unique(array_merge(get_participant_locations(), get_distribution_locations())));
@@ -411,7 +499,7 @@
 
     // Filters, kept as text so the form can show back exactly what was entered
     $filters = array();
-    foreach (array('report_type', 'start_date', 'end_date', 'location', 'participant_id', 'export') as $field) {
+    foreach (array('report_type', 'start_date', 'end_date', 'location', 'participant_id', 'export', 'sort_col', 'sort_dir') as $field) {
         $filters[$field] = (isset($_GET[$field]) && is_string($_GET[$field])) ? trim($_GET[$field]) : '';
     }
 
@@ -485,6 +573,40 @@
             foreach ($fetch($filters['location'], $filters['start_date'], $filters['end_date'], $reportParticipantId) as $result) {
                 $rows[] = $report['row']($result);
             }
+            // Only accept column indexes that belong to this report.
+            if ($filters['sort_col'] !== '' && ctype_digit($filters['sort_col'])
+                    && (int) $filters['sort_col'] < count($report['columns'])) {
+                $columnIndex = (int) $filters['sort_col'];
+                $direction = $filters['sort_dir'] === 'desc' ? -1 : 1;
+                $filters['sort_dir'] = $direction === 1 ? 'asc' : 'desc';
+                $columnName = $report['columns'][$columnIndex];
+                // Keep the summary row separate, even after sorting.
+                $total = null;
+                if (!empty($report['has_total_row']) && count($rows) > 0) {
+                    $total = array_pop($rows);
+                }
+                $indexed = array();
+                foreach ($rows as $index => $row) {
+                    $indexed[] = array('row' => $row, 'index' => $index);
+                }
+                usort($indexed, function ($a, $b) use ($columnIndex, $columnName, $direction) {
+                    $left = report_sort_value($a['row'][$columnIndex], $columnName);
+                    $right = report_sort_value($b['row'][$columnIndex], $columnName);
+                    // Blank values appear last in either direction.
+                    if ($left[0] === 0 || $right[0] === 0) {
+                        if ($left[0] !== $right[0]) return $left[0] === 0 ? 1 : -1;
+                    }
+                    $comparison = $left[0] === $right[0]
+                        ? ($left[1] <=> $right[1])
+                        : ($left[0] <=> $right[0]);
+                    return $comparison === 0 ? $a['index'] <=> $b['index'] : $comparison * $direction;
+                });
+                $rows = array_column($indexed, 'row');
+                if ($total !== null) $rows[] = $total;
+            } else {
+                $filters['sort_col'] = '';
+                $filters['sort_dir'] = '';
+            }
         }
     }
 
@@ -513,14 +635,14 @@ if ($report !== null && in_array('dates', $report['filters'], true)) {
         $filterSummary[] = $report['date_label'] . ': '
             . ($filters['start_date'] === ''
                 ? 'any'
-                : date('M j, Y', strtotime($filters['start_date'])))
+                : report_date($filters['start_date'])) . ' '
             . ' to '
             . ($filters['end_date'] === ''
                 ? 'any'
-                : date('M j, Y', strtotime($filters['end_date'])));
+                : report_date($filters['end_date']));
     }
 }
-    $generatedAt = date('M j, Y g:i A');
+    $generatedAt = date('m/d/Y g:i A');
 
     // Reports with totals end in a Total row, which is not a record
     $hasTotalRow = $report !== null && count($rows) > 0 && !empty($report['has_total_row']);
@@ -687,6 +809,10 @@ require_once('header.php');
         .reports-page .reports-table-wrap { overflow-x: auto; max-width: 100%; }
         .reports-page .report-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; }
         .reports-page .report-table th { background: #2e5e6e; color: #fff; padding: .6rem .7rem; white-space: nowrap; }
+        .reports-page .report-table th a { display: inline-flex; align-items: center; gap: .35rem; color: inherit; text-decoration: none; }
+        .reports-page .report-table th a:hover, .reports-page .report-table th a:focus-visible { text-decoration: underline; }
+        .reports-page .report-table th .sort-arrow { font-size: .8em; opacity: .85; }
+
         .reports-page .report-table td { padding: .55rem .7rem; border-bottom: 1px solid #dce7eb; vertical-align: top; }
         .reports-page .report-table tbody tr:nth-child(even) { background: #f3f8fa; }
         .reports-page .report-table tbody tr:hover { background: #eaf4f7; }
@@ -798,8 +924,13 @@ require_once('header.php');
                 <table class="report-table">
                     <thead>
                         <tr>
-                            <?php foreach ($report['columns'] as $column): ?>
-                            <th scope="col"><?php echo hsc($column) ?></th>
+                            <?php foreach ($report['columns'] as $columnIndex => $column): ?>
+                            <th scope="col"<?php if ($filters['sort_col'] === (string) $columnIndex) echo ' aria-sort="' . ($filters['sort_dir'] === 'desc' ? 'descending' : 'ascending') . '"' ?>>
+                                <a href="<?php echo hsc(report_sort_url($filters, $columnIndex)) ?>" title="Sort by <?php echo hsc($column) ?>">
+                                    <?php echo hsc($column) ?>
+                                    <span class="sort-arrow" aria-hidden="true"><?php echo $filters['sort_col'] === (string) $columnIndex ? ($filters['sort_dir'] === 'desc' ? '▼' : '▲') : '↕' ?></span>
+                                </a>
+                            </th>
                             <?php endforeach ?>
                         </tr>
                     </thead>
