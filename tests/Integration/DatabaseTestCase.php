@@ -120,6 +120,22 @@ abstract class DatabaseTestCase extends TestCase
         return $id;
     }
 
+    /** Insert a pet for $participantId and return its id. */
+    protected function pet(int $participantId, array $values = []): int
+    {
+        $row = $values + ['participant_id' => $participantId, 'name' => 'Biscuit', 'species' => 'Dog', 'breed' => 'Beagle',
+            'sex' => 'Male', 'age_years' => '2.0', 'weight_lbs' => '25', 'status' => 'Active'];
+        $con = $this->db();
+        $columns = array_keys($row);
+        $stmt = $con->prepare('INSERT INTO dbpets (`' . implode('`, `', $columns) . '`) VALUES ('
+            . implode(', ', array_fill(0, count($columns), '?')) . ')');
+        $stmt->bind_param(str_repeat('s', count($columns)), ...array_map('strval', array_values($row)));
+        $stmt->execute();
+        $id = (int) $con->insert_id;
+        $con->close();
+        return $id;
+    }
+
     /** All rows of a query as associative arrays. */
     protected function rows(string $sql): array
     {

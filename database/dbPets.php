@@ -25,8 +25,44 @@ function make_a_pet($result_row) {
         $result_row['counseling_status'],
         $result_row['counseling_date'],
         $result_row['counseled_by'],
-        $result_row['special_medical_needs'] ?? null
+        $result_row['special_medical_needs'] ?? null,
+        $result_row['age_recorded_date'] ?? null
     );
+}
+
+/*
+ * Add dbpets.age_recorded_date if this database doesn't have it yet, so pet
+ * ages count up (FR-077) without anyone running
+ * sql/migrations/2026-11-21_pet_age_recorded_date.sql by hand. Existing ages
+ * are dated from when the pet was added. Runs before each pet save; the
+ * check is one small information_schema lookup.
+ */
+function ensure_pet_age_date_column($con) {
+    $result = mysqli_query($con, "SELECT COUNT(*) AS n FROM information_schema.COLUMNS "
+        . "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dbpets' AND COLUMN_NAME = 'age_recorded_date'");
+    if ($result === false) {
+        return false;
+    }
+    $exists = (int) mysqli_fetch_assoc($result)['n'] > 0;
+    if (!$exists) {
+        if (mysqli_query($con, 'ALTER TABLE dbpets ADD COLUMN age_recorded_date date DEFAULT NULL AFTER age_years') === false) {
+            return false;
+        }
+        mysqli_query($con, 'UPDATE dbpets SET age_recorded_date = COALESCE(DATE(created_at), CURDATE()) '
+            . 'WHERE age_years IS NOT NULL AND age_recorded_date IS NULL');
+    }
+    return true;
+}
+
+/*
+ * The date to save with a pet's age: the one the Pet carries (an unchanged
+ * age keeps its original date), otherwise today. Null when there is no age.
+ */
+function pet_age_date_to_store($pet) {
+    if ($pet->get_age_years() === null || $pet->get_age_years() === '') {
+        return null;
+    }
+    return $pet->get_age_recorded_date() ?: date('Y-m-d');
 }
 
 /*
@@ -37,10 +73,10 @@ function make_a_pet($result_row) {
 function add_pet($pet) {
 
     $query = 'INSERT INTO dbpets '
-        . '(participant_id, name, species, breed, sex, age_years, '
+        . '(participant_id, name, species, breed, sex, age_years, age_recorded_date, '
         . 'weight_lbs, spay_neuter_status, rabies_status, '
         . 'food_type, food_restriction, special_medical_needs, notes, status) '
-        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
     $args = [
         $pet->get_participant_id(),
@@ -49,6 +85,7 @@ function add_pet($pet) {
         $pet->get_breed(),
         $pet->get_sex(),
         $pet->get_age_years(),
+        pet_age_date_to_store($pet),
         $pet->get_weight_lbs(),
         $pet->get_spay_neuter_status(),
         $pet->get_rabies_status(),
@@ -63,12 +100,13 @@ function add_pet($pet) {
     $id = false;
 
     try {
+        if (!ensure_pet_age_date_column($con)) throw new RuntimeException('Could not add age_recorded_date');
         $stmt = mysqli_prepare($con, $query);
 
         if ($stmt) {
             mysqli_stmt_bind_param(
                 $stmt,
-                'issssddsssssss',
+                'issssdsdsssssss',
                 ...$args
             );
 
@@ -79,7 +117,8 @@ function add_pet($pet) {
             mysqli_stmt_close($stmt);
         }
 
-    } catch (mysqli_sql_exception $e) {
+    } catch (Throwable $e) {
+        error_log('Pet insert failed: ' . $e->getMessage());
         $id = false;
     }
 
@@ -125,7 +164,7 @@ function get_pet_by_id($id) {
 function update_pet($pet) {
 
     $query = 'UPDATE dbpets SET name = ?, species = ?, breed = ?, sex = ?, '
-        . 'age_years = ?, weight_lbs = ?, '
+        . 'age_years = ?, age_recorded_date = ?, weight_lbs = ?, '
         . 'spay_neuter_status = ?, rabies_status = ?, food_type = ?, '
         . 'food_restriction = ?, special_medical_needs = ?, notes = ?, status = ? '
         . 'WHERE id = ?';
@@ -136,6 +175,7 @@ function update_pet($pet) {
         $pet->get_breed(),
         $pet->get_sex(),
         $pet->get_age_years(),
+        pet_age_date_to_store($pet),
         $pet->get_weight_lbs(),
         $pet->get_spay_neuter_status(),
         $pet->get_rabies_status(),
@@ -151,15 +191,17 @@ function update_pet($pet) {
     $success = false;
 
     try {
+        if (!ensure_pet_age_date_column($con)) throw new RuntimeException('Could not add age_recorded_date');
         $stmt = mysqli_prepare($con, $query);
 
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'ssssddsssssssi', ...$args);
+            mysqli_stmt_bind_param($stmt, 'ssssdsdsssssssi', ...$args);
             $success = mysqli_stmt_execute($stmt);
             mysqli_stmt_close($stmt);
         }
 
-    } catch (mysqli_sql_exception $e) {
+    } catch (Throwable $e) {
+        error_log('Pet update failed: ' . $e->getMessage());
         $success = false;
     }
 
@@ -447,20 +489,21 @@ function get_pets_needing_rabies_report($location = '', $start_date = '', $end_d
 function update_pet_with_counseling($pet, $counseling_provided, $user_id) {
     $con = connect();
     try {
+        if (!ensure_pet_age_date_column($con)) throw new RuntimeException('Could not add age_recorded_date');
         mysqli_begin_transaction($con);
         $query = 'UPDATE dbpets SET name = ?, species = ?, breed = ?, sex = ?, '
-            . 'age_years = ?, weight_lbs = ?, spay_neuter_status = ?, rabies_status = ?, '
+            . 'age_years = ?, age_recorded_date = ?, weight_lbs = ?, spay_neuter_status = ?, rabies_status = ?, '
             . 'food_type = ?, food_restriction = ?, special_medical_needs = ?, notes = ?, status = ? '
             . 'WHERE id = ?';
         $stmt = mysqli_prepare($con, $query);
         if (!$stmt) throw new RuntimeException('Unable to prepare pet update');
         $args = [
             $pet->get_name(), $pet->get_species(), $pet->get_breed(), $pet->get_sex(),
-            $pet->get_age_years(), $pet->get_weight_lbs(), $pet->get_spay_neuter_status(),
+            $pet->get_age_years(), pet_age_date_to_store($pet), $pet->get_weight_lbs(), $pet->get_spay_neuter_status(),
             $pet->get_rabies_status(), $pet->get_food_type(), $pet->get_food_restriction(),
             $pet->get_special_medical_needs(), $pet->get_notes(), $pet->get_status(), $pet->get_id()
         ];
-        mysqli_stmt_bind_param($stmt, 'ssssddsssssssi', ...$args);
+        mysqli_stmt_bind_param($stmt, 'ssssdsdsssssssi', ...$args);
         if (!mysqli_stmt_execute($stmt)) throw new RuntimeException('Pet update failed');
         mysqli_stmt_close($stmt);
         if ($counseling_provided) {

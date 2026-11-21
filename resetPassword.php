@@ -43,10 +43,12 @@
     }
     $passwordReset = false;
     if (!$errors && $_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change'])) {
+        // Temporary password: 10 characters from a secure random source,
+        // skipping look-alikes (0/O, 1/l/I) so it can be read out loud (UC-11)
+        $alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
         $password = '';
-        // generate random 8-digit, temporary PIN
-        for ($i = 0; $i < 8; $i++) {
-            $password .= mt_rand(0, 9);
+        for ($i = 0; $i < 10; $i++) {
+            $password .= $alphabet[random_int(0, strlen($alphabet) - 1)];
         }
         $hash = password_hash($password, PASSWORD_BCRYPT);
         reset_password($resetID, $hash);
@@ -57,7 +59,7 @@
 <html>
     <head>
         <?php require_once('universal.inc') ?>
-        <title>CCDA | Reset Password</title>
+        <title>CHS Pet Pantry | Reset Password</title>
     </head>
     <body>
         <?php require_once('header.php') ?>
@@ -67,11 +69,11 @@
                 <p class="error-toast"><?php echo $errors ?></p>
             <?php elseif ($passwordReset): ?>
                 <p class="happy-toast">Password reset successful!</p>
-                <p class="centered"><?php echo $targetUser->get_first_name() . ' ' . $targetUser->get_last_name() ?>'s password was reset to:</p>
+                <p class="centered"><?php echo htmlspecialchars(trim($targetUser->get_first_name() . ' ' . $targetUser->get_last_name())) ?>'s password was reset to:</p>
                 <div class="new-password"><?php echo $password ?></div>
             <?php else: ?>
                 <h2>Password Reset Form</h2>
-                <p>Use the button below to reset <?php echo $targetUser->get_first_name() . ' ' . $targetUser->get_last_name()?>'s password</p>
+                <p>Use the button below to reset <?php echo htmlspecialchars(trim($targetUser->get_first_name() . ' ' . $targetUser->get_last_name())) ?>'s password. Give the new password to everyone who uses this login.</p>
                 <form method="post">
                     <input type="hidden" name="change">
                     <input type="submit" value="Reset Password">

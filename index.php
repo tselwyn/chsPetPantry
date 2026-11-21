@@ -617,6 +617,16 @@
         <div class="large-text-sub" style="color:white;">Record Food Received</div>
         <div class="graph-text" style="color:white;">Record pet food bought or donated, for cost per pound.</div>
         </div>
+
+        <!-- Manage Users (SRS UC-11), admin only -->
+        <div class="content-box-test" onclick="window.location.href='viewAuditUsers.php'" >
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/user_group_icon.svg" alt="Manage Users Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Manage Users</div>
+        <div class="graph-text" style="color:white;">Add accounts, change roles, reset passwords, and deactivate logins.</div>
+        </div>
         <?php endif ?>
 
 

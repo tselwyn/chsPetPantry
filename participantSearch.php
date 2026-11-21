@@ -53,13 +53,13 @@
                                                 </thead>
                                                 <tbody>';
             foreach ($pets as $pet) {
-                $age = $pet->get_age_years();
+                $age = pet_age_label($pet->get_current_age_years()); // counts up over time (FR-077)
                 echo '
                                                     <tr>
                                                         <td>' . hsc($pet->get_name()) . '</td>
                                                         <td>' . hsc($pet->get_species()) . '</td>
                                                         <td>' . hsc($pet->get_breed()) . '</td>
-                                                        <td>' . ($age === null ? 'Unknown' : hsc($age)) . '</td>
+                                                        <td>' . hsc($age) . '</td>
                                                         <td>' . hsc($pet->get_sex()) . '</td>
                                                         <td>' . hsc($pet->get_spay_neuter_status()) . '</td>
                                                         <td>' . hsc($pet->get_rabies_status()) . '</td>

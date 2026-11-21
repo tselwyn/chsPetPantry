@@ -69,8 +69,10 @@
             step="0.1"
             inputmode="decimal"
             placeholder="Ex. 3, or 0.5 for six months"
+            aria-describedby="age_years_help"
             value="<?php echo hsc($args['age_years']) ?>"
         >
+        <p id="age_years_help">Age today. It goes up automatically over time, so you only need to change it if it's wrong.</p>
 </div>
 <div class="pet-field">
 <label for="weight_lbs">

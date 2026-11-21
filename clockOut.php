@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/include/retiredPage.php'; // retired CCDA page: blocked when opened directly ?>
 <?php
 require_once 'database/dbShifts.php';
 
