@@ -188,9 +188,14 @@ function change_password($id, $newPass) {
 }
 
 function reset_password($id, $newPass) {
-    $con=connect();
-    $query = 'UPDATE dbpersons SET password = "' . $newPass . '", force_password_change="1" WHERE id = "' . $id . '"';
-    $result = mysqli_query($con,$query);
+    $con = connect();
+    $stmt = mysqli_prepare($con, 'UPDATE dbpersons SET password = ?, force_password_change = 1 WHERE id = ?');
+    $result = false;
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, 'ss', $newPass, $id);
+        $result = mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+    }
     mysqli_close($con);
     return $result;
 }

@@ -37,8 +37,9 @@
             . ' (' . format_participant_id($row['participant_id']) . ')';
     }
 
+    // Age today, counted up from when it was entered (FR-077)
     function report_pet_age($row) {
-        return $row['age_years'] === null ? 'Unknown' : (string) $row['age_years'];
+        return pet_age_label(pet_current_age($row['age_years'], $row['age_recorded_date'] ?? null));
     }
 
     function report_money($value) {

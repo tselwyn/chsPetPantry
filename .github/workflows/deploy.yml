@@ -49,6 +49,7 @@ jobs:
             --exclude '/tests/' \
             --exclude '/seeds/' \
             --exclude '/src/' \
+            --exclude '/public/' \
             --exclude 'phpunit.xml' \
             --exclude 'composer.json' \
             --exclude 'composer.lock' \

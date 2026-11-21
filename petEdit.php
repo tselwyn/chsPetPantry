@@ -43,7 +43,7 @@
             'species' => $pet->get_species(),
             'breed' => (string) $pet->get_breed(),
             'sex' => $pet->get_sex(),
-            'age_years' => (string) $pet->get_age_years(),
+            'age_years' => $pet->get_age_years() === null ? '' : pet_age_label($pet->get_current_age_years()),
             'weight_lbs' => (string) $pet->get_weight_lbs(),
             'food_type' => (string) $pet->get_food_type(),
             'food_restriction' => (string) $pet->get_food_restriction(),
@@ -96,7 +96,10 @@
         }
 
         if (count($errors) == 0) {
-            if (update_pet_with_counseling(pet_from_form($pet->get_id(), $pet->get_participant_id(), $args, $args['pet_status']), $counselingProvided, $userID)) {
+            // An unchanged age keeps counting from when it was first entered (FR-077)
+            list($ageToSave, $ageDate) = pet_age_to_save($pet, $args['age_years']);
+            $saveArgs = array_merge($args, array('age_years' => (string) $ageToSave));
+            if (update_pet_with_counseling(pet_from_form($pet->get_id(), $pet->get_participant_id(), $saveArgs, $args['pet_status'], $ageDate), $counselingProvided, $userID)) {
                 // Back to the participant; the redirect also stops a refresh from saving again
                 header('Location: participantEdit.php?id=' . (int) $pet->get_participant_id() . '&petSaved#pets');
                 die();

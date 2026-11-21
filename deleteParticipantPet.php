@@ -650,7 +650,7 @@ $lastDistributionDates = get_last_distribution_dates(array_merge(
                         <td><strong><?php echo htmlspecialchars($pet->get_name()); ?></strong></td>
                         <td><?php echo htmlspecialchars($pet->get_species()); ?></td>
                         <td><?php echo htmlspecialchars($pet->get_breed() ?? 'Not provided'); ?></td>
-                        <td><?php echo htmlspecialchars($pet->get_age_years() ?? 'Unknown'); ?></td>
+                        <td><?php echo htmlspecialchars(pet_age_label($pet->get_current_age_years())); ?></td>
                         <td><?php echo htmlspecialchars($pet->get_status()); ?></td>
                         <td class="pet-actions">
 

@@ -735,7 +735,7 @@ require_once('header.php');
                         <tr<?php if ($medicalNeeds !== '') echo ' class="has-medical"' ?>>
                             <td><?php echo hsc($pet->get_name()) ?></td>
                             <td><?php echo hsc($pet->get_species()) ?></td>
-                            <td><?php echo $pet->get_age_years() === null ? 'Unknown' : hsc($pet->get_age_years()) ?></td>
+                            <td><?php echo hsc(pet_age_label($pet->get_current_age_years())) ?></td>
                             <td><?php echo hsc($pet->get_spay_neuter_status()) ?></td>
                             <td><?php echo hsc($pet->get_rabies_status()) ?></td>
                             <td>

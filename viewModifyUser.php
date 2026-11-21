@@ -125,7 +125,7 @@
 <html>
 <head>
     <?php require_once('universal.inc') ?>
-    <title>Modify User | CCDA</title>
+    <title>Modify User | CHS Pet Pantry</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         pageheader {
@@ -334,6 +334,12 @@
             background-color: darkred;
             color: var(--button-font-color);
         }
+        .modify-reset-btn {
+            display: block; text-align: center; text-decoration: none;
+            padding: 0.5rem 1.5rem; background-color: var(--accent-color); color: var(--button-font-color);
+            border-radius: 0.25rem; font-size: 0.95rem; font-weight: 500; max-width: 500px;
+        }
+        .modify-reset-btn:hover, .modify-reset-btn:focus-visible { opacity: 0.85; }
         .modify-deactivate-btn {
             color: red;
         }
@@ -528,6 +534,11 @@
                             }
                         ?>
                         <hr>
+                        <?php if ($thePerson->get_id() !== 'vmsroot' && $thePerson->get_id() !== ($_SESSION['_id'] ?? '')): ?>
+                        <!-- UC-11: reset this account's password, e.g. the shared Volunteer login when someone leaves -->
+                        <a href="resetPassword.php?id=<?php echo urlencode($thePerson->get_id()) ?>" class="modify-reset-btn">Reset Password</a>
+                        <hr>
+                        <?php endif ?>
                         <button name="delete_button" name="delete_button" class="modify-delete-btn" 
                             onclick="return confirm('Are you sure you want to\nDELETE USER: <?php echo $thePerson->get_id();?>?')"
                             formnovalidate>Delete User

@@ -108,9 +108,10 @@ function pet_form_errors($args) {
 
 /*
  * A Pet built from a checked pet form. Optional fields that were left blank
- * are stored as NULL.
+ * are stored as NULL. $age_recorded_date is the date the age was entered;
+ * null means today (FR-077).
  */
-function pet_from_form($id, $participant_id, $args, $status) {
+function pet_from_form($id, $participant_id, $args, $status, $age_recorded_date = null) {
     return new Pet(
         $id,
         $participant_id,
@@ -129,8 +130,25 @@ function pet_from_form($id, $participant_id, $args, $status) {
         'No',
         null,
         null,
-        $args['special_medical_needs'] === '' ? null : $args['special_medical_needs']
+        $args['special_medical_needs'] === '' ? null : $args['special_medical_needs'],
+        $age_recorded_date
     );
+}
+
+/*
+ * The age and date to save when a pet is edited (FR-077). The form shows the
+ * pet's current age; if the user leaves it as shown, the original age and the
+ * date it was entered are kept, so the age keeps counting from the first
+ * entry instead of drifting by rounding. A changed age starts again from
+ * today. Returns array(age_years, age_recorded_date or null for today).
+ */
+function pet_age_to_save($pet, $submitted_age) {
+    $current = $pet->get_current_age_years();
+    if ($current !== null && $pet->get_age_recorded_date()
+            && abs((float) $submitted_age - $current) < 0.001) {
+        return array((float) $pet->get_age_years(), $pet->get_age_recorded_date());
+    }
+    return array((float) $submitted_age, null);
 }
 
 /*
