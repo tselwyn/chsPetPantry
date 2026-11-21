@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/include/retiredPage.php'; // retired CCDA page: blocked when opened directly ?>
 <?php
     // Template for new VMS pages. Base your new page on this one
 

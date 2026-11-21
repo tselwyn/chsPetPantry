@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/include/retiredPage.php'; // retired CCDA page: blocked when opened directly ?>
 <!-- This looks really, really great! -->
 <?php
 date_default_timezone_set('America/New_York');
@@ -899,7 +900,7 @@ if (date("H:i:s") > "18:19:59") {
                   <div class="chs-menu-heading">Administrator Tools</div>
                   <a href="reports.php">Reports</a>
                   <a href="foodReceived.php">Record Food Received</a>
-                  <a href="viewAuditUsers.php">Audit Users</a>
+                  <a href="viewAuditUsers.php">Manage Users</a>
                   <a href="createUser.php">Add User</a>
                 <?php endif; ?>
               </div>

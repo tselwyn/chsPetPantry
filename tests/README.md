@@ -4,8 +4,8 @@ PHPUnit tests that run the app's real code. They don't use copies of it.
 
 | Suite | What it covers | Needs MySQL? |
 |---|---|---|
-| `Unit` | Participant ID format PP00001 (FR-074), 30-minute session timeout (NFR-SEC-005) | No |
-| `Integration` | DND in the status report (FR-049), deletion audit (NFR-SEC-007), search by PP ID (FR-008), the duplicate rule (FR-018) | Yes |
+| `Unit` | Participant ID format PP00001 (FR-074), 30-minute session timeout (NFR-SEC-005), local database defaults (NFR-SEC-009), pet age counting up (FR-077), every old CCDA page is guarded (NFR-SEC-002/003) | No |
+| `Integration` | DND in the status report (FR-049), deletion audit (NFR-SEC-007), search by PP ID (FR-008), the duplicate rule (FR-018), pet age dates saved and kept (FR-077), old pages answer 404 in a real web server (NFR-SEC-002/003) | Yes |
 
 GitHub runs both suites on every pull request into `dev` or `main` (`.github/workflows/tests.yml`). A red X on a PR means a test failed.
 

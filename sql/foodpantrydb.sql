@@ -4388,6 +4388,7 @@ CREATE TABLE `dbpets` (
   `breed` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `sex` enum('Male','Female','Unknown') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Unknown',
   `age_years` decimal(4,1) DEFAULT NULL,
+  `age_recorded_date` date DEFAULT NULL COMMENT 'Date age_years was entered; age counts up from it (FR-077)',
   `weight_lbs` decimal(5,1) DEFAULT NULL,
   `spay_neuter_status` enum('Yes','No','Unknown') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Unknown',
   `rabies_status` enum('Yes','No','Unknown') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Unknown',
@@ -4417,6 +4418,9 @@ INSERT INTO `dbpets` (`id`, `participant_id`, `name`, `species`, `breed`, `sex`,
 (8, 6, 'Shadow', 'Cat', NULL, 'Male', 6.0, NULL, 'Yes', 'No', 'Active', '2026-03-10 10:05:00'),
 (9, 7, 'Peanut', 'Dog', 'Dachshund', 'Female', 5.0, 11.0, 'Yes', 'Yes', 'Active', '2026-09-01 15:45:00'),
 (10, 7, 'Oreo', 'Cat', 'Domestic Longhair', 'Male', 3.7, 9.0, 'No', 'No', 'Active', '2026-09-01 15:46:00');
+
+-- Ages count up from when they were entered (FR-077)
+UPDATE `dbpets` SET `age_recorded_date` = DATE(`created_at`) WHERE `age_years` IS NOT NULL AND `age_recorded_date` IS NULL;
 
 -- --------------------------------------------------------
 

@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/include/retiredPage.php'; // retired CCDA page: blocked when opened directly ?>
 <?php
     // Make session information accessible, allowing us to associate
     // data with the logged-in user.

@@ -21,7 +21,7 @@
 <html>
 <head>
     <?php require_once('universal.inc') ?>
-    <title>Audit Users | CCDA</title>
+    <title>Manage Users | CHS Pet Pantry</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         pageheader {
@@ -201,7 +201,7 @@
     </style>
 </head>
 <pageheader>
-    <h1 class="title">Audit Users</h1>
+    <h1 class="title">Manage Users</h1>
 </pageheader>
 <body>
     <?php require_once('header.php'); ?>
