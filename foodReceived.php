@@ -180,7 +180,7 @@ require_once('header.php');
         .edit-food-button { display: inline-block; background: #276b7b; color: #fff; text-decoration: none; border-radius: .375rem; padding: .35rem .75rem; margin: 0 0 .35rem; }
         .edit-food-button:hover, .edit-food-button:focus { background: #205766; color: #fff; }
         .food-cancel { display: inline-block; margin-left: .8rem; color: #205766; }
-        .delete-food-button { background-color: #b91c1c; color: #fff; border: none; border-radius: .375rem; padding: .35rem .75rem; cursor: pointer; }
+        .delete-food-button { background-color: #b91c1c; color: #fff; border: none; border-radius: .375rem; padding: .35rem .75rem; cursor: pointer; cursor: pointer; white-space: nowrap; width: auto; min-width: 65px; }
         .delete-food-button:hover, .delete-food-button:focus { background-color: #7f1d1d; }
         /* Compact, scoped layout: does not change save or delete logic. */
         .main-content-box { max-width: 70rem; }
