@@ -64,6 +64,11 @@ final class PetAgeStorageTest extends DatabaseTestCase
 
         $this->assertNotFalse($id, 'the first save adds the column');
         $this->assertSame(date('Y-m-d'), get_pet_by_id($id)->get_age_recorded_date());
-        $this->assertSame(date('Y-m-d'), get_pet_by_id($oldPet)->get_age_recorded_date(), 'existing ages are dated from when the pet was added');
+        // created_at is stamped in MySQL's time zone (UTC on GitHub), which is
+        // already tomorrow after 7 pm in New York, so compare with that date
+        $con = $this->db();
+        $added = $con->query('SELECT DATE(created_at) FROM dbpets WHERE id = ' . (int) $oldPet)->fetch_row()[0];
+        $con->close();
+        $this->assertSame($added, get_pet_by_id($oldPet)->get_age_recorded_date(), 'existing ages are dated from when the pet was added');
     }
 }
