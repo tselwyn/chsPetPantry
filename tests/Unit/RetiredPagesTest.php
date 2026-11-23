@@ -17,7 +17,7 @@ final class RetiredPagesTest extends TestCase
     /** Pages the Pet Pantry uses, plus files those pages include as code. */
     public const LIVE_PAGES = [
         'changeForgottenPassword.php', 'changePassword.php', 'createUser.php', 'deleteParticipantPet.php',
-        'distributionHistory.php', 'distributionRecord.php', 'emailEncryption.php', 'foodReceived.php',
+        'distributionHistory.php', 'distributionRecord.php', 'emailEncryption.php', 'foodReceived.php', 'importData.php',
         'forgotPassword.php', 'index.php', 'login.php', 'logout.php', 'participantEdit.php',
         'participantRegister.php', 'participantSearch.php', 'petDelete.php', 'petEdit.php', 'petFormFields.php',
         'registerPet.php', 'registrationForm.php', 'reports.php', 'resetPassword.php', 'sessionKeepAlive.php',

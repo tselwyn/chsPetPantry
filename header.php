@@ -846,6 +846,7 @@ if (date("H:i:s") > "18:19:59") {
         $permission_array['viewweeklyreport.php'] = 1;
         $permission_array['viewupdateinventory.php'] = 1;
         $permission_array['viewauditusers.php'] = 2;
+        $permission_array['importdata.php'] = 2; // Import Participants & Pets, admin only
         $permission_array['viewmodifyuser.php'] = 2;
         $permission_array['viewitemcategories.php'] = 2;
         $permission_array['viewadditemcategory.php'] = 2;

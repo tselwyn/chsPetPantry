@@ -627,6 +627,16 @@
         <div class="large-text-sub" style="color:white;">Manage Users</div>
         <div class="graph-text" style="color:white;">Add accounts, change roles, reset passwords, and deactivate logins.</div>
         </div>
+
+        <!-- Import Participants & Pets from a spreadsheet, admin only -->
+        <div class="content-box-test" onclick="window.location.href='importData.php'" >
+        <div class="icon-overlay">
+            <img style="border-radius: 5px;" src="images/clipboard-arrow-down.svg" alt="Import Icon">
+        </div>
+
+        <div class="large-text-sub" style="color:white;">Import Participants &amp; Pets</div>
+        <div class="graph-text" style="color:white;">Add many participants and pets at once from an Excel or CSV file.</div>
+        </div>
         <?php endif ?>
 
 

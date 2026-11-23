@@ -17,4 +17,6 @@ require_once PFPMS_ROOT . '/database/dbinfo.php';
 require_once PFPMS_ROOT . '/database/dbParticipants.php';
 require_once PFPMS_ROOT . '/database/dbPets.php';
 require_once PFPMS_ROOT . '/include/pet-form.php';
+require_once PFPMS_ROOT . '/include/import.php';
+require_once PFPMS_ROOT . '/database/dbImport.php';
 require_once __DIR__ . '/Integration/DatabaseTestCase.php';
